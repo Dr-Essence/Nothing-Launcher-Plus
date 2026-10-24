@@ -6,6 +6,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
@@ -58,6 +60,13 @@ public class LauncherHook implements IXposedHookLoadPackage {
     private static final String CLS_SETTINGS_FRAGMENT =
             "com.nothing.launcher.setting.allapp.AllAppSettingsFragment";
     private static final String CLS_PREFERENCE = "androidx.preference.Preference";
+    private static final String CLS_OPTIONS_POPUP = "com.android.launcher3.views.OptionsPopupView";
+    private static final String CLS_LAUNCHER_EVENT =
+            "com.android.launcher3.logging.StatsLogManager$LauncherEvent";
+    private static final String CLS_FOLDER_INFO = "com.android.launcher3.model.data.FolderInfo";
+    private static final String CLS_APP_INFO = "com.android.launcher3.model.data.AppInfo";
+    private static final String CLS_EXECUTORS = "com.android.launcher3.util.Executors";
+    private static final String CLS_LAUNCHER_STATE = "com.android.launcher3.LauncherState";
 
     private static final String CATEGORY_OTHERS = "others";
     private static final String CATEGORY_UNKNOWN = "unknown";
@@ -95,6 +104,7 @@ public class LauncherHook implements IXposedHookLoadPackage {
         install("smart adapter", () -> hookSmartAdapter(cl));
         install("folder label", () -> hookFolderLabel(cl));
         install("sheet title", () -> hookSheetTitle(cl));
+        install("folder menu", () -> hookFolderMenu(cl));
         install("settings entry", () -> hookSettingsEntry(cl));
         install("reload receiver", () -> hookReloadReceiver(cl));
     }
@@ -394,6 +404,162 @@ public class LauncherHook implements IXposedHookLoadPackage {
         } catch (IllegalAccessException e) {
             return null;
         }
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Long-press on a drawer folder: "Add to home screen" as a real Launcher3 folder
+    // ---------------------------------------------------------------------------------------
+
+    private void hookFolderMenu(ClassLoader cl) {
+        Class<?> folderIcon = XposedHelpers.findClass(CLS_FOLDER_ICON, cl);
+        // Resolve everything up front so a missing class disables the menu instead of crashing.
+        Class<?> launcherClass = XposedHelpers.findClass(CLS_LAUNCHER, cl);
+        Class<?> popupClass = XposedHelpers.findClass(CLS_OPTIONS_POPUP, cl);
+        Class<?> optionItemClass = XposedHelpers.findClass(CLS_OPTIONS_POPUP + "$OptionItem", cl);
+        Class<?> eventClass = XposedHelpers.findClass(CLS_LAUNCHER_EVENT, cl);
+        Class<?> folderInfoClass = XposedHelpers.findClass(CLS_FOLDER_INFO, cl);
+        Class<?> appInfoClass = XposedHelpers.findClass(CLS_APP_INFO, cl);
+        Class<?> executorsClass = XposedHelpers.findClass(CLS_EXECUTORS, cl);
+        Class<?> launcherStateClass = XposedHelpers.findClass(CLS_LAUNCHER_STATE, cl);
+        FolderMenu menu = new FolderMenu(launcherClass, popupClass, optionItemClass,
+                XposedHelpers.getStaticObjectField(eventClass, "IGNORE"), folderInfoClass,
+                appInfoClass, executorsClass, launcherStateClass);
+
+        XposedHelpers.findAndHookMethod(folderIcon, "onFinishInflate", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                ((View) param.thisObject).setOnLongClickListener(menu::show);
+            }
+        });
+    }
+
+    private final class FolderMenu {
+        private final Class<?> launcherClass;
+        private final Class<?> popupClass;
+        private final Class<?> optionItemClass;
+        private final Object ignoreEvent;
+        private final Class<?> folderInfoClass;
+        private final Class<?> appInfoClass;
+        private final Class<?> executorsClass;
+        private final Class<?> launcherStateClass;
+
+        FolderMenu(Class<?> launcherClass, Class<?> popupClass, Class<?> optionItemClass,
+                Object ignoreEvent, Class<?> folderInfoClass, Class<?> appInfoClass,
+                Class<?> executorsClass, Class<?> launcherStateClass) {
+            this.launcherClass = launcherClass;
+            this.popupClass = popupClass;
+            this.optionItemClass = optionItemClass;
+            this.ignoreEvent = ignoreEvent;
+            this.folderInfoClass = folderInfoClass;
+            this.appInfoClass = appInfoClass;
+            this.executorsClass = executorsClass;
+            this.launcherStateClass = launcherStateClass;
+        }
+
+        boolean show(View icon) {
+            try {
+                List<?> apps = appsOfGroupItem(icon.getTag());
+                if (apps == null || apps.isEmpty()) {
+                    return false;
+                }
+                CharSequence title = ((TextView) XposedHelpers.callMethod(
+                        icon, "getFolderName")).getText();
+                Context context = icon.getContext();
+                Object launcher = XposedHelpers.callStaticMethod(
+                        launcherClass, "getLauncher", context);
+
+                Rect bounds = new Rect();
+                XposedHelpers.callMethod(XposedHelpers.callMethod(launcher, "getDragLayer"),
+                        "getDescendantRectRelativeToSelf", icon, bounds);
+
+                // Reuse the launcher's own translated label and icon so the item looks native.
+                int label = launcherResource(context, "string", "add_to_home_screen");
+                int image = launcherResource(context, "drawable", "ic_install_no_shadow");
+                if (label == 0 || image == 0) {
+                    return false;
+                }
+                View.OnLongClickListener onPick = v -> {
+                    addFolderToHome(launcher, title, apps);
+                    return true;
+                };
+                ArrayList<Object> items = new ArrayList<>();
+                items.add(XposedHelpers.newInstance(optionItemClass, context, label, image,
+                        ignoreEvent, onPick));
+                XposedHelpers.callStaticMethod(popupClass, "show", launcher, new RectF(bounds),
+                        items, true);
+                icon.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+                return true;
+            } catch (Throwable t) {
+                XposedBridge.log(TAG + "folder menu failed: " + t);
+                return false;
+            }
+        }
+
+        /**
+         * Builds a FolderInfo holding a workspace copy of every app and hands it to
+         * LauncherModel#addAndBindAddedWorkspaceItems, the same path used when installed apps are
+         * added to the home screen: it finds a free cell, writes the folder row and binds the
+         * FolderIcon. That task stores only the folder itself, so the contents are written right
+         * after it on the model thread, once the folder has its database id.
+         */
+        private void addFolderToHome(Object launcher, CharSequence title, List<?> apps) {
+            Context context = (Context) launcher;
+            Object folder = XposedHelpers.newInstance(folderInfoClass);
+            XposedHelpers.setObjectField(folder, "title", title);
+            List<Object> children = new ArrayList<>();
+            for (Object app : apps) {
+                if (!appInfoClass.isInstance(app)) {
+                    continue; // e.g. the "hidden icons" entrance
+                }
+                Object item = XposedHelpers.callMethod(app, "makeWorkspaceItem", context);
+                XposedHelpers.setIntField(item, "rank", children.size());
+                XposedHelpers.callMethod(folder, "add", item);
+                children.add(item);
+            }
+            if (children.isEmpty()) {
+                return;
+            }
+            Object model = XposedHelpers.callMethod(launcher, "getModel");
+            Object writer = XposedHelpers.callMethod(launcher, "getModelWriter");
+            XposedHelpers.callMethod(model, "addAndBindAddedWorkspaceItems",
+                    Collections.singletonList(android.util.Pair.create(folder, null)));
+
+            java.util.concurrent.Executor modelExecutor = (java.util.concurrent.Executor)
+                    XposedHelpers.getStaticObjectField(executorsClass, "MODEL_EXECUTOR");
+            modelExecutor.execute(() -> {
+                int folderId = XposedHelpers.getIntField(folder, "id");
+                if (folderId < 0) {
+                    XposedBridge.log(TAG + "folder was not added to the workspace");
+                    return;
+                }
+                for (int i = 0; i < children.size(); i++) {
+                    XposedHelpers.callMethod(writer, "addItemToDatabase",
+                            children.get(i), folderId, 0, i, 0);
+                }
+            });
+
+            Object normal = XposedHelpers.getStaticObjectField(launcherStateClass, "NORMAL");
+            XposedHelpers.callMethod(XposedHelpers.callMethod(launcher, "getStateManager"),
+                    "goToState", normal);
+        }
+    }
+
+    private static int launcherResource(Context context, String type, String name) {
+        return context.getResources().getIdentifier(name, type, Config.LAUNCHER_PKG);
+    }
+
+    /** The adapter's group item holds its apps in its only List field. */
+    private static List<?> appsOfGroupItem(Object groupItem) throws IllegalAccessException {
+        if (groupItem == null) {
+            return null;
+        }
+        for (Field f : groupItem.getClass().getDeclaredFields()) {
+            if (f.getType() == List.class && !Modifier.isStatic(f.getModifiers())) {
+                f.setAccessible(true);
+                return new ArrayList<>((List<?>) f.get(groupItem));
+            }
+        }
+        return null;
     }
 
     // ---------------------------------------------------------------------------------------

@@ -13,6 +13,9 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
   layout*, under the Default / Smart (Beta) picker. Tapping it opens the folder manager.
 - Choose whether custom folders appear before or after the automatic categories.
 - You can hide the automatic categories. Apps not in a custom folder then go to "Others".
+- Long-press any drawer folder (custom or automatic) and pick **Add to home screen** from the
+  launcher's own popup. The launcher creates a real home-screen folder with the same name and apps,
+  which you can then edit, move or delete like any other folder.
 - Changes apply right away through a reload broadcast. You don't need to restart the launcher.
 
 ## Requirements
@@ -29,6 +32,20 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
 3. Force-stop Nothing Launcher, or use the "Restart Nothing Launcher (root)" button in the app.
 4. In Nothing Launcher settings, set *Drawer layout* to **Smart (Beta)** and tap **Custom folders**.
 
+## Signing
+
+Android installs an update only when it is signed with the same key as the installed version.
+Uninstalling to switch keys deletes the saved folders. Release builds therefore always use one
+key, which is kept out of this public repo:
+
+- **CI:** set the repository secrets `SIGNING_KEYSTORE_BASE64` (the base64-encoded `.jks`) and
+  `SIGNING_PASSWORD`. Without them the workflow still builds, but it signs with a throwaway debug
+  key and shows a warning.
+- **Local:** `SIGNING_KEYSTORE=/path/to/release.jks SIGNING_PASSWORD=... ./gradlew assembleRelease`
+  (key alias `nlplus`, or set `SIGNING_KEY_ALIAS`).
+
+Keep a backup of the keystore. If it is lost, no future update can install over your current one.
+
 ## How it works (reverse-engineering notes, v4.0.20)
 
 The launcher is built on AOSP Launcher3 (`com.android.launcher3.*`, unobfuscated). Nothing's own
@@ -44,6 +61,7 @@ code is in `com.nothing.launcher.*`, and R8 has obfuscated most of it.
 | Folder tile | `SmartFolderIcon.bind(GroupAdapterItem)` | Name kept |
 | Opened folder sheet | `SmartFullSheet.Companion.b(ActivityContext, SmartFolderIcon)` | Signature match |
 | Drawer settings screen | `AllAppSettingsFragment.onCreatePreferences` (`all_app_settings_preferences.xml`) | Name kept |
+| Drawer → home folder | `OptionsPopupView.show`, `LauncherModel.addAndBindAddedWorkspaceItems`, `ModelWriter.addItemToDatabase` | Names kept |
 | Display style pref | `pref_all_app_display_style` (false = Smart) | — |
 
 `h.updateAdapterItems()` groups `mApps` by `mStatusInfo.n()` and adds one folder for each
