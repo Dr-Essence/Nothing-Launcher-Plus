@@ -249,11 +249,15 @@ public class AnimatedEmojiView extends TextView {
             rest();
             return wait;
         }
-        if (moving && atRest) {
+        // While the effect has something in motion (a stick tilting, a shutter closing) it
+        // runs at the display's full rate, like the emoji's own motion; otherwise at the
+        // panel's pace.
+        boolean smooth = moving || (effects && dots.busy());
+        if (smooth && atRest) {
             atRest = false;
             requestFrameRate(true);
-        } else if (!moving && !atRest) {
-            atRest = true; // Effects alone run at the panel's pace, not the display's.
+        } else if (!smooth && !atRest) {
+            atRest = true;
             requestFrameRate(false);
         }
         if (dots == null) {
@@ -261,16 +265,18 @@ public class AnimatedEmojiView extends TextView {
             return moving ? 0 : wait;
         }
         long frame = nowNanos / EFFECT_FRAME_NANOS;
-        if (moving || frame != effectFrame) {
+        if (smooth || frame != effectFrame) {
             effectFrame = frame;
-            float time = (frame % (EFFECT_FPS * 3600L)) / (float) EFFECT_FPS;
+            // Continuous time, so a part in motion moves on every display frame.
+            float time = (nowNanos % 3_600_000_000_000L) / 1e9f;
             float since = reactStart == 0 ? Float.MAX_VALUE : (nowNanos - reactStart) / 1e9f;
             if (dots.render(pose, effect, effectAnchor, time, boost(nowNanos), since,
                     effectSeed)) {
                 invalidate();
             }
+            smooth = moving || dots.busy();
         }
-        return moving ? 0 : Math.min(wait, EFFECT_FRAME_NANOS - nowNanos % EFFECT_FRAME_NANOS);
+        return smooth ? 0 : Math.min(wait, EFFECT_FRAME_NANOS - nowNanos % EFFECT_FRAME_NANOS);
     }
 
     /** How strongly the effect flares: 1 right after a reaction, easing out to 0. */

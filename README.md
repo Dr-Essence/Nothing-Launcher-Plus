@@ -71,14 +71,25 @@ plus your folders.
   shadowed inside and the papers in it, then closes again (📂 closes up and reopens). It is
   drawn from the emoji's own dots, so it never changes size; tap it and it opens at once.
 - **Objects do what the real thing does**: 🎮 buttons are pressed in combos and the d-pad
-  clicks; 🕹️'s stick tilts on its base with spring physics and the fire button flashes;
-  📷 📸 close their iris across the lens and fire the flash; 📹 blinks its REC light; 🎥 📽️ turn
-  their reels; 🍳 sizzles; 🫕's burner flickers; 🚦 🚥 cycle green, amber, red; ⏳ ⌛ drain their
-  sand into a growing pile; 🔋 charges bar by bar and 🪫 blinks; 🌡️'s mercury climbs and sinks;
-  🧭's needle swings and settles; 🎲's pips flicker as it rolls; 🎰's reels spin and stop one by
-  one; cars, buses and bikes turn their wheels; 🚁's rotor blurs; 🎡's lights chase round;
-  💈's stripes climb; 🌍 🌎 🌏 🌐 turn, continents travelling round the sphere; ⌨️ is typed on,
-  🖱️ double-clicks, 🖨️ feeds out printed paper; ⚙️ 🛞 💿 📀 spin.
+  clicks; 🕹️'s stick (a clean round ball, cut from the drawing) tilts on its base with spring
+  physics and the fire button flashes; 📷 📸 press the shutter button, close iris blades across
+  the glass only (the metal ring stays as it is), fire a real flash bloom and catch a glint;
+  📹 🎥 pulse their own red REC lamp, with its light spilling onto the body, and 🎥's reels
+  catch the light as they turn; 📽️'s six-spoke reels really turn while their arms stay put;
+  🎬 snaps shut, bounces and reopens; 🔒 lifts its shackle and turns it round its long leg;
+  💬 shows the typing indicator; 📖 turns a page, 📝 is written on line by line, 📅 📆 flip
+  their date page; 📈 📉 draw their line and 📊 grows its bars; 🍳 sizzles; 🫕's burner
+  flickers; 🚦 🚥 cycle green, amber, red; ⏳ ⌛ drain their sand into a growing pile; 🔋
+  charges bar by bar and 🪫 blinks; 🌡️'s mercury climbs and sinks; 🧭's needle (turned as a
+  disc of the drawing) swings and settles; 🎲's pips flicker as it rolls; 🎰's reels spin and
+  stop one by one; cars, buses, bikes and 🛒 turn their wheels; 🚁's rotor blurs; 🎡's lights
+  chase round; 💈's stripes climb; 🌍 🌎 🌏 🌐 and the sport balls turn; ⌨️ is typed on, 🖱️
+  double-clicks, 🖨️ feeds out printed paper; ⚙️ 🛞 💿 📀 spin.
+- **Moving parts are drawn, not shuffled dot by dot**: a stick, needle, shutter, shackle or
+  reel is cut out of the emoji and moved before the emoji becomes dots, in the same
+  supersampled frame, so it moves with smooth anti-aliased edges instead of jagged dot jumps.
+  While a part is moving the cover renders at the display's full rate (up to 120 Hz) and drops
+  back to the panel's 24 fps once it rests.
 - **Music plays by its own logic**, all to one shared 96 BPM beat, so the music folders in the
   drawer groove together: 🔊 lights its own drawn sound waves inner to outer like a volume
   meter, 🎵 🎶 light each note head as it sounds, 🎼 runs a playhead along the staff, 🎹 plays a

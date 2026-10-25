@@ -51,6 +51,8 @@ final class DotMatrix {
 
     private static final LruCache<String, Bitmap> GLYPHS = new LruCache<>(48);
     private static final LruCache<String, Bitmap> MASKS = new LruCache<>(8);
+    /** Turning parts with a piece kept on top (see Scene#keepOnLastPart): filled, kept. */
+    private static final LruCache<String, Bitmap[]> SPLITS = new LruCache<>(4);
 
     /** The 32 x 32 frame inside a 1-dot transparent border (see class comment). */
     /** The wide glow: the frame at half resolution, inside a transparent border. */
@@ -76,6 +78,7 @@ final class DotMatrix {
     private final Paint unlitPaint = new Paint();
     private final Rect square = new Rect();
     private Bitmap glyph;
+    private String glyphKey;
 
     /** The emoji at rest, the regions effects work on, and the frame they paint. */
     private final int[] restDots = new int[GRID * GRID];
@@ -83,6 +86,8 @@ final class DotMatrix {
     private final Scene scene = new Scene(GRID);
     private final Matrix restPose = new Matrix();
     private final Matrix restInverse = new Matrix();
+    private final Matrix partMatrix = new Matrix();
+    private final android.graphics.Path partPath = new android.graphics.Path();
     private final Matrix forward = new Matrix();
     private final Matrix inverse = new Matrix();
     private final float[] values = new float[9];
@@ -137,6 +142,7 @@ final class DotMatrix {
     /** {@code color} is used for plain text; emoji keep their own colours. */
     void setText(CharSequence text, int color) {
         glyph = text == null || text.length() == 0 ? null : glyph(text.toString(), color);
+        glyphKey = color + "|" + text;
         // The resting frame, once: what effects find their regions in and paint over.
         rasterize(null);
         System.arraycopy(dots, 0, restDots, 0, dots.length);
@@ -159,28 +165,34 @@ final class DotMatrix {
      */
     boolean render(Pose p, DotEffect effect, float[] anchor, float time, float boost,
             float since, int seed) {
-        boolean still = p.isRest();
+        if (effect != DotEffect.NONE && regionsStale) {
+            regionsStale = false;
+            scene.regions = new Regions(restDots, GRID);
+        }
+        boolean effects = effect != DotEffect.NONE && scene.regions != null;
+        scene.partCount = 0;
+        scene.busy = false;
+        if (effects) {
+            scene.t = time;
+            scene.anchor = anchor;
+            scene.boost = boost;
+            scene.since = since;
+            scene.seed = seed;
+            effect.pose(scene);
+        }
+        boolean still = p.isRest() && scene.partCount == 0;
         if (still) {
             System.arraycopy(restDots, 0, dots, 0, dots.length);
         } else {
             rasterize(p);
         }
-        if (effect != DotEffect.NONE && regionsStale) {
-            regionsStale = false;
-            scene.regions = new Regions(restDots, GRID);
-        }
-        if (effect != DotEffect.NONE && scene.regions != null) {
+        if (effects) {
             System.arraycopy(dots, 0, scene.dots, 0, dots.length);
             if (still) {
                 scene.map(IDENTITY, IDENTITY);
             } else {
                 mapScene();
             }
-            scene.t = time;
-            scene.anchor = anchor;
-            scene.boost = boost;
-            scene.since = since;
-            scene.seed = seed;
             effect.apply(scene);
             System.arraycopy(scene.dots, 0, dots, 0, dots.length);
         }
@@ -212,10 +224,170 @@ final class DotMatrix {
                 pose.postTranslate(p.tx * RENDER, p.ty * RENDER);
             }
             glyphPaint.setAlpha(p == null ? 255 : Math.round(Math.min(1, p.alpha) * 255));
-            renderCanvas.drawBitmap(glyph, pose, glyphPaint);
+            if (p == null || scene.partCount == 0) {
+                renderCanvas.drawBitmap(glyph, pose, glyphPaint);
+            } else {
+                drawParts();
+            }
         }
         render.getPixels(samples, 0, RENDER, 0, 0, RENDER, RENDER);
         quantize();
+    }
+
+    /**
+     * Draws the glyph with the effect's parts moved: everything but the parts where it rests,
+     * then each part cut out, turned and shifted, all under the emoji's own pose. The parts are
+     * drawn into the supersampled frame, so they move with the same smooth, anti-aliased dots as
+     * the emoji itself.
+     */
+    private void drawParts() {
+        Canvas c = renderCanvas;
+        // Resting supersampled coordinates to posed ones.
+        partMatrix.set(restInverse);
+        partMatrix.postConcat(pose);
+        c.save();
+        c.concat(partMatrix);
+        c.save();
+        for (int k = 0; k < scene.partCount; k++) {
+            clipPart(c, k, true);
+        }
+        c.drawBitmap(glyph, restPose, glyphPaint);
+        c.restore();
+        for (int k = 0; k < scene.partCount; k++) {
+            c.save();
+            c.translate(scene.partShift[k * 2] * SUPERSAMPLE, scene.partShift[k * 2 + 1] * SUPERSAMPLE);
+            c.rotate(scene.partAngle[k], scene.partPivot[k * 2] * SUPERSAMPLE,
+                    scene.partPivot[k * 2 + 1] * SUPERSAMPLE);
+            if (scene.partScaleX[k] != 1) {
+                c.scale(scene.partScaleX[k], 1, scene.partPivot[k * 2] * SUPERSAMPLE,
+                        scene.partPivot[k * 2 + 1] * SUPERSAMPLE);
+            }
+            clipPart(c, k, false);
+            Bitmap[] split = scene.partKeepHue[k] < 0 ? null : split(k);
+            c.drawBitmap(split != null ? split[0] : glyph, restPose, glyphPaint);
+            c.restore();
+            if (split != null) {
+                // The piece over the part stays where it is.
+                c.save();
+                clipPart(c, k, false);
+                c.drawBitmap(split[1], restPose, glyphPaint);
+                c.restore();
+            }
+        }
+        c.restore();
+    }
+
+    /**
+     * Splits the glyph inside round part {@code k} into what turns and what stays on top (the
+     * pixels of the part's keep hue). Where the kept piece hid the part, the part is filled in
+     * from itself turned by one step of its symmetry, so nothing of the piece turns with it.
+     */
+    private Bitmap[] split(int k) {
+        float[] box = {scene.partRect[k * 4] * SUPERSAMPLE, scene.partRect[k * 4 + 1] * SUPERSAMPLE,
+                scene.partRect[k * 4 + 2] * SUPERSAMPLE, scene.partRect[k * 4 + 3] * SUPERSAMPLE};
+        restInverse.mapPoints(box);
+        int hue = scene.partKeepHue[k];
+        int fold = Math.max(2, scene.partFold[k]);
+        String key = glyphKey + "|" + Math.round(box[0]) + "," + Math.round(box[1]) + ","
+                + Math.round(box[2]) + "|" + hue + "|" + fold;
+        Bitmap[] cached = SPLITS.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        float cx = (box[0] + box[2]) / 2;
+        float cy = (box[1] + box[3]) / 2;
+        float radius = (box[2] - box[0]) / 2;
+        int[] px = new int[GLYPH * GLYPH];
+        glyph.getPixels(px, 0, GLYPH, 0, 0, GLYPH, GLYPH);
+        boolean[] keep = new boolean[px.length];
+        float[] hsv = new float[3];
+        int x0 = Math.max(0, (int) (cx - radius) - 3);
+        int x1 = Math.min(GLYPH - 1, (int) (cx + radius) + 3);
+        int y0 = Math.max(0, (int) (cy - radius) - 3);
+        int y1 = Math.min(GLYPH - 1, (int) (cy + radius) + 3);
+        for (int y = y0; y <= y1; y++) {
+            for (int x = x0; x <= x1; x++) {
+                int c = px[y * GLYPH + x];
+                if ((c >>> 24) < 40) {
+                    continue;
+                }
+                Color.colorToHSV(c, hsv);
+                float d = Math.abs(hsv[0] - hue);
+                keep[y * GLYPH + x] = hsv[1] > 0.16f && Math.min(d, 360 - d) < 35;
+            }
+        }
+        // Grown by two pixels, so no anti-aliased fringe of the piece turns with the part.
+        for (int pass = 0; pass < 2; pass++) {
+            boolean[] grown = keep.clone();
+            for (int y = Math.max(1, y0); y < Math.min(GLYPH - 1, y1); y++) {
+                for (int x = Math.max(1, x0); x < Math.min(GLYPH - 1, x1); x++) {
+                    int i = y * GLYPH + x;
+                    if (!keep[i] && (keep[i - 1] || keep[i + 1] || keep[i - GLYPH]
+                            || keep[i + GLYPH]) && (px[i] >>> 24) > 0) {
+                        grown[i] = true;
+                    }
+                }
+            }
+            keep = grown;
+        }
+        int[] turned = px.clone();
+        int[] kept = new int[px.length];
+        for (int y = y0; y <= y1; y++) {
+            for (int x = x0; x <= x1; x++) {
+                int i = y * GLYPH + x;
+                if (!keep[i]) {
+                    continue;
+                }
+                kept[i] = px[i];
+                turned[i] = 0;
+                for (int j = 1; j < fold; j++) {
+                    double a = 2 * Math.PI * j / fold;
+                    float dx = x - cx;
+                    float dy = y - cy;
+                    int sx = Math.round(cx + (float) (dx * Math.cos(a) - dy * Math.sin(a)));
+                    int sy = Math.round(cy + (float) (dx * Math.sin(a) + dy * Math.cos(a)));
+                    if (sx < 0 || sy < 0 || sx >= GLYPH || sy >= GLYPH) {
+                        continue;
+                    }
+                    if (!keep[sy * GLYPH + sx]) {
+                        turned[i] = px[sy * GLYPH + sx];
+                        break;
+                    }
+                }
+            }
+        }
+        Bitmap[] split = {
+                Bitmap.createBitmap(turned, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                Bitmap.createBitmap(kept, GLYPH, GLYPH, Bitmap.Config.ARGB_8888)};
+        SPLITS.put(key, split);
+        return split;
+    }
+
+    /** Clips to part {@code k} ({@code out}: everything but it). */
+    private void clipPart(Canvas c, int k, boolean out) {
+        float x0 = scene.partRect[k * 4] * SUPERSAMPLE;
+        float y0 = scene.partRect[k * 4 + 1] * SUPERSAMPLE;
+        float x1 = scene.partRect[k * 4 + 2] * SUPERSAMPLE;
+        float y1 = scene.partRect[k * 4 + 3] * SUPERSAMPLE;
+        if (scene.partRound[k]) {
+            partPath.rewind();
+            partPath.addCircle((x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2,
+                    android.graphics.Path.Direction.CW);
+            if (out) {
+                c.clipOutPath(partPath);
+            } else {
+                c.clipPath(partPath);
+            }
+        } else if (out) {
+            c.clipOutRect(x0, y0, x1, y1);
+        } else {
+            c.clipRect(x0, y0, x1, y1);
+        }
+    }
+
+    /** True while the last frame's effect has something moving (see Scene#busy). */
+    boolean busy() {
+        return scene.busy;
     }
 
     /**

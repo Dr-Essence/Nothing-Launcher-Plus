@@ -163,7 +163,7 @@
 💦	0	DRIP	DRIP	sweat droplets
 💨	0	WHOOSH	SMOKE	dashing away
 🕳️	0	PULSE	MAGIC	hole
-💬	0	FLOAT	DIGITAL	speech balloon
+💬	0	FLOAT	TYPING_DOTS	speech balloon
 👁️‍🗨️	0	BLINK	LOOK	eye in speech bubble
 🗨️	0	FLOAT	DIGITAL	left speech bubble
 🗯️	0	RAGE	ANGRY	right anger bubble
@@ -1090,14 +1090,14 @@
 🥇	5	POP	SPARKLE	1st place medal
 🥈	5	POP	SPARKLE	2nd place medal
 🥉	5	POP	SPARKLE	3rd place medal
-⚽️	5	BOUNCE	SHINE	soccer ball
-⚾️	5	BOUNCE	SHINE	baseball
-🥎	5	BOUNCE	SHINE	softball
-🏀	5	BOUNCE	SHINE	basketball
-🏐	5	BOUNCE	SHINE	volleyball
-🏈	5	BOUNCE	SHINE	american football
-🏉	5	BOUNCE	SHINE	rugby football
-🎾	5	BOUNCE	SHINE	tennis
+⚽️	5	BOUNCE	GLOBE	soccer ball
+⚾️	5	BOUNCE	GLOBE	baseball
+🥎	5	BOUNCE	GLOBE	softball
+🏀	5	BOUNCE	GLOBE	basketball
+🏐	5	BOUNCE	GLOBE	volleyball
+🏈	5	BOUNCE	GLOBE	american football
+🏉	5	BOUNCE	GLOBE	rugby football
+🎾	5	BOUNCE	GLOBE	tennis
 🥏	5	BOUNCE	SHINE	flying disc
 🎳	5	BOUNCE	SHINE	bowling
 🏏	5	BOUNCE	SHINE	cricket game
@@ -1117,7 +1117,7 @@
 🎿	5	BOUNCE	SHINE	skis
 🛷	5	BOUNCE	SHINE	sled
 🥌	5	BOUNCE	SHINE	curling stone
-🎯	5	RATTLE	SPARKLE	bullseye
+🎯	5	RATTLE	SIGNAL:0.42,0.55	bullseye
 🪀	5	BOUNCE	SPARKLE	yo-yo
 🪁	5	FLY	SPARKLE	kite
 🔫	5	HAMMER	DRIP	water pistol
@@ -1125,7 +1125,7 @@
 🔮	5	TWINKLE	MAGIC	crystal ball
 🪄	5	TWINKLE	MAGIC	magic wand
 🎮️	5	BUZZ	CONTROLLER	video game
-🕹️	5	SETTLE	JOYSTICK:0.52,0.55	joystick
+🕹️	5	SETTLE	JOYSTICK:0.5,0.574,0.25,-0.05,0.75,0.444	joystick
 🎰	5	RATTLE	SLOTS:0.15,0.48,0.92,0.7	slot machine
 🎲	5	RATTLE	DICE	game die
 🧩	5	RATTLE	SPARKLE	puzzle piece
@@ -1245,14 +1245,14 @@
 💿️	6	SPIN	SHINE	optical disk
 📀	6	SPIN	SHINE	dvd
 🧮	6	TYPE	DIGITAL	abacus
-🎥	6	FLASH	REELS:0.3,0.18,0.17,0.74,0.17,0.17	movie camera
+🎥	6	FLASH	FILM_CAMERA:0.453,0.785,0.39,0.295,0.26,0.83,0.374,0.18	movie camera
 🎞️	6	FLASH	GLOW	film frames
-📽️	6	FLASH	REELS:0.2,0.2,0.19,0.78,0.18,0.19	film projector
-🎬️	6	FLASH	GLOW	clapper board
+📽️	6	FLASH	REELS:0.219,0.365,0.215,0.727,0.241,0.215,200,6	film projector
+🎬️	6	FLASH	CLAPPER:0.02,0.24,-0.02,-0.02,1.02,0.256	clapper board
 📺️	6	FLASH	STATIC	television
-📷️	6	FLASH	CAMERA:0.5,0.63,0.27,0.88,0.12	camera
-📸	6	FLASH	CAMERA:0.5,0.68,0.27,0.56,0.18	camera with flash
-📹️	6	FLASH	RECORD:0.27,0.35	video camera
+📷️	6	FLASH	CAMERA:0.59,0.18,0.056,-0.03,0.37,0.09	camera
+📸	6	FLASH	CAMERA:0.61,0.21,0.056,0.135,0.37,0.19	camera with flash
+📹️	6	FLASH	RECORD:0.256,0.364	video camera
 📼	6	FLASH	STATIC	videocassette
 🔍️	6	SEARCH	SHINE	magnifying glass tilted left
 🔎	6	SEARCH	SHINE	magnifying glass tilted right
@@ -1263,7 +1263,7 @@
 🪔	6	FLICKER	FLAME	diya lamp
 📔	6	PAGE	SHINE	notebook with decorative cover
 📕	6	PAGE	SHINE	closed book
-📖	6	PAGE	SHINE	open book
+📖	6	PAGE	PAGE_TURN	open book
 📗	6	PAGE	SHINE	green book
 📘	6	PAGE	SHINE	blue book
 📙	6	PAGE	SHINE	orange book
@@ -1287,7 +1287,7 @@
 💸	6	COIN	SHINE	money with wings
 💳️	6	COIN	SHINE	credit card
 🧾	6	COIN	SHINE	receipt
-💹	6	GROW	DIGITAL	chart increasing with yen
+💹	6	GROW	CHART_LINE	chart increasing with yen
 ✉️	6	SEND	SHINE	envelope
 📧	6	SEND	SHINE	e-mail
 📨	6	SEND	SHINE	incoming envelope
@@ -1307,19 +1307,19 @@
 🖊️	6	WRITE	SHINE	pen
 🖌️	6	WRITE	SHINE	paintbrush
 🖍️	6	WRITE	SHINE	crayon
-📝	6	PAGE	SHINE	memo
+📝	6	PAGE	WRITING	memo
 💼	6	HOP	SHINE	briefcase
 📁	6	HOP	FOLDER:0.45	file folder
 📂	6	HOP	FOLDER:-0.4	open file folder
 🗂️	6	PAGE	SHINE	card index dividers
-📅	6	PAGE	SHINE	calendar
-📆	6	PAGE	SHINE	tear-off calendar
+📅	6	PAGE	DATE_FLIP	calendar
+📆	6	PAGE	DATE_FLIP	tear-off calendar
 🗒️	6	PAGE	SHINE	spiral notepad
-🗓️	6	PAGE	SHINE	spiral calendar
+🗓️	6	PAGE	DATE_FLIP	spiral calendar
 📇	6	PAGE	SHINE	card index
-📈	6	GROW	DIGITAL	chart increasing
-📉	6	SHRINK	DIGITAL	chart decreasing
-📊	6	GROW	DIGITAL	bar chart
+📈	6	GROW	CHART_LINE	chart increasing
+📉	6	SHRINK	CHART_LINE	chart decreasing
+📊	6	GROW	CHART_BARS	bar chart
 📋️	6	PAGE	SHINE	clipboard
 📌	6	HOP	SHINE	pushpin
 📍	6	HOP	SHINE	round pushpin
@@ -1331,7 +1331,7 @@
 🗃️	6	HOP	SHINE	card file box
 🗄️	6	HOP	SHINE	file cabinet
 🗑️	6	HOP	SHINE	wastebasket
-🔒️	6	UNLOCK	SHINE	locked
+🔒️	6	UNLOCK	LOCK:0.13,-0.02,0.92,0.37,0.82,0.37	locked
 🔓️	6	UNLOCK	SHINE	unlocked
 🔏	6	UNLOCK	SHINE	locked with pen
 🔐	6	UNLOCK	SHINE	locked with key
@@ -1402,7 +1402,7 @@
 🪥	6	SETTLE	SHINE	toothbrush
 🧽	6	SETTLE	SHINE	sponge
 🧯	6	PULSE	SMOKE	fire extinguisher
-🛒	6	SETTLE	SHINE	shopping cart
+🛒	6	SETTLE	WHEELS	shopping cart
 🚬	6	PULSE	SHINE	cigarette
 ⚰️	6	PULSE	SHINE	coffin
 🪦	6	PULSE	SHINE	headstone

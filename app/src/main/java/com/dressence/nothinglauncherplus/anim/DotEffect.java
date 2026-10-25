@@ -293,23 +293,30 @@ public enum DotEffect {
     SHINE {
         @Override
         void apply(Scene s) {
+            // A crisp highlight glides across the emoji now and then, easing in and out like
+            // light moving over a polished surface.
             Regions r = s.regions;
             float period = 4.5f + 2 * Scene.hash(s.seed, 1, 1);
-            float local = s.boost > 0.2f ? (1 - s.boost) * 1.2f : (s.t % period);
-            float span = (r.maxX - r.minX) + (r.maxY - r.minY) + 8;
-            float band = local / 1.2f * span - 4;
-            if (local > 1.2f) {
+            float sweep = 0.9f;
+            float local = s.since < sweep ? s.since : (s.t + Scene.hash(s.seed, 2, 1) * period)
+                    % period;
+            if (local > sweep) {
                 return;
             }
+            s.busy = true;
+            float p = ObjectEffects.ease(local / sweep);
+            float span = (r.maxX - r.minX) + (r.maxY - r.minY) + 10;
+            float band = p * span - 5;
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
                 if (ri < 0 || !r.ink[ri]) {
                     continue;
                 }
                 float pos = ri % r.size - r.minX + ri / r.size - r.minY;
-                float d = Math.abs(pos - band);
-                if (d < 2.5f) {
-                    s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFFFFFFF, 0.55f * (1 - d / 2.5f)),
+                float d = (pos - band) / 1.7f;
+                float k = (float) Math.exp(-d * d);
+                if (k > 0.03f) {
+                    s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFFFFFFF, 0.6f * k),
                             s.dots[i] >>> 24);
                 }
             }
@@ -896,6 +903,11 @@ public enum DotEffect {
     /** Joysticks: the stick tilts on its base, the fire button flashes. */
     JOYSTICK {
         @Override
+        void pose(Scene s) {
+            ObjectEffects.joystickPose(s);
+        }
+
+        @Override
         void apply(Scene s) {
             ObjectEffects.joystick(s);
         }
@@ -903,6 +915,11 @@ public enum DotEffect {
 
     /** Cameras: the iris closes and opens, the flash fires. */
     CAMERA {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.cameraPose(s);
+        }
+
         @Override
         void apply(Scene s) {
             ObjectEffects.camera(s);
@@ -917,11 +934,23 @@ public enum DotEffect {
         }
     },
 
-    /** Film cameras and projectors: the reels turn. */
-    REELS {
+    /** Film cameras: the REC lamp pulses and light runs round the reels. */
+    FILM_CAMERA {
         @Override
         void apply(Scene s) {
-            ObjectEffects.reels(s);
+            ObjectEffects.filmCamera(s);
+        }
+    },
+
+    /** Film projectors: the reels turn under their arms. */
+    REELS {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.reelsPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
         }
     },
 
@@ -976,8 +1005,12 @@ public enum DotEffect {
     /** Compasses: the needle swings and settles. */
     COMPASS {
         @Override
+        void pose(Scene s) {
+            ObjectEffects.compassPose(s);
+        }
+
+        @Override
         void apply(Scene s) {
-            ObjectEffects.compass(s);
         }
     },
 
@@ -1061,6 +1094,80 @@ public enum DotEffect {
         }
     },
 
+    /** Chat bubbles: the typing dots rise one after another. */
+    TYPING_DOTS {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.typingDots(s);
+        }
+    },
+
+    /** Clapper boards: the stick opens and snaps shut. */
+    CLAPPER {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.clapperPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.clapper(s);
+        }
+    },
+
+    /** Padlocks: the shackle pops open and clicks shut. */
+    LOCK {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.lockPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.lock(s);
+        }
+    },
+
+    /** Open books: a page turns. */
+    PAGE_TURN {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.pageTurn(s);
+        }
+    },
+
+    /** Memos: lines of handwriting appear. */
+    WRITING {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.writing(s);
+        }
+    },
+
+    /** Calendars: the date flips like a split-flap board. */
+    DATE_FLIP {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.dateFlip(s);
+        }
+    },
+
+    /** Line charts: the line draws itself. */
+    CHART_LINE {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.chartLine(s);
+        }
+    },
+
+    /** Bar charts: the bars dip and spring back up. */
+    CHART_BARS {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.chartBars(s);
+        }
+    },
+
     /** Symbols and anything else: a soft shine, and a sparkle now and then. */
     SPARKLE {
         @Override
@@ -1071,6 +1178,13 @@ public enum DotEffect {
     };
 
     abstract void apply(Scene s);
+
+    /**
+     * Before the emoji is turned into dots: moves parts of the drawing (see
+     * {@link Scene#addPart}). Most effects only paint dots afterwards and leave this empty.
+     */
+    void pose(Scene s) {
+    }
 
     /** A display name: "STAR_EYES" reads "Star eyes". */
     public String title() {

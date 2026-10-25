@@ -20,6 +20,81 @@ final class Scene {
     float boost;
     /** Seconds since the last reaction began (huge when there was none). */
     float since = Float.MAX_VALUE;
+    // -------------------------------------------------------------------------------------
+    // Parts: pieces of the drawing an effect moves before the emoji is turned into dots
+    // (a joystick's stick, a compass needle), so they move as smoothly as the whole emoji.
+    // -------------------------------------------------------------------------------------
+
+    static final int MAX_PARTS = 4;
+    int partCount;
+    /** Per part: the region it is cut from (resting grid units: x0, y0, x1, y1). */
+    final float[] partRect = new float[MAX_PARTS * 4];
+    /** Per part: cut as a circle (centre and radius from partRect) rather than a rectangle. */
+    final boolean[] partRound = new boolean[MAX_PARTS];
+    /** Per part: pivot (grid units), turn (degrees), shift (grid units). */
+    final float[] partPivot = new float[MAX_PARTS * 2];
+    final float[] partAngle = new float[MAX_PARTS];
+    final float[] partShift = new float[MAX_PARTS * 2];
+    /** Per part: horizontal scale about the pivot (a turn about a vertical axis: cos θ). */
+    final float[] partScaleX = new float[MAX_PARTS];
+    /**
+     * Per part: the hue (degrees) of something drawn over it that must stay put while it turns
+     * (a projector's arm across its reel), or -1; and the part's n-fold symmetry, which fills
+     * in what that piece hides.
+     */
+    final int[] partKeepHue = new int[MAX_PARTS];
+    final int[] partFold = new int[MAX_PARTS];
+    /** Set by an effect while something is moving: render at the display's full rate. */
+    boolean busy;
+
+    /** Cuts out a rectangle of the drawing, turns it about a pivot and shifts it. */
+    void addPart(float x0, float y0, float x1, float y1, float pivotX, float pivotY,
+            float degrees, float dx, float dy) {
+        if (partCount >= MAX_PARTS) {
+            return;
+        }
+        int k = partCount++;
+        partRect[k * 4] = x0;
+        partRect[k * 4 + 1] = y0;
+        partRect[k * 4 + 2] = x1;
+        partRect[k * 4 + 3] = y1;
+        partRound[k] = false;
+        partPivot[k * 2] = pivotX;
+        partPivot[k * 2 + 1] = pivotY;
+        partAngle[k] = degrees;
+        partShift[k * 2] = dx;
+        partShift[k * 2 + 1] = dy;
+        partScaleX[k] = 1;
+        partKeepHue[k] = -1;
+    }
+
+    /** Turns the last part about the vertical line through its pivot, as seen from the front. */
+    void turnLastPart(float scaleX) {
+        if (partCount > 0) {
+            partScaleX[partCount - 1] = scaleX;
+        }
+    }
+
+    /**
+     * Keeps whatever of hue {@code hue} (degrees) lies over the last part where it is while the
+     * part turns underneath; what it covered is filled in from the part turned by 1/{@code fold}.
+     */
+    void keepOnLastPart(int hue, int fold) {
+        if (partCount > 0) {
+            partKeepHue[partCount - 1] = hue;
+            partFold[partCount - 1] = fold;
+        }
+    }
+
+    /** Cuts out a disc of the drawing and turns it about its centre (a dial, a needle). */
+    void addDisc(float cx, float cy, float radius, float degrees) {
+        int before = partCount;
+        addPart(cx - radius, cy - radius, cx + radius, cy + radius, cx, cy, degrees, 0, 0);
+        if (partCount > before) {
+            partRound[partCount - 1] = true;
+        }
+    }
+
     /** Points the emoji table gives an effect (fractions of the emoji's bounds), or null. */
     float[] anchor;
     /** Per-emoji seed: every emoji runs its effect its own way. */

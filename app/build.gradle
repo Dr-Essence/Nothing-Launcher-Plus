@@ -10,8 +10,8 @@ android {
         applicationId 'com.dressence.nothinglauncherplus'
         minSdk 31
         targetSdk 36
-        versionCode 34
-        versionName '0.13.0'
+        versionCode 35
+        versionName '0.14.0'
     }
 
     // Every build is signed with the same key so updates install over each other and keep the

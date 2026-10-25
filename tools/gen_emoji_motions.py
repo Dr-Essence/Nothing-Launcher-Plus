@@ -451,10 +451,11 @@ EFFECT_EXACT.update(EFFECT_FIXES)
 # Objects doing what the real thing does (see anim/ObjectEffects.java); anchors are fractions of
 # the emoji's drawn bounds in Noto Color Emoji.
 EFFECT_OBJECTS = {
-    "video game": "CONTROLLER", "joystick": "JOYSTICK:0.52,0.55",
-    "camera": "CAMERA:0.5,0.63,0.27,0.88,0.12", "camera with flash": "CAMERA:0.5,0.68,0.27,0.56,0.18",
-    "video camera": "RECORD:0.27,0.35", "movie camera": "REELS:0.3,0.18,0.17,0.74,0.17,0.17",
-    "film projector": "REELS:0.2,0.2,0.19,0.78,0.18,0.19",
+    "video game": "CONTROLLER", "joystick": "JOYSTICK:0.5,0.574,0.25,-0.05,0.75,0.444",
+    "camera": "CAMERA:0.59,0.18,0.056,-0.03,0.37,0.09",
+    "camera with flash": "CAMERA:0.61,0.21,0.056,0.135,0.37,0.19",
+    "video camera": "RECORD:0.256,0.364", "movie camera": "FILM_CAMERA:0.453,0.785,0.39,0.295,0.26,0.83,0.374,0.18",
+    "film projector": "REELS:0.219,0.365,0.215,0.727,0.241,0.215,200,6",
     "cooking": "SIZZLE", "fondue": "BURNER", "shallow pan of food": "BURNER",
     "pot of food": "BURNER",
     "horizontal traffic light": "TRAFFIC", "vertical traffic light": "TRAFFIC",
@@ -468,6 +469,20 @@ EFFECT_OBJECTS = {
     "keyboard": "TYPING", "computer mouse": "CLICK", "printer": "PRINT",
     "optical disk": "SHINE", "dvd": "SHINE",
 }
+EFFECT_OBJECTS.update({
+    "speech balloon": "TYPING_DOTS",
+    "clapper board": "CLAPPER:0.02,0.24,-0.02,-0.02,1.02,0.256",
+    "locked": "LOCK:0.13,-0.02,0.92,0.37,0.82,0.37",
+    "open book": "PAGE_TURN", "memo": "WRITING",
+    "calendar": "DATE_FLIP", "tear-off calendar": "DATE_FLIP", "spiral calendar": "DATE_FLIP",
+    "chart increasing": "CHART_LINE", "chart decreasing": "CHART_LINE",
+    "chart increasing with yen": "CHART_LINE", "bar chart": "CHART_BARS",
+    "shopping cart": "WHEELS",
+    "soccer ball": "GLOBE", "basketball": "GLOBE", "american football": "GLOBE",
+    "rugby football": "GLOBE", "tennis": "GLOBE", "volleyball": "GLOBE", "baseball": "GLOBE",
+    "softball": "GLOBE",
+    "bullseye": "SIGNAL:0.42,0.55",
+})
 EFFECT_EXACT.update(EFFECT_OBJECTS)
 
 # Name keywords, tried in order when there is no exact entry.

@@ -140,138 +140,383 @@ final class ObjectEffects {
         return p;
     }
 
+    /** One move of the stick: how long it lasts, and how long the stick takes to get there. */
+    private static final float MOVE = 0.78f;
+    private static final float TRAVEL = 0.42f;
+
     /**
-     * The stick tilts on its base ({@code anchor}: pivot x, y), springing from one direction to
-     * the next and back to centre, and the fire button flashes as it is played.
+     * Someone plays: the stick (cut from the drawing above its collar, {@code anchor}: pivot
+     * x, y, then the cut x0, y0, x1, y1) is pushed from one direction to the next, springing
+     * there with a touch of overshoot, tilting left and right and leaning towards or away from
+     * us, often back to centre. It is moved before the emoji becomes dots, so it stays smooth.
      */
+    static void joystickPose(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 6) {
+            return;
+        }
+        int move = (int) (s.t / MOVE);
+        float local = s.t % MOVE;
+        float k = spring(local / TRAVEL);
+        float angle = lerp(stickAngle(move - 1, s.seed), stickAngle(move, s.seed), k);
+        float lean = lerp(stickLean(move - 1, s.seed), stickLean(move, s.seed), k);
+        s.busy = local < TRAVEL + 0.08f;
+        float px = edgeX(r, s.anchor[0]);
+        float py = edgeY(r, s.anchor[1]);
+        s.addPart(edgeX(r, s.anchor[2]), edgeY(r, s.anchor[3]), edgeX(r, s.anchor[4]),
+                edgeY(r, s.anchor[5]), px, py, angle, 0, lean);
+    }
+
+    /** The fire button: pressed down for a moment, then lit, on the moves that fire. */
     static void joystick(Scene s) {
         Regions r = s.regions;
-        float px = MusicEffects.ax(s, 0);
-        float py = MusicEffects.ay(s, 1);
-        boolean[] stick = above(r, py);
-        float step = 0.55f;
-        int seg = (int) (s.t / step);
-        float local = (s.t % step) / step;
-        float from = tilt(seg - 1, s.seed);
-        float to = tilt(seg, s.seed);
-        float angle = from + (to - from) * spring(local);
-        rotate(s, px, py, r.size, angle, stick, 0);
-        boolean fire = Scene.hash(seg, 3, s.seed) > 0.55f || s.boost > 0.3f;
-        if (fire && local < 0.5f) {
-            float k = 0.6f * (1 - local / 0.5f);
-            for (int i = 0; i < s.dots.length; i++) {
-                int ri = s.restIndex(i);
-                if (ri >= 0 && !stick[ri] && r.ink[ri] && r.sat[ri] > 0.5f
-                        && (r.hue[ri] < 20 || r.hue[ri] > 330)) {
-                    MusicEffects.lighten(s, i, k);
-                }
+        int move = (int) (s.t / MOVE);
+        float local = s.t % MOVE;
+        boolean fires = Scene.hash(move, 3, s.seed) > 0.5f || s.since < MOVE;
+        if (!fires || local > 0.5f) {
+            return;
+        }
+        s.busy = true;
+        float lowest = s.anchor != null && s.anchor.length >= 6 ? edgeY(r, s.anchor[5]) : 0;
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0 || ri / r.size < lowest || !r.ink[ri] || r.sat[ri] < 0.5f
+                    || !(r.hue[ri] < 20 || r.hue[ri] > 330)) {
+                continue;
+            }
+            if (local < 0.1f) {
+                s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 0.55f), s.dots[i] >>> 24);
+            } else {
+                float glow = 1 - ease((local - 0.1f) / 0.4f);
+                s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFFFB4A8, 0.7f * glow),
+                        s.dots[i] >>> 24);
             }
         }
     }
 
-    /** Where the stick points in step {@code seg}: often centred, else left or right. */
-    private static float tilt(int seg, int seed) {
-        float h = Scene.hash(seg, 1, seed);
-        return h < 0.3f ? 0 : h < 0.65f ? -0.42f * (0.6f + h) : 0.42f * (0.2f + h);
+    /** Where move {@code n} pushes the stick sideways, in degrees: often back to centre. */
+    private static float stickAngle(int n, int seed) {
+        float h = Scene.hash(n, 1, seed);
+        if (h < 0.34f) {
+            return 0;
+        }
+        float side = Scene.hash(n, 2, seed) < 0.5f ? -1 : 1;
+        return side * (14 + 7 * Scene.hash(n, 4, seed));
     }
 
-    /** The emoji's dots above row {@code y} (a stick on its base), once per emoji. */
-    private static boolean[] above(Regions r, float y) {
-        Object cached = r.memo.get("above");
-        if (cached != null) {
-            return (boolean[]) cached;
-        }
-        boolean[] out = new boolean[r.size * r.size];
-        for (int i = 0; i < out.length; i++) {
-            out[i] = r.ink[i] && i / r.size < y;
-        }
-        r.memo.put("above", out);
-        return out;
+    /** How far move {@code n} leans the stick towards (down) or away from us (up), in dots. */
+    private static float stickLean(int n, int seed) {
+        float h = Scene.hash(n, 5, seed);
+        return h < 0.6f ? 0 : h < 0.8f ? 0.7f : -0.6f;
+    }
+
+    private static float lerp(float a, float b, float k) {
+        return a + (b - a) * k;
+    }
+
+    /** An anchor fraction as a grid position across the emoji's drawn width. */
+    static float edgeX(Regions r, float f) {
+        return r.minX + f * (r.maxX - r.minX + 1);
+    }
+
+    static float edgeY(Regions r, float f) {
+        return r.minY + f * (r.maxY - r.minY + 1);
     }
 
     // -------------------------------------------------------------------------------------
     // Cameras: 📷 📸 📹 🎥 📽️
     // -------------------------------------------------------------------------------------
 
+    /** A photo every few seconds: how long the shot takes from button to glint. */
+    private static final float SHOT = 1.25f;
+
     /**
-     * A photo is taken: the iris closes across the lens ({@code anchor}: centre x, y, radius
-     * as a fraction of the width) and opens again, and the flash ({@code anchor} 3, 4) fires
-     * with a burst of light over the whole camera. A touch takes a photo at once.
+     * A photo is taken, as a real camera does it: the shutter button ({@code anchor} 2..5, a
+     * cut x0, y0, x1, y1) goes down; the iris blades close across the glass (only the glass:
+     * the metal ring stays) and open again, each dot shaded by how much blade covers it, so the
+     * hexagonal aperture closes smoothly; at the moment it is shut the flash ({@code anchor}
+     * 0, 1) fires, a soft white bloom; then a glint slides across the lens. A touch takes one.
      */
-    static void camera(Scene s) {
+    static void cameraPose(Scene s) {
         Regions r = s.regions;
-        if (s.anchor == null || s.anchor.length < 5) {
+        float t = shotTime(s);
+        if (t >= SHOT) {
             return;
         }
-        float period = 3.6f + Scene.hash(s.seed, 2, 2);
-        float t = (s.t + Scene.hash(s.seed, 3, 3) * period) % period;
-        if (s.since < 1.2f) {
-            t = s.since;
+        s.busy = true;
+        if (s.anchor != null && s.anchor.length >= 6 && t < 0.4f) {
+            float press = t < 0.08f ? ease(t / 0.08f) : 1 - ease((t - 0.08f) / 0.3f);
+            s.addPart(edgeX(r, s.anchor[2]), edgeY(r, s.anchor[3]), edgeX(r, s.anchor[4]),
+                    edgeY(r, s.anchor[5]), 0, 0, 0, 0, 0.9f * press);
         }
-        float lx = MusicEffects.ax(s, 0);
-        float ly = MusicEffects.ay(s, 1);
-        float lr = s.anchor[2] * (r.maxX - r.minX);
-        // The iris: closed share of the lens, shutting fast and opening a little slower.
-        float shut = t < 0.18f ? ease(t / 0.18f) : t < 0.3f ? 1
-                : t < 0.55f ? 1 - ease((t - 0.3f) / 0.25f) : 0;
-        float flash = t >= 0.24f ? (float) Math.exp(-(t - 0.24f) * 9) : 0;
-        float open = lr * (1 - shut);
+    }
+
+    static void camera(Scene s) {
+        Regions r = s.regions;
+        float t = shotTime(s);
+        if (t >= SHOT) {
+            return;
+        }
+        s.busy = true;
+        Lens lens = lens(r);
+        // The iris: closing fast (ease in), shut a moment, opening (ease out).
+        float shut = t < 0.08f ? 0 : t < 0.2f ? easeIn((t - 0.08f) / 0.12f)
+                : t < 0.26f ? 1 : t < 0.5f ? 1 - easeOut((t - 0.26f) / 0.24f) : 0;
+        // The flash: instant on as the shutter shuts, a quick bright decay.
+        float flash = t >= 0.2f ? (float) Math.exp(-(t - 0.2f) * 6f) : 0;
+        float glint = t > 0.5f ? (t - 0.5f) / (SHOT - 0.5f) : -1;
+        float spin = shut * 0.52f; // The blades turn as they close.
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
             if (ri < 0 || !r.ink[ri]) {
                 continue;
             }
-            float d = (float) Math.hypot(ri % r.size - lx, ri / r.size - ly);
-            if (shut > 0 && d <= lr && d > open) {
-                s.dots[i] = Scene.alpha(0xFF141414, s.dots[i] >>> 24);
+            float x = ri % r.size;
+            float y = ri / r.size;
+            if (lens != null && lens.glass[ri]) {
+                if (shut > 0) {
+                    float cover = bladeCover(x - lens.x, y - lens.y, lens.radius * (1 - shut),
+                            spin);
+                    if (cover > 0) {
+                        int blade = blade(x - lens.x, y - lens.y, spin);
+                        s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], blade, cover),
+                                s.dots[i] >>> 24);
+                    }
+                }
+                if (glint >= 0) {
+                    // A soft diagonal highlight crossing the glass once.
+                    float along = ((x - lens.x) + (y - lens.y)) / (lens.radius * 2.8f);
+                    float d = Math.abs(along - (glint * 2.2f - 1.1f));
+                    if (d < 0.28f) {
+                        MusicEffects.lighten(s, i, 0.45f * (1 - d / 0.28f));
+                    }
+                }
             } else if (flash > 0.02f) {
-                MusicEffects.lighten(s, i, 0.4f * flash);
+                MusicEffects.lighten(s, i, 0.22f * flash); // The whole body catches the light.
             }
         }
-        if (flash > 0.02f) {
-            float fx = MusicEffects.ax(s, 3);
-            float fy = MusicEffects.ay(s, 4);
-            int a = Math.round(255 * Math.min(1, flash * 1.3f));
-            for (int dy = -2; dy <= 2; dy++) {
-                for (int dx = -2; dx <= 2; dx++) {
-                    float fall = 1 - (float) Math.hypot(dx, dy) / 3f;
-                    if (fall > 0) {
-                        s.paintRest(fx + dx, fy + dy, Scene.alpha(WHITE, Math.round(a * fall)));
-                    }
+        if (flash > 0.02f && s.anchor != null && s.anchor.length >= 2) {
+            bloom(s, edgeX(r, s.anchor[0]), edgeY(r, s.anchor[1]), 6.5f, flash);
+        }
+    }
+
+    /** Seconds into the current shot (or the one a touch started); SHOT or more when idle. */
+    private static float shotTime(Scene s) {
+        if (s.since < SHOT) {
+            return s.since;
+        }
+        float period = 4.2f + 1.2f * Scene.hash(s.seed, 2, 2);
+        return (s.t + Scene.hash(s.seed, 3, 3) * period) % period;
+    }
+
+    /**
+     * How much of the dot at (dx, dy) from the lens centre the blades cover (0..1), sampling
+     * it 3 x 3 against a hexagonal aperture of inner radius {@code open} turned by {@code spin}.
+     */
+    private static float bladeCover(float dx, float dy, float open, float spin) {
+        int covered = 0;
+        for (int sy = -1; sy <= 1; sy++) {
+            for (int sx = -1; sx <= 1; sx++) {
+                float px = dx + sx / 3f;
+                float py = dy + sy / 3f;
+                if (!insideHexagon(px, py, open, spin)) {
+                    covered++;
+                }
+            }
+        }
+        return covered / 9f;
+    }
+
+    private static boolean insideHexagon(float x, float y, float apothem, float spin) {
+        if (apothem <= 0) {
+            return false;
+        }
+        for (int k = 0; k < 6; k++) {
+            double a = spin + k * Math.PI / 3;
+            if (x * Math.cos(a) + y * Math.sin(a) > apothem) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** A blade's colour: graphite, alternate blades a shade lighter so they read as blades. */
+    private static int blade(float dx, float dy, float spin) {
+        double a = Math.atan2(dy, dx) - spin;
+        int sector = (int) Math.floor((a + Math.PI * 4) / (Math.PI / 3)) % 6;
+        return sector % 2 == 0 ? 0xFF2C3036 : 0xFF3A3F46;
+    }
+
+    /**
+     * A flash of light at (x, y) in resting dots: a white-hot core and a halo falling off
+     * softly over {@code radius}, painted over the camera.
+     */
+    private static void bloom(Scene s, float x, float y, float radius, float strength) {
+        int reach = (int) Math.ceil(radius);
+        for (int dy = -reach; dy <= reach; dy++) {
+            for (int dx = -reach; dx <= reach; dx++) {
+                float d = (float) Math.hypot(dx, dy);
+                if (d >= radius) {
+                    continue;
+                }
+                float core = d < 1.6f ? 1 : 0;
+                float halo = 1 - d / radius;
+                float a = Math.max(core, halo * halo * 0.85f) * strength;
+                if (a > 0.03f) {
+                    s.paintRest(x + dx, y + dy, Scene.alpha(0xFFFFFDF2, Math.round(255 * a)));
                 }
             }
         }
     }
 
-    /** Recording: the red REC light ({@code anchor}: x, y) blinks once a second. */
-    static void record(Scene s) {
-        float on = 0.5f + 0.5f * (float) Math.cos(s.t * Math.PI * 2 * 0.9);
-        on = on * on;
-        if (s.boost > 0) {
-            on = Math.max(on, s.boost);
-        }
-        float x = MusicEffects.ax(s, 0);
-        float y = MusicEffects.ay(s, 1);
-        int c = Scene.alpha(0xFFFF3B30, Math.round(255 * (0.15f + 0.85f * on)));
-        s.paintRest(x, y, c);
-        s.paintRest(x + 1, y, c);
-        s.paintRest(x, y + 1, c);
-        s.paintRest(x + 1, y + 1, c);
+    /** A camera's glass: the coloured disc inside the lens ring, found in the drawing. */
+    static final class Lens {
+        boolean[] glass;
+        float x;
+        float y;
+        float radius;
     }
 
-    /** Film reels ({@code anchor}: x, y, radius as a fraction of the width, per reel) turn. */
-    static void reels(Scene s) {
+    private static Lens lens(Regions r) {
+        if (r.memo.containsKey("lens")) {
+            return (Lens) r.memo.get("lens");
+        }
+        int n = r.size * r.size;
+        boolean[] teal = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            teal[i] = r.ink[i] && r.hue[i] > 160 && r.hue[i] < 230 && r.sat[i] > 0.3f
+                    && r.luma[i] > 0.15f;
+        }
+        int[] best = null;
+        for (int[] c : MusicEffects.components(r, teal, false)) {
+            if (best == null || c.length > best.length) {
+                best = c;
+            }
+        }
+        Lens lens = null;
+        if (best != null && best.length >= 12) {
+            lens = new Lens();
+            lens.glass = new boolean[n];
+            for (int i : best) {
+                lens.glass[i] = true;
+            }
+            lens.x = MusicEffects.cx(r, best);
+            lens.y = MusicEffects.cy(r, best);
+            lens.radius = (float) Math.sqrt(best.length / Math.PI) + 0.5f;
+        }
+        r.memo.put("lens", lens);
+        return lens;
+    }
+
+    /** Recording: the camera's own red REC lamp ({@code anchor}: x, y) pulses. */
+    static void record(Scene s) {
+        lamp(s, MusicEffects.ax(s, 0), MusicEffects.ay(s, 1), recLamp(s));
+    }
+
+    /** How lit a REC lamp is: on most of each beat, a soft dip, never fully off. */
+    private static float recLamp(Scene s) {
+        float beat = (s.t * 0.8f) % 1;
+        float on = beat < 0.55f ? 1
+                : 1 - ease((beat - 0.55f) / 0.2f) + ease((beat - 0.8f) / 0.2f);
+        return Math.max(on, s.boost);
+    }
+
+    /**
+     * A small red lamp at (x, y): its own red dots brighten and dim with {@code on}, and while
+     * lit its light spills a little onto the body round it.
+     */
+    private static void lamp(Scene s, float x, float y, float on) {
+        Regions r = s.regions;
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0 || !r.ink[ri]) {
+                continue;
+            }
+            float dx = ri % r.size - x;
+            float dy = ri / r.size - y;
+            float d = (float) Math.sqrt(dx * dx + dy * dy);
+            if (d > 2.2f) {
+                continue;
+            }
+            int c = s.dots[i];
+            if (red(c)) {
+                int lit = Scene.scale(c, 0.3f + 0.8f * on);
+                s.dots[i] = Scene.alpha(Scene.mix(lit, 0xFFFFB0A8, 0.25f * on * on), c >>> 24);
+            } else {
+                float k = 0.42f * on * Math.max(0, 1 - d / 2.2f);
+                s.dots[i] = Scene.alpha(Scene.mix(c, 0xFFFF3B30, k), c >>> 24);
+            }
+        }
+    }
+
+    /**
+     * The film reels ({@code anchor}: x, y, radius as a fraction of the width, per reel) spin,
+     * each turned as a disc of the drawing so their spokes and holes really go round. Two
+     * trailing values (hue, spokes) keep what of that hue lies over the reels (the projector's
+     * arms) still while the reels turn beneath it.
+     */
+    static void reelsPose(Scene s) {
         Regions r = s.regions;
         if (s.anchor == null) {
             return;
         }
-        float speed = 2.6f + 2 * s.boost;
-        for (int k = 0; k + 2 < s.anchor.length; k += 3) {
-            float x = MusicEffects.ax(s, k);
-            float y = MusicEffects.ay(s, k + 1);
+        int reels = s.anchor.length / 3;
+        boolean keep = s.anchor.length % 3 == 2;
+        // A projector runs at a steady speed; a reaction whirls it one extra turn, which lands
+        // where the steady turn would have been.
+        float degrees = s.t * 150 + 360 * easeOut(Math.min(1, s.since / 1.4f));
+        for (int k = 0; k < reels * 3; k += 3) {
             float rad = s.anchor[k + 2] * (r.maxX - r.minX);
-            spokes(s, x, y, rad, s.t * speed, 3, 0.85f);
+            s.addDisc(MusicEffects.ax(s, k) + 0.5f, MusicEffects.ay(s, k + 1) + 0.5f, rad + 0.5f,
+                    degrees);
+            if (keep) {
+                s.keepOnLastPart(Math.round(s.anchor[reels * 3]),
+                        Math.round(s.anchor[reels * 3 + 1]));
+            }
         }
+        s.busy = true;
+    }
+
+    /**
+     * A film camera rolling ({@code anchor}: the REC light's x, y, then x, y, radius per reel):
+     * the red light pulses like a recording lamp and light runs round the turning reels.
+     */
+    static void filmCamera(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 2) {
+            return;
+        }
+        lamp(s, MusicEffects.ax(s, 0), MusicEffects.ay(s, 1), recLamp(s));
+        float speed = 2.4f + 3 * s.boost;
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0 || !r.ink[ri]) {
+                continue;
+            }
+            float x = ri % r.size;
+            float y = ri / r.size;
+            for (int k = 2; k + 2 < s.anchor.length; k += 3) {
+                float rx = x - MusicEffects.ax(s, k);
+                float ry = y - MusicEffects.ay(s, k + 1);
+                float rad = s.anchor[k + 2] * (r.maxX - r.minX);
+                float d = (float) Math.sqrt(rx * rx + ry * ry);
+                if (d > rad || d < rad * 0.3f) {
+                    continue;
+                }
+                // Two soft highlights opposite each other, as on a spinning metal reel.
+                float v = (float) Math.cos(2 * (Math.atan2(ry, rx) - s.t * speed));
+                if (v > 0) {
+                    MusicEffects.lighten(s, i, 0.45f * v * v * v);
+                }
+            }
+        }
+    }
+
+    private static boolean red(int c) {
+        int rr = (c >> 16) & 0xFF;
+        int g = (c >> 8) & 0xFF;
+        int b = c & 0xFF;
+        return rr > 120 && rr > g * 2 && rr > b * 2;
     }
 
     // -------------------------------------------------------------------------------------
@@ -711,21 +956,31 @@ final class ObjectEffects {
     // Compass, dice, slot machine: 🧭 🎲 🎰
     // -------------------------------------------------------------------------------------
 
-    /** The needle swings to a new heading and settles with a damped wobble, like a real one. */
-    static void compass(Scene s) {
+    /**
+     * The needle is disturbed now and then and swings back to north, overshooting less each
+     * time (a damped oscillation), like a real compass carried a step. The face and needle
+     * turn together as one disc of the drawing, before it becomes dots, so the needle stays a
+     * clean line at every angle.
+     */
+    static void compassPose(Scene s) {
         Regions r = s.regions;
         Needle needle = needle(r);
         if (needle == null) {
             return;
         }
-        float period = 4.5f;
-        float t = s.since < period ? s.since : s.t % period;
-        float amp = (Scene.hash((int) (s.t / period), 6, s.seed) - 0.5f) * 1.6f;
+        float period = 4.6f;
+        int round = (int) (s.t / period);
+        float t = s.t % period;
+        float amp = (Scene.hash(round, 6, s.seed) < 0.5f ? -1 : 1)
+                * (22 + 18 * Scene.hash(round, 7, s.seed));
         if (s.since < period) {
-            amp = 0.9f;
+            t = s.since;
+            amp = 40;
         }
-        float angle = amp * (float) (Math.exp(-t * 1.6f) * Math.sin(t * 7.5f));
-        rotate(s, needle.x, needle.y, needle.radius, angle, needle.mask, needle.face);
+        float envelope = (float) Math.exp(-t * 1.5f);
+        float angle = amp * envelope * (float) Math.sin(t * 6.2f);
+        s.busy = Math.abs(amp * envelope) > 0.4f;
+        s.addDisc(needle.x + 0.5f, needle.y + 0.5f, needle.radius - 0.6f, angle);
     }
 
     /** A compass needle: its dots, the face it turns over, and its pivot. */
@@ -1092,6 +1347,603 @@ final class ObjectEffects {
     }
 
     // -------------------------------------------------------------------------------------
+    // Messages, film, locks: 💬 🎬 🔒
+    // -------------------------------------------------------------------------------------
+
+    /**
+     * Someone is typing, the way iMessage shows it: the bubble's three dots rest a soft grey;
+     * one after another each rises a little and darkens, then settles back, in bursts with
+     * pauses between. Each dot glides between rows by blending its light across the two.
+     */
+    static void typingDots(Scene s) {
+        Regions r = s.regions;
+        List<int[]> dots = bubbleDots(r);
+        if (dots.isEmpty()) {
+            return;
+        }
+        int bubble = bubbleColour(r);
+        float burst = 2.6f;
+        float t = s.since < burst ? s.since : s.t % burst;
+        boolean typing = t < 1.6f;
+        s.busy = typing;
+        for (int k = 0; k < dots.size(); k++) {
+            int[] comp = dots.get(k);
+            int ink = r.rest[comp[0]] | 0xFF000000;
+            float local = typing ? (t - k * 0.16f) % 0.8f : -1;
+            float wave = local >= 0 && local < 0.45f
+                    ? (float) Math.sin(local / 0.45f * Math.PI) : 0;
+            float lift = 1.1f * wave * wave;
+            // Resting grey, darkening to the drawn colour at the top of its rise.
+            int colour = Scene.mix(Scene.mix(bubble, ink, 0.78f), Scene.scale(ink, 0.55f), wave);
+            for (int i : comp) {
+                s.paintRest(i % r.size, i / r.size, bubble);
+            }
+            for (int i : comp) {
+                float y = i / r.size - lift;
+                int row = (int) Math.floor(y);
+                float frac = y - row;
+                s.paintRest(i % r.size, row, Scene.alpha(colour, Math.round(255 * (1 - frac))));
+                if (frac > 0.02f) {
+                    s.paintRest(i % r.size, row + 1, Scene.alpha(colour, Math.round(255 * frac)));
+                }
+            }
+        }
+    }
+
+    /** The bubble's own colour around its dots. */
+    private static int bubbleColour(Regions r) {
+        Object cached = r.memo.get("bubble");
+        if (cached != null) {
+            return (Integer) cached;
+        }
+        long sr = 0, sg = 0, sb = 0;
+        int n = 0;
+        for (int i = 0; i < r.size * r.size; i++) {
+            if (r.ink[i] && r.luma[i] > 0.85f) {
+                sr += (r.rest[i] >> 16) & 0xFF;
+                sg += (r.rest[i] >> 8) & 0xFF;
+                sb += r.rest[i] & 0xFF;
+                n++;
+            }
+        }
+        int c = n == 0 ? 0xFFFFFFFF
+                : 0xFF000000 | (int) (sr / n) << 16 | (int) (sg / n) << 8 | (int) (sb / n);
+        r.memo.put("bubble", c);
+        return c;
+    }
+
+    /** The bubble's dots: small dark blobs inside it, left to right. */
+    @SuppressWarnings("unchecked")
+    private static List<int[]> bubbleDots(Regions r) {
+        Object cached = r.memo.get("bubbleDots");
+        if (cached != null) {
+            return (List<int[]>) cached;
+        }
+        int n = r.size * r.size;
+        boolean[] dark = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            dark[i] = r.ink[i] && r.luma[i] < 0.6f && enclosedByLight(r, i);
+        }
+        List<int[]> out = new ArrayList<>();
+        for (int[] c : MusicEffects.components(r, dark, false)) {
+            if (c.length >= 2 && c.length <= 16) {
+                out.add(c);
+            }
+        }
+        out.sort((a, b) -> Float.compare(MusicEffects.cx(r, a), MusicEffects.cx(r, b)));
+        if (out.size() > 4) {
+            out = new ArrayList<>(out.subList(0, 0)); // Not a typing bubble.
+        }
+        r.memo.put("bubbleDots", out);
+        return out;
+    }
+
+    /** Light ink two dots away on both sides: inside a pale bubble, not on its outline. */
+    private static boolean enclosedByLight(Regions r, int i) {
+        int x = i % r.size;
+        int y = i / r.size;
+        return light(r, x - 3, y) && light(r, x + 3, y) && light(r, x, y - 3)
+                && light(r, x, y + 3);
+    }
+
+    private static boolean light(Regions r, int x, int y) {
+        return r.in(x, y) && r.ink[y * r.size + x] && r.luma[y * r.size + x] > 0.75f;
+    }
+
+    /** {x0, y0, x1, y1} of a component. */
+    private static int[] bounds(Regions r, int[] comp) {
+        int x0 = r.size, y0 = r.size, x1 = -1, y1 = -1;
+        for (int i : comp) {
+            x0 = Math.min(x0, i % r.size);
+            x1 = Math.max(x1, i % r.size);
+            y0 = Math.min(y0, i / r.size);
+            y1 = Math.max(y1, i / r.size);
+        }
+        return new int[] {x0, y0, x1, y1};
+    }
+
+    /**
+     * "Action!": the clapstick ({@code anchor}: hinge x, y, then the cut x0, y0, x1, y1), drawn
+     * open, snaps shut on its hinge, bounces once as it lands, rests, and lifts open again.
+     */
+    /** How far the clapstick turns to close, in degrees (it is drawn open about 11°). */
+    private static final float CLAP_ANGLE = 11;
+
+    static void clapperPose(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 6) {
+            return;
+        }
+        float period = 3.4f;
+        float t = s.since < period ? s.since : (s.t + Scene.hash(s.seed, 1, 1) * period) % period;
+        float shut = CLAP_ANGLE;
+        float angle;
+        if (t < 0.13f) {
+            angle = shut * easeIn(t / 0.13f);
+        } else if (t < 0.45f) {
+            float b = (t - 0.13f) / 0.32f;
+            angle = shut - 3.5f * (float) Math.sin(b * Math.PI) * (1 - b);
+        } else if (t < 0.95f) {
+            angle = shut;
+        } else if (t < 1.45f) {
+            angle = shut * (1 - ease((t - 0.95f) / 0.5f));
+        } else {
+            return;
+        }
+        s.busy = true;
+        s.addPart(edgeX(r, s.anchor[2]), edgeY(r, s.anchor[3]), edgeX(r, s.anchor[4]),
+                edgeY(r, s.anchor[5]), edgeX(r, s.anchor[0]), edgeY(r, s.anchor[1]), angle, 0, 0);
+    }
+
+    /** The clap: a flash along the seam as the stick lands. */
+    static void clapper(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 6) {
+            return;
+        }
+        float period = 3.4f;
+        float t = s.since < period ? s.since : (s.t + Scene.hash(s.seed, 1, 1) * period) % period;
+        if (t < 0.13f || t > 0.45f) {
+            return;
+        }
+        float k = 1 - (t - 0.13f) / 0.32f;
+        float seam = edgeY(r, s.anchor[5]);
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri >= 0 && r.ink[ri] && Math.abs(ri / r.size + 0.5f - seam) < 1.5f) {
+                MusicEffects.lighten(s, i, 0.5f * k);
+            }
+        }
+    }
+
+    /**
+     * The padlock opens and closes as a real one does: the shackle ({@code anchor}: the cut
+     * x0, y0, x1, y1, then the long leg's x and the shackle's base y) pops up out of the body,
+     * turns half round on its long leg, so from the front its loop narrows, flips and swings to
+     * the other side, turns back, and drops home with a click.
+     */
+    static void lockPose(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 6) {
+            return;
+        }
+        float t = lockTime(s);
+        float lift, turn;
+        if (t < 0.26f) {
+            lift = easeOut(t / 0.26f);
+            turn = 0;
+        } else if (t < 0.78f) {
+            lift = 1;
+            turn = ease((t - 0.26f) / 0.52f);
+        } else if (t < 1.7f) {
+            lift = 1;
+            turn = 1;
+        } else if (t < 2.2f) {
+            lift = 1;
+            turn = 1 - ease((t - 1.7f) / 0.5f);
+        } else if (t < 2.32f) {
+            lift = 1 - easeIn((t - 2.2f) / 0.12f);
+            turn = 0;
+        } else {
+            return;
+        }
+        s.busy = true;
+        float px = edgeX(r, s.anchor[4]);
+        float py = edgeY(r, s.anchor[5]);
+        s.addPart(edgeX(r, s.anchor[0]), edgeY(r, s.anchor[1]), edgeX(r, s.anchor[2]),
+                edgeY(r, s.anchor[3]), px, py, 0, 0, -2.4f * lift);
+        s.turnLastPart((float) Math.cos(turn * Math.PI * 0.7));
+    }
+
+    static void lock(Scene s) {
+        Regions r = s.regions;
+        float t = lockTime(s);
+        if (t < 2.32f || t > 2.7f) {
+            return;
+        }
+        float k = 1 - (t - 2.32f) / 0.38f;
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri >= 0 && r.ink[ri] && r.luma[ri] < 0.4f) {
+                MusicEffects.lighten(s, i, 0.6f * k); // The keyhole glints: locked.
+            }
+        }
+    }
+
+    private static float lockTime(Scene s) {
+        float period = 5f;
+        return s.since < period ? s.since : (s.t + Scene.hash(s.seed, 2, 2) * period) % period;
+    }
+
+    // -------------------------------------------------------------------------------------
+    // Paper: 📖 📝 📅 📈 📊
+    // -------------------------------------------------------------------------------------
+
+    /**
+     * A page turns: lifted at the right edge, it sweeps over the spine to the left, its face
+     * catching the light and casting a shadow on the page beneath, then lies flat.
+     */
+    static void pageTurn(Scene s) {
+        Regions r = s.regions;
+        float period = 3.6f;
+        float t = s.since < period ? s.since : (s.t + Scene.hash(s.seed, 3, 3) * period) % period;
+        if (t > 0.8f) {
+            return;
+        }
+        s.busy = true;
+        float spine = (r.minX + r.maxX) / 2f + 0.5f;
+        float half = (r.maxX - r.minX) / 2f;
+        // The page's free edge: from the right edge, over the spine, to the left edge.
+        float edge = r.maxX + 0.5f - ease(t / 0.8f) * (r.maxX - r.minX + 1);
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0 || !r.ink[ri] || r.luma[ri] < 0.6f) {
+                continue;
+            }
+            float x = ri % r.size + 0.5f;
+            boolean onTurning = edge >= spine ? x >= spine && x <= edge : x <= spine && x >= edge;
+            float fromEdge = Math.abs(x - edge);
+            if (onTurning) {
+                // The lifted page: brighter where it faces the light, darker towards the edge.
+                // Curled near its free edge, so that side turns away from the light.
+                float curl = Math.max(0, 1 - fromEdge / 4f);
+                s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 1 - 0.42f * curl * curl),
+                        s.dots[i] >>> 24);
+            } else if (fromEdge < 3.5f) {
+                // Its shadow on the page beneath, darkest right under the edge.
+                float shade = 1 - fromEdge / 3.5f;
+                s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 1 - 0.5f * shade),
+                        s.dots[i] >>> 24);
+            }
+        }
+    }
+
+    /** Lines of handwriting appear across the paper one after another, then it starts over. */
+    static void writing(Scene s) {
+        Regions r = s.regions;
+        int[] lines = paperLines(r);
+        if (lines.length == 0) {
+            return;
+        }
+        float perLine = 0.9f;
+        float period = lines.length * perLine + 1.6f;
+        float t = s.t % period;
+        float fade = t > period - 0.5f ? (period - t) / 0.5f : 1;
+        s.busy = t < lines.length * perLine;
+        int[] span = paperSpan(r);
+        for (int k = 0; k < lines.length; k++) {
+            float p = Math.max(0, Math.min(1, (t - k * perLine) / perLine));
+            if (p <= 0) {
+                break;
+            }
+            float end = span[0] + p * (span[1] - span[0]);
+            int y = lines[k];
+            for (int x = span[0]; x <= span[1] && x <= end; x++) {
+                int ri = y * r.size + x;
+                // Words: short strokes with gaps between them.
+                if (!r.ink[ri] || r.luma[ri] < 0.8f || Scene.hash(x / 3, k, s.seed) < 0.22f) {
+                    continue;
+                }
+                s.paintRest(x, y, Scene.alpha(0xFF4F5B66, Math.round(235 * fade)));
+            }
+        }
+    }
+
+    /** Rows of the paper wide enough to write on, every third row. */
+    private static int[] paperLines(Regions r) {
+        Object cached = r.memo.get("paperLines");
+        if (cached != null) {
+            return (int[]) cached;
+        }
+        int[] span = paperSpan(r);
+        List<Integer> rows = new ArrayList<>();
+        int last = -10;
+        for (int y = r.minY + 3; y <= r.maxY - 3; y++) {
+            int paper = 0;
+            for (int x = span[0]; x <= span[1]; x++) {
+                int i = y * r.size + x;
+                if (r.ink[i] && r.luma[i] > 0.85f && r.sat[i] < 0.2f) {
+                    paper++;
+                }
+            }
+            if (paper > (span[1] - span[0] + 1) * 0.6f && y - last >= 3) {
+                rows.add(y);
+                last = y;
+            }
+        }
+        int[] out = new int[Math.min(rows.size(), 5)];
+        for (int k = 0; k < out.length; k++) {
+            out[k] = rows.get(k);
+        }
+        r.memo.put("paperLines", out);
+        return out;
+    }
+
+    /** The left and right columns of the paper (the light area), inset a dot. */
+    private static int[] paperSpan(Regions r) {
+        Object cached = r.memo.get("paperSpan");
+        if (cached != null) {
+            return (int[]) cached;
+        }
+        int x0 = r.size, x1 = -1;
+        for (int i = 0; i < r.size * r.size; i++) {
+            if (r.ink[i] && r.luma[i] > 0.85f && r.sat[i] < 0.2f) {
+                x0 = Math.min(x0, i % r.size);
+                x1 = Math.max(x1, i % r.size);
+            }
+        }
+        int[] out = x1 < 0 ? new int[] {1, 0} : new int[] {x0 + 2, x1 - 2};
+        r.memo.put("paperSpan", out);
+        return out;
+    }
+
+    /**
+     * The date flips like a split-flap board: the top half of the page folds down over the
+     * bottom, darkening as it turns away from the light, and the new page settles.
+     */
+    static void dateFlip(Scene s) {
+        Regions r = s.regions;
+        int[] page = pageRows(r);
+        if (page == null) {
+            return;
+        }
+        float period = 4f;
+        float t = s.since < period ? s.since : (s.t + Scene.hash(s.seed, 4, 4) * period) % period;
+        if (t > 0.6f) {
+            return;
+        }
+        s.busy = true;
+        float mid = (page[0] + page[1]) / 2f;
+        float p = ease(t / 0.6f);
+        // The flap's edge travels from the top of the page to the hinge in the middle, then on
+        // down to the bottom as it lands.
+        float edge = page[0] + p * (page[1] - page[0] + 1);
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0 || !r.ink[ri] || r.luma[ri] < 0.5f) {
+                continue;
+            }
+            int y = ri / r.size;
+            if (y < page[0] || y > page[1]) {
+                continue;
+            }
+            float d = y + 0.5f - edge;
+            if (Math.abs(d) < 1) {
+                MusicEffects.lighten(s, i, 0.5f * (1 - Math.abs(d))); // The flap's lit edge.
+            } else if (d < 0 && y < mid) {
+                // Behind the falling flap: the back of the next page, in its shadow.
+                s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 0.55f), s.dots[i] >>> 24);
+            } else if (d > 0 && d < 4) {
+                // The flap's shadow ahead of it.
+                s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 0.5f + 0.125f * d),
+                        s.dots[i] >>> 24);
+            }
+        }
+    }
+
+    /** The calendar page: the rows of light paper below the coloured header. */
+    private static int[] pageRows(Regions r) {
+        if (r.memo.containsKey("pageRows")) {
+            return (int[]) r.memo.get("pageRows");
+        }
+        int y0 = -1, y1 = -1;
+        for (int y = r.minY; y <= r.maxY; y++) {
+            int light = 0, width = 0;
+            for (int x = r.minX; x <= r.maxX; x++) {
+                int i = y * r.size + x;
+                if (r.ink[i]) {
+                    width++;
+                    if (r.luma[i] > 0.75f && r.sat[i] < 0.2f || r.luma[i] < 0.3f) {
+                        light++;
+                    }
+                }
+            }
+            if (width > 0 && light > width * 0.6f && y > r.minY + 3) {
+                if (y0 < 0) {
+                    y0 = y;
+                }
+                y1 = y;
+            }
+        }
+        int[] out = y0 >= 0 && y1 - y0 >= 4 ? new int[] {y0, y1} : null;
+        r.memo.put("pageRows", out);
+        return out;
+    }
+
+    /**
+     * The line chart draws itself left to right, its tip glowing as it climbs, holds, and
+     * fades back to start over.
+     */
+    static void chartLine(Scene s) {
+        Regions r = s.regions;
+        float period = 4.2f;
+        float t = s.t % period;
+        float draw = 1.5f;
+        float p = ease(Math.min(1, t / draw));
+        float fade = t > period - 0.45f ? (period - t) / 0.45f : 1;
+        s.busy = t < draw;
+        float tip = r.minX + p * (r.maxX - r.minX + 1);
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            // The line and its soft edge: any dot tinted with the line's own hue.
+            if (ri < 0 || !r.ink[ri] || r.sat[ri] < 0.04f
+                    || hueGap(r.hue[ri], lineHue(r)) > 32) {
+                continue;
+            }
+            float x = ri % r.size + 0.5f;
+            if (x > tip + 0.5f) {
+                s.dots[i] = Scene.alpha(paperUnder(r, ri), s.dots[i] >>> 24);
+            } else if (tip - x < 1.5f && p < 1) {
+                MusicEffects.lighten(s, i, 0.6f);
+            } else if (fade < 1) {
+                s.dots[i] = Scene.alpha(Scene.mix(paperUnder(r, ri), s.dots[i], fade),
+                        s.dots[i] >>> 24);
+            }
+        }
+    }
+
+    /** The hue of a chart's line: that of its most saturated dots. */
+    private static float lineHue(Regions r) {
+        Object cached = r.memo.get("lineHue");
+        if (cached != null) {
+            return (Float) cached;
+        }
+        float best = -1, hue = 0;
+        for (int i = 0; i < r.size * r.size; i++) {
+            if (r.ink[i] && r.sat[i] > best) {
+                best = r.sat[i];
+                hue = r.hue[i];
+            }
+        }
+        r.memo.put("lineHue", hue);
+        return hue;
+    }
+
+    private static float hueGap(float a, float b) {
+        float d = Math.abs(a - b) % 360;
+        return d > 180 ? 360 - d : d;
+    }
+
+    /** The chart's paper: its light, untinted colour, measured once. */
+    private static int paperUnder(Regions r, int ri) {
+        Object cached = r.memo.get("paper");
+        if (cached != null) {
+            return (Integer) cached;
+        }
+        long sr = 0, sg = 0, sb = 0;
+        int n = 0;
+        for (int i = 0; i < r.size * r.size; i++) {
+            if (r.ink[i] && r.luma[i] > 0.8f && r.sat[i] < 0.05f) {
+                sr += (r.rest[i] >> 16) & 0xFF;
+                sg += (r.rest[i] >> 8) & 0xFF;
+                sb += r.rest[i] & 0xFF;
+                n++;
+            }
+        }
+        int c = n == 0 ? 0xFFF1F1F1
+                : 0xFF000000 | (int) (sr / n) << 16 | (int) (sg / n) << 8 | (int) (sb / n);
+        r.memo.put("paper", c);
+        return c;
+    }
+
+    /** The bars dip and spring back up one after another, like figures updating live. */
+    static void chartBars(Scene s) {
+        Regions r = s.regions;
+        List<int[]> bars = bars(r);
+        if (bars.isEmpty()) {
+            return;
+        }
+        float period = 4f;
+        float t = s.since < period ? s.since : s.t % period;
+        if (t > 1.4f) {
+            return;
+        }
+        s.busy = true;
+        for (int k = 0; k < bars.size(); k++) {
+            int[] b = bars.get(k);
+            float local = t - k * 0.13f;
+            float h;
+            if (local < 0) {
+                h = 1;
+            } else if (local < 0.22f) {
+                h = 1 - 0.65f * easeOut(local / 0.22f);
+            } else {
+                h = 0.35f + 0.65f * spring((local - 0.22f) / 0.7f);
+            }
+            float top = b[3] + 1 - h * (b[3] - b[1] + 1);
+            for (int i = 0; i < s.dots.length; i++) {
+                int ri = s.restIndex(i);
+                if (ri < 0 || barOf(r)[ri] != k) {
+                    continue;
+                }
+                float y = ri / r.size;
+                if (y + 1 <= top) {
+                    s.dots[i] = Scene.alpha(paperUnder(r, ri), s.dots[i] >>> 24);
+                } else if (y < top) {
+                    float part = y + 1 - top; // The top dot dims while it fills.
+                    s.dots[i] = Scene.alpha(Scene.mix(paperUnder(r, ri), s.dots[i], part),
+                            s.dots[i] >>> 24);
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<int[]> bars(Regions r) {
+        Object cached = r.memo.get("bars");
+        if (cached != null) {
+            return (List<int[]>) cached;
+        }
+        int n = r.size * r.size;
+        boolean[] coloured = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            coloured[i] = r.ink[i] && r.sat[i] > 0.45f && r.luma[i] > 0.15f;
+        }
+        List<int[]> out = new ArrayList<>();
+        int[] owner = new int[n];
+        Arrays.fill(owner, -1);
+        List<int[]> comps = MusicEffects.components(r, coloured, false);
+        comps.sort((a, b) -> Float.compare(MusicEffects.cx(r, a), MusicEffects.cx(r, b)));
+        for (int[] c : comps) {
+            int[] b = bounds(r, c);
+            if (c.length >= 4 && b[3] - b[1] >= 2) {
+                for (int i : c) {
+                    owner[i] = out.size();
+                }
+                out.add(b);
+            }
+        }
+        // Each bar's soft edge (faint dots of its colour beside it) goes with it.
+        int[] grown = owner.clone();
+        for (int i = 0; i < n; i++) {
+            if (owner[i] >= 0 || !r.ink[i] || r.sat[i] < 0.05f) {
+                continue;
+            }
+            int x = i % r.size;
+            int y = i / r.size;
+            for (int dy = -1; dy <= 1 && grown[i] < 0; dy++) {
+                for (int dx = -1; dx <= 1; dx++) {
+                    if (!r.in(x + dx, y + dy)) {
+                        continue;
+                    }
+                    int j = (y + dy) * r.size + x + dx;
+                    if (owner[j] >= 0 && hueGap(r.hue[i], r.hue[j]) < 35) {
+                        grown[i] = owner[j];
+                        break;
+                    }
+                }
+            }
+        }
+        r.memo.put("bars", out);
+        r.memo.put("barOf", grown);
+        return out;
+    }
+
+    private static int[] barOf(Regions r) {
+        return (int[]) r.memo.get("barOf");
+    }
+
+    // -------------------------------------------------------------------------------------
     // Shared moves
     // -------------------------------------------------------------------------------------
 
@@ -1148,6 +2000,16 @@ final class ObjectEffects {
                 MusicEffects.lighten(s, i, strength * (v - 0.7f) / 0.3f);
             }
         }
+    }
+
+    static float easeIn(float x) {
+        x = Math.max(0, Math.min(1, x));
+        return x * x * x;
+    }
+
+    static float easeOut(float x) {
+        x = Math.max(0, Math.min(1, 1 - x));
+        return 1 - x * x * x;
     }
 
     /** Ease in and out (smoothstep). */
