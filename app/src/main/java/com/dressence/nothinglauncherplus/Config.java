@@ -34,6 +34,8 @@ public final class Config {
     public static final String KEY_LOOSE_APPS = "loose_apps";
     public static final String KEY_DRAWER_OPACITY = "drawer_opacity";
     public static final String KEY_ANIMATE_COVERS = "animate_covers";
+    public static final String KEY_ALLOW_ROTATION = "allow_rotation";
+    public static final String KEY_CONTROLLER_NAV = "controller_nav";
 
     /** Broadcast sent to the launcher after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
@@ -86,6 +88,10 @@ public final class Config {
     public int drawerOpacity = 100;
     /** Play emoji cover animations. */
     public boolean animateCovers = true;
+    /** Let the home screen and app drawer follow auto-rotate into landscape. */
+    public boolean allowRotation = false;
+    /** Game controller buttons (Y, L1/R1, X, Start) and focus animations. */
+    public boolean controllerNav = true;
 
     private final Map<String, Folder> byComponent = new HashMap<>();
     private final Map<String, Folder> byKey = new HashMap<>();
@@ -97,6 +103,8 @@ public final class Config {
         config.looseApps = prefs.getBoolean(KEY_LOOSE_APPS, false);
         config.drawerOpacity = Math.max(0, Math.min(100, prefs.getInt(KEY_DRAWER_OPACITY, 100)));
         config.animateCovers = prefs.getBoolean(KEY_ANIMATE_COVERS, true);
+        config.allowRotation = prefs.getBoolean(KEY_ALLOW_ROTATION, false);
+        config.controllerNav = prefs.getBoolean(KEY_CONTROLLER_NAV, true);
         try {
             config.readFolders(new JSONArray(prefs.getString(KEY_FOLDERS, "[]")));
         } catch (JSONException ignored) {
@@ -112,7 +120,9 @@ public final class Config {
                 .putBoolean(KEY_HIDE_BUILTIN, hideBuiltin)
                 .putBoolean(KEY_LOOSE_APPS, looseApps)
                 .putInt(KEY_DRAWER_OPACITY, drawerOpacity)
-                .putBoolean(KEY_ANIMATE_COVERS, animateCovers);
+                .putBoolean(KEY_ANIMATE_COVERS, animateCovers)
+                .putBoolean(KEY_ALLOW_ROTATION, allowRotation)
+                .putBoolean(KEY_CONTROLLER_NAV, controllerNav);
         reindex();
     }
 
@@ -124,7 +134,9 @@ public final class Config {
                 .put(KEY_HIDE_BUILTIN, hideBuiltin)
                 .put(KEY_LOOSE_APPS, looseApps)
                 .put(KEY_DRAWER_OPACITY, drawerOpacity)
-                .put(KEY_ANIMATE_COVERS, animateCovers);
+                .put(KEY_ANIMATE_COVERS, animateCovers)
+                .put(KEY_ALLOW_ROTATION, allowRotation)
+                .put(KEY_CONTROLLER_NAV, controllerNav);
     }
 
     public static Config fromJson(JSONObject json) throws JSONException {
@@ -134,6 +146,8 @@ public final class Config {
         config.looseApps = json.optBoolean(KEY_LOOSE_APPS, false);
         config.drawerOpacity = Math.max(0, Math.min(100, json.optInt(KEY_DRAWER_OPACITY, 100)));
         config.animateCovers = json.optBoolean(KEY_ANIMATE_COVERS, true);
+        config.allowRotation = json.optBoolean(KEY_ALLOW_ROTATION, false);
+        config.controllerNav = json.optBoolean(KEY_CONTROLLER_NAV, true);
         config.readFolders(json.getJSONArray(KEY_FOLDERS));
         config.reindex();
         return config;

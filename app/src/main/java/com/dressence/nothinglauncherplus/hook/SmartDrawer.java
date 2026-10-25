@@ -63,9 +63,12 @@ final class SmartDrawer {
     private static final int VIEW_TYPE_HIDDEN_TILE = 65536;
     private static final int VIEW_TYPE_FOLDER_TILE = 131072;
 
-    /** Columns of the Smart grid: two folder tiles per row, or four icons in loose-apps mode. */
-    private static final int FOLDER_COLUMNS = 2;
-    private static final int LOOSE_COLUMNS = 4;
+    /**
+     * The stock Smart grid has two folder tiles per row. With more tiles in landscape
+     * ({@link Landscape#smartColumns}) and loose apps (two icons per tile column), the grid gets
+     * {@code tiles * (looseApps ? 2 : 1)} columns and tiles span accordingly.
+     */
+    private static final int STOCK_TILE_COLUMNS = 2;
 
     private final ClassLoader cl;
     private final ConfigStore store;
@@ -359,7 +362,7 @@ final class SmartDrawer {
             Object adapter = XposedHelpers.getObjectField(list, "mAdapter");
             if (adapter != null) {
                 // The Smart adapter ignores the argument and asks getAppCountPerRow().
-                XposedHelpers.callMethod(adapter, "setAppsPerRow", FOLDER_COLUMNS);
+                XposedHelpers.callMethod(adapter, "setAppsPerRow", STOCK_TILE_COLUMNS);
             }
             XposedHelpers.callMethod(list, "onAppsUpdated");
         }
@@ -381,12 +384,10 @@ final class SmartDrawer {
                 if (processedClasses.add(adapterClass)) {
                     // onBindViewHolder calls SmartFolderIcon#bind; keep that call un-inlined.
                     Hooks.deoptimizeAll(adapterClass, "onBindViewHolder");
-                    Hooks.install("loose app columns", () -> hookColumns(adapterClass));
+                    Hooks.install("smart grid columns", () -> hookColumns(adapterClass));
                 }
-                if (store.get().looseApps) {
-                    // The constructor already sized the grid before our column hook could apply.
-                    XposedHelpers.callMethod(param.thisObject, "setAppsPerRow", FOLDER_COLUMNS);
-                }
+                // The constructor sized the grid before our column hook existed; size it again.
+                XposedHelpers.callMethod(param.thisObject, "setAppsPerRow", STOCK_TILE_COLUMNS);
             }
         });
     }
@@ -395,15 +396,31 @@ final class SmartDrawer {
         XposedHelpers.findAndHookMethod(adapterClass, "getAppCountPerRow", new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
-                // Only the folder grid (2 columns), not the 4-column list inside a folder sheet.
-                if (store.get().looseApps && (Integer) param.getResult() == FOLDER_COLUMNS) {
-                    param.setResult(LOOSE_COLUMNS);
+                // Only the folder grid (2 tiles), not the 4-column list inside a folder sheet.
+                if ((Integer) param.getResult() != STOCK_TILE_COLUMNS) {
+                    return;
                 }
+                int tiles = Landscape.smartColumns(deviceProfileOf(param.thisObject));
+                param.setResult(store.get().looseApps ? tiles * 2 : tiles);
             }
         });
     }
 
-    /** Folder tiles span half the row in loose-apps mode; icons keep one column each. */
+    private static Object deviceProfileOf(Object adapter) {
+        try {
+            return XposedHelpers.callMethod(
+                    XposedHelpers.getObjectField(adapter, "mActivityContext"), "getDeviceProfile");
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private static boolean isTile(View view) {
+        String name = view.getClass().getName();
+        return name.equals(CLS_FOLDER_ICON) || name.endsWith(".SmartEntranceIcon");
+    }
+
+    /** In loose-apps mode folder tiles span two icon columns; icons keep one column each. */
     private void hookLooseAppSpans() {
         Class<?> gridAdapter = XposedHelpers.findClass(CLS_GRID_ADAPTER, cl);
         Class<?> spanSizer = XposedHelpers.findClass(CLS_GRID_ADAPTER + "$GridSpanSizer", cl);
@@ -439,7 +456,8 @@ final class SmartDrawer {
                     int spanCount = (Integer) XposedHelpers.callMethod(
                             XposedHelpers.getObjectField(adapter, "mGridLayoutMgr"),
                             "getSpanCount");
-                    param.setResult(Math.max(1, spanCount / FOLDER_COLUMNS));
+                    int tiles = Landscape.smartColumns(deviceProfileOf(adapter));
+                    param.setResult(Math.max(1, spanCount / tiles));
                 }
             }
         });
@@ -492,27 +510,27 @@ final class SmartDrawer {
                 ViewGroup parent = (ViewGroup) param.args[2];
                 Object layoutManager = XposedHelpers.callMethod(parent, "getLayoutManager");
                 int spanCount = (Integer) XposedHelpers.callMethod(layoutManager, "getSpanCount");
-                if (spanCount != LOOSE_COLUMNS) {
-                    return; // Columns not switched yet; the stock offsets are still right.
-                }
                 Object lp = view.getLayoutParams();
                 int spanIndex = (Integer) XposedHelpers.callMethod(lp, "getSpanIndex");
                 int spanSize = (Integer) XposedHelpers.callMethod(lp, "getSpanSize");
-                out.set(0, 0, 0, 0);
-                if (spanSize * FOLDER_COLUMNS != spanCount) {
-                    return; // Icon or spacer.
+                if (!isTile(view)) {
+                    out.set(0, 0, 0, 0); // Icons and the spacer: their own padding spaces them.
+                    return;
+                }
+                if (spanSize < 2) {
+                    return; // Columns not switched yet; the stock offsets are still right.
                 }
                 int half = gap.getInt(param.thisObject) / 2;
-                boolean startColumn = spanIndex == 0;
                 boolean isRtl = rtl.getBoolean(param.thisObject);
-                if (startColumn != isRtl) {
-                    out.right = half;
-                } else {
-                    out.left = half;
-                }
+                boolean first = spanIndex == 0;
+                boolean last = spanIndex + spanSize >= spanCount;
+                int startGap = first ? 0 : half;
+                int endGap = last ? 0 : half;
+                out.left = isRtl ? endGap : startGap;
+                out.right = isRtl ? startGap : endGap;
                 int position = (Integer) XposedHelpers.callMethod(
                         parent, "getChildAdapterPosition", view);
-                out.top = position >= 0 && position < FOLDER_COLUMNS ? 0 : half;
+                out.top = position >= 0 && position < spanCount / spanSize ? 0 : half;
                 out.bottom = half;
             }
         });
@@ -594,10 +612,40 @@ final class SmartDrawer {
                 }
                 View previews = (View) XposedHelpers.callMethod(
                         param.thisObject, "getFolderIconContainer");
+                resizeTile((View) param.thisObject, previews);
                 covers.apply((FrameLayout) param.thisObject, previews, folder,
                         store.get().animateCovers);
             }
         });
+    }
+
+    /**
+     * Tiles get their size once, when created; after a rotation recycled tiles would keep the
+     * old orientation's size. Re-apply the current Smart profile's tile, name and preview sizes
+     * (only when they differ, so binding stays layout-free in the common case).
+     */
+    private void resizeTile(View tile, View previews) {
+        try {
+            Object profile = XposedHelpers.callMethod(XposedHelpers.callMethod(
+                    XposedHelpers.callMethod(tile, "getActivityContext"), "getDeviceProfile"), "z");
+            setSize(tile, (Integer) XposedHelpers.callMethod(profile, "i"),
+                    (Integer) XposedHelpers.callMethod(profile, "c"));
+            ViewGroup.LayoutParams previewLp = previews.getLayoutParams();
+            if (previewLp != null) {
+                setSize(previews, previewLp.width, (Integer) XposedHelpers.callMethod(profile, "e"));
+            }
+        } catch (Throwable t) {
+            // Profile layout not recognised: keep the creation-time sizes.
+        }
+    }
+
+    private static void setSize(View view, int width, int height) {
+        ViewGroup.LayoutParams lp = view.getLayoutParams();
+        if (lp != null && (lp.width != width || lp.height != height)) {
+            lp.width = width;
+            lp.height = height;
+            view.setLayoutParams(lp);
+        }
     }
 
     private void hookSheetTitle() {

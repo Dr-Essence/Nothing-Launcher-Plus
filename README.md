@@ -27,6 +27,10 @@ plus your folders.
   opens the module.
 - Long-press a drawer folder for the launcher's own popup: **Add to home screen** creates a real
   home-screen folder with the same name and apps; **Edit** (custom folders) opens the folder editor.
+- **Landscape (beta)**: the home screen and app drawer follow auto-rotate, laid out with
+  AOSP's landscape layout — see *Landscape* below.
+- **Game controllers**: navigate home and the drawer with a DualSense, DualShock, Xbox, GameSir,
+  Backbone or any standard gamepad — see *Controllers* below.
 - **Export / Import** saves folders, options and cover images to one file, so the setup survives
   a reinstall.
 - Changes apply right away through a reload broadcast. You don't need to restart the launcher.
@@ -53,6 +57,43 @@ plus your folders.
 
 Emoji names and groups come from [emojibase-data](https://github.com/milesj/emojibase) (MIT),
 based on Unicode CLDR.
+
+## Landscape
+
+Nothing's DeviceProfile replaces AOSP's sizing with portrait-only math: cell width is derived
+from the screen *height*, everything is scaled against a 1080×2392 portrait reference and the
+hotseat is always assumed at the bottom. Nothing also made ten of AOSP's layout methods abstract,
+deleting their landscape branches. Forcing rotation therefore squashes everything.
+
+With **Home screen rotation** on, the launcher follows auto-rotate (through its own
+`RotationHelper`, which Android 16 otherwise keeps off on phones). In phone landscape, and only
+there, the module answers Nothing's sizing methods with AOSP's vertical-bar layout:
+
+- hotseat as a bar on the side (left in seascape), workspace padding to match;
+- cells filling the workspace, icon and label sizes from the grid, scaled to fit, labels hidden
+  by AOSP's own logic when rows get tight;
+- the 1080×2392 reference transposed, so icons keep their size;
+- the Smart drawer gets 3–6 tile columns (4 on most phones) instead of two giant tiles.
+
+Each landscape profile is logged (`NothingLauncher+: landscape profile …`) with its geometry, so
+LSPosed logs show exactly what was laid out. Portrait is untouched.
+
+## Controllers
+
+Android already maps the D-pad and left stick to arrow keys, A to select and B to back, and
+Launcher3 moves its keyboard focus with them. The module adds:
+
+| Button | Home screen | App drawer |
+| --- | --- | --- |
+| Y | Open drawer | Close drawer |
+| L1 / R1 | Previous / next page | Scroll up / down |
+| L2 / R2 | First / last page | Top / bottom |
+| X | Shortcuts / menu of the focused item | same |
+| Start | Home options (wallpaper, widgets, settings) | Close drawer |
+| Select | Notifications | Notifications |
+
+The focused icon or folder lifts on a spring (scale + elevation) and settles back the moment
+the screen is touched.
 
 ## Requirements
 
@@ -105,6 +146,10 @@ code is in `com.nothing.launcher.*`, and R8 has obfuscated most of it.
 | Grid spans | `AllAppsGridAdapter$GridSpanSizer.getSpanSize` | Name kept |
 | Drawer background | `AllAppsState.getWorkspaceScrimColor` | Name kept |
 | Drawer → home folder | `OptionsPopupView.show`, `LauncherModel.addAndBindAddedWorkspaceItems`, `ModelWriter.addItemToDatabase` | Names kept |
+| Nothing DeviceProfile | `v6.h` (overrides sizing; base methods made abstract) | Parameter type of the Smart profile's `n(Context, …)` |
+| Home rotation | `RotationHelper.notifyChange` / `mHomeRotationEnabled` | Names kept |
+| Smart drawer profile | `smart.z.n(Context, v6.h)` | Type of `SmartFolderContainer.smartProfile` |
+| Controller keys | `Launcher.dispatchKeyEvent` | Name kept |
 | Display style pref | `pref_all_app_display_style` (false = Smart) | — |
 
 `h.updateAdapterItems()` groups `mApps` by `mStatusInfo.n()` and adds one folder for each

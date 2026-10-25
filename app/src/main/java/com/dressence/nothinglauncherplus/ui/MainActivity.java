@@ -71,6 +71,19 @@ public class MainActivity extends Activity {
             render();
         });
 
+        ui.section("Landscape & controllers");
+        ui.switchRow("Home screen rotation", "Home and app drawer follow auto-rotate (beta)",
+                config.allowRotation, checked -> {
+                    config.allowRotation = checked;
+                    store.save(this);
+                });
+        ui.switchRow("Game controller navigation",
+                "Y app drawer · L1/R1 pages · L2/R2 first/last · X menu · Start options",
+                config.controllerNav, checked -> {
+                    config.controllerNav = checked;
+                    store.save(this);
+                });
+
         ui.section("Folders · " + config.folders.size());
         if (config.folders.isEmpty()) {
             ui.note("Create a folder, pick its apps, and it appears in the Smart (Beta) drawer.");
