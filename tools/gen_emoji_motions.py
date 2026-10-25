@@ -5,8 +5,10 @@ Source data: emojibase-data (MIT), en/data.json + meta/groups.json, e.g. from
 `npm pack emojibase-data@16.0.3`. Usage:
     python3 tools/gen_emoji_motions.py <emojibase package dir> <repo root>
 
-Each emoji gets the first match of: an exact override by CLDR name, a name keyword rule, its
-subgroup default, its group default. Motion names are checked against the Motion enum.
+Each emoji gets a motion (how the whole emoji moves) and an effect (what happens inside its
+dots: static on a TV, tears running, a blink), each from the first match of: an exact override
+by CLDR name, a name keyword rule, its subgroup default. Names are checked against the Motion
+and DotEffect enums.
 """
 import json
 import os
@@ -254,6 +256,193 @@ SUBGROUP_DEFAULT = {
     "subdivision-flag": "FLAG",
 }
 
+# ---------------------------------------------------------------------------------------------
+# Effects: what plays inside the dots.
+# ---------------------------------------------------------------------------------------------
+
+EFFECT_EXACT = {
+    # Faces with water on them: the water runs.
+    "grinning face with sweat": "SWEAT", "anxious face with sweat": "SWEAT",
+    "downcast face with sweat": "SWEAT", "face with tears of joy": "TEARS",
+    "rolling on the floor laughing": "TEARS", "smiling face with tear": "TEARS",
+    "crying face": "TEARS", "loudly crying face": "TEARS", "face holding back tears": "TEARS",
+    "drooling face": "DRIP", "sneezing face": "DRIP", "hot face": "SWEAT",
+    # Love and wonder
+    "smiling face with hearts": "HEARTS", "smiling face with heart-eyes": "HEARTS",
+    "face blowing a kiss": "HEARTS", "kissing face": "HEARTS",
+    "kissing face with closed eyes": "HEARTS", "kissing face with smiling eyes": "HEARTS",
+    "cat with wry smile": "BLINK", "smiling cat with heart-eyes": "HEARTS",
+    "kissing cat": "HEARTS", "star-struck": "STAR_EYES", "smiling face with halo": "SHINE",
+    # Sleepy, hot-headed, dizzy
+    "sleeping face": "SLEEPY", "sleepy face": "SLEEPY", "yawning face": "SLEEPY",
+    "face with bags under eyes": "SLEEPY", "pouting face": "ANGRY", "angry face": "ANGRY",
+    "enraged face": "ANGRY", "face with symbols on mouth": "ANGRY",
+    "face with steam from nose": "STEAM", "smiling face with horns": "FLAME",
+    "angry face with horns": "FLAME", "exploding head": "FIREWORKS",
+    "face exhaling": "SMOKE", "face in clouds": "SMOKE", "partying face": "CONFETTI",
+    "cold face": "SNOW", "shaking face": "ZAP", "face with spiral eyes": "TWINKLE",
+    "dizzy face": "TWINKLE", "face with crossed-out eyes": "TWINKLE",
+    "money-mouth face": "SHINE", "smiling face with sunglasses": "SHINE",
+    "face with peeking eye": "LOOK", "face with rolling eyes": "LOOK",
+    "face with monocle": "LOOK", "dotted line face": "GHOSTLY", "ghost": "GHOSTLY",
+    "skull": "GHOSTLY", "skull and crossbones": "GHOSTLY", "alien": "GHOSTLY",
+    "alien monster": "DIGITAL", "robot": "DIGITAL", "pile of poo": "SMOKE",
+    "clown face": "CONFETTI", "ogre": "ANGRY", "goblin": "ANGRY", "jack-o-lantern": "FLAME",
+    # Eyes and minds
+    "eyes": "LOOK", "eye": "LOOK", "brain": "ZAP", "anatomical heart": "HEARTBEAT",
+    "lungs": "SMOKE", "mouth": "HEARTS", "biting lip": "HEARTS", "speaking head": "SOUND",
+    # Emotions
+    "anger symbol": "ANGRY", "collision": "FIREWORKS", "dizzy": "TWINKLE",
+    "sweat droplets": "DRIP", "dashing away": "SMOKE", "zzz": "SLEEPY", "hole": "MAGIC",
+    "speech balloon": "DIGITAL", "eye in speech bubble": "LOOK", "left speech bubble": "DIGITAL",
+    "right anger bubble": "ANGRY", "thought balloon": "MAGIC", "kiss mark": "HEARTS",
+    "love letter": "HEARTS", "hundred points": "SHINE", "fire": "FLAME",
+    # Screens and signals
+    "television": "STATIC", "video camera": "SCREEN", "movie camera": "SCREEN",
+    "film projector": "SCREEN", "videocassette": "STATIC", "camera": "BEACON",
+    "camera with flash": "BEACON", "laptop": "SCREEN", "desktop computer": "SCREEN",
+    "mobile phone": "SCREEN", "mobile phone with arrow": "SCREEN", "pager": "DIGITAL",
+    "calculator": "DIGITAL", "fax machine": "DIGITAL", "video game": "DIGITAL",
+    "joystick": "DIGITAL", "satellite antenna": "SOUND", "radio": "NOTES",
+    "crystal ball": "MAGIC", "magic wand": "MAGIC", "nazar amulet": "MAGIC",
+    "hamsa": "MAGIC", "pool 8 ball": "MAGIC", "game die": "SPARKLE", "slot machine": "BEACON",
+    "light bulb": "GLOW", "flashlight": "GLOW", "candle": "FLAME", "diya lamp": "FLAME",
+    "red paper lantern": "GLOW", "police car light": "BEACON", "rotating light": "BEACON",
+    "battery": "ZAP", "low battery": "ZAP", "electric plug": "ZAP", "high voltage": "ZAP",
+    "magnet": "ZAP", "satellite": "TWINKLE", "rocket": "FLAME", "flying saucer": "BEACON",
+    "fire extinguisher": "SMOKE", "bomb": "FLAME", "firecracker": "FIREWORKS",
+    "fireworks": "FIREWORKS", "sparkler": "FIREWORKS", "party popper": "CONFETTI",
+    "confetti ball": "CONFETTI", "balloon": "SHINE", "wrapped gift": "SPARKLE",
+    "sparkles": "TWINKLE", "glowing star": "TWINKLE", "star": "TWINKLE",
+    "shooting star": "TWINKLE", "milky way": "TWINKLE", "night with stars": "WINDOWS",
+    "cityscape": "WINDOWS", "cityscape at dusk": "WINDOWS", "office building": "WINDOWS",
+    "hospital": "WINDOWS", "hotel": "WINDOWS", "department store": "WINDOWS",
+    "school": "WINDOWS", "bank": "WINDOWS", "convenience store": "WINDOWS",
+    "love hotel": "HEARTS", "factory": "SMOKE", "volcano": "SMOKE", "locomotive": "SMOKE",
+    "ferris wheel": "TWINKLE", "carousel horse": "NOTES", "circus tent": "CONFETTI",
+    "bell": "SOUND", "bellhop bell": "SOUND", "loudspeaker": "SOUND", "megaphone": "SOUND",
+    "postal horn": "NOTES", "speaker high volume": "SOUND", "speaker medium volume": "SOUND",
+    "speaker low volume": "SOUND", "studio microphone": "NOTES", "microphone": "NOTES",
+    "headphone": "NOTES", "musical note": "NOTES", "musical notes": "NOTES",
+    "musical score": "NOTES", "alarm clock": "CLOCK", "stopwatch": "CLOCK",
+    "timer clock": "CLOCK", "mantelpiece clock": "CLOCK", "hourglass done": "CLOCK",
+    "hourglass not done": "CLOCK", "watch": "CLOCK",
+    # Water, sky, weather
+    "droplet": "DRIP", "water wave": "RIPPLE", "ocean": "RIPPLE", "rainbow": "RAINBOW",
+    "rainbow flag": "RAINBOW", "umbrella with rain drops": "RAIN", "cloud with rain": "RAIN",
+    "cloud with lightning and rain": "RAIN", "cloud with lightning": "ZAP",
+    "cloud with snow": "SNOW", "snowflake": "SNOW", "snowman": "SNOW",
+    "snowman without snow": "SNOW", "tornado": "SMOKE", "fog": "SMOKE", "foggy": "SMOKE",
+    "wind face": "SMOKE", "cloud": "SMOKE", "sun": "GLOW", "sun with face": "GLOW",
+    "sun behind cloud": "GLOW", "crescent moon": "TWINKLE", "full moon face": "GLOW",
+    "new moon face": "BLINK", "comet": "FLAME", "ringed planet": "TWINKLE",
+    "globe showing europe-africa": "RIPPLE", "globe showing americas": "RIPPLE",
+    "globe showing asia-australia": "RIPPLE", "globe with meridians": "DIGITAL",
+    "fountain": "RIPPLE", "water pistol": "DRIP", "bathtub": "BUBBLES", "shower": "RAIN",
+    "soap": "BUBBLES", "bubbles": "BUBBLES", "potable water": "DRIP", "fishing pole": "RIPPLE",
+    "hot springs": "STEAM", "sweat droplets": "DRIP", "diving mask": "BUBBLES",
+    # Food and drink that steams, fizzes or melts
+    "hot beverage": "STEAM", "teacup without handle": "STEAM", "steaming bowl": "STEAM",
+    "pot of food": "STEAM", "shallow pan of food": "STEAM", "cooking": "STEAM",
+    "hot pepper": "FLAME", "bubble tea": "BUBBLES", "beer mug": "BUBBLES",
+    "clinking beer mugs": "BUBBLES", "bottle with popping cork": "CONFETTI",
+    "clinking glasses": "SPARKLE", "cup with straw": "BUBBLES", "beverage box": "BUBBLES",
+    "mate": "STEAM", "glass of milk": "SHINE", "baby bottle": "BUBBLES",
+    "birthday cake": "FLAME", "ice": "SHINE", "shaved ice": "SNOW", "ice cream": "DRIP",
+    "soft ice cream": "DRIP", "honey pot": "DRIP", "pouring liquid": "DRIP",
+    # Hearts and symbols
+    "beating heart": "HEARTBEAT", "growing heart": "HEARTBEAT", "sparkling heart": "TWINKLE",
+    "heart with arrow": "HEARTS", "heart with ribbon": "HEARTS", "revolving hearts": "HEARTS",
+    "two hearts": "HEARTS", "heart on fire": "FLAME", "mending heart": "SHINE",
+    "broken heart": "TEARS", "heart exclamation": "HEARTBEAT", "radioactive": "BEACON",
+    "biohazard": "BEACON", "warning": "BEACON", "no entry": "BEACON", "atom symbol": "ZAP",
+    "yin yang": "MAGIC", "wheel of dharma": "MAGIC", "infinity": "MAGIC",
+    "recycling symbol": "SWAY", "trident emblem": "SHINE", "fleur-de-lis": "SHINE",
+    "red question mark": "ZAP", "red exclamation mark": "BEACON", "trophy": "SHINE",
+    "gem stone": "SPARKLE", "ring": "SPARKLE", "crown": "SPARKLE", "money bag": "SHINE",
+    "coin": "SHINE", "money with wings": "SHINE", "credit card": "SHINE",
+    "chart increasing": "DIGITAL", "chart decreasing": "DIGITAL",
+    "bar chart": "DIGITAL", "chart increasing with yen": "DIGITAL", "bubbles": "BUBBLES",
+    "lollipop": "SPARKLE", "honeybee": "SWAY", "spider web": "SHINE",
+    # Animals with something to do
+    "fish": "BUBBLES", "tropical fish": "BUBBLES", "blowfish": "BUBBLES", "shark": "RIPPLE",
+    "whale": "RIPPLE", "spouting whale": "DRIP", "dolphin": "RIPPLE", "octopus": "BUBBLES",
+    "jellyfish": "GHOSTLY", "seal": "RIPPLE", "otter": "RIPPLE", "crab": "BUBBLES",
+    "lobster": "BUBBLES", "shrimp": "BUBBLES", "squid": "BUBBLES", "coral": "BUBBLES",
+    "spiral shell": "SHINE", "dragon": "FLAME", "dragon face": "FLAME", "phoenix": "FLAME",
+    "unicorn": "RAINBOW", "firefly": "GLOW", "butterfly": "SPARKLE", "peacock": "SPARKLE",
+}
+
+# Name keywords, tried in order when there is no exact entry.
+EFFECT_RULES = [
+    (r"\bflag\b", "FLAG"),
+    (r"sweat", "SWEAT"),
+    (r"tear|crying|\bcry", "TEARS"),
+    (r"heart-eyes|heart eyes|kiss", "HEARTS"),
+    (r"sleep|zzz", "SLEEPY"),
+    (r"angry|pouting|\brage", "ANGRY"),
+    (r"\bheart\b", "HEARTBEAT"),
+    (r"television|monitor|screen", "STATIC"),
+    (r"computer|laptop|phone\b|tablet", "SCREEN"),
+    (r"\bfire|flame|torch|candle", "FLAME"),
+    (r"\bstar\b|sparkl", "TWINKLE"),
+    (r"lightning|voltage|electric", "ZAP"),
+    (r"\brain\b|shower", "RAIN"),
+    (r"snow|frost|freez", "SNOW"),
+    (r"steam|hot |coffee|\btea\b", "STEAM"),
+    (r"music|note|song|guitar|piano|violin|trumpet|saxophone|drum|banjo|accordion|maracas|flute",
+     "NOTES"),
+    (r"speaker|bell\b|horn\b|loud|mute", "SOUND"),
+    (r"\bwave\b|water|sea\b|ocean|lake|river", "RIPPLE"),
+    (r"clock|o.clock|thirty", "CLOCK"),
+    (r"siren|alarm|police|ambulance|fire engine", "BEACON"),
+    (r"\bfish|bubble", "BUBBLES"),
+    (r"ghost|spirit|zombie|vampire|mage|genie|fairy", "GHOSTLY"),
+    (r"robot|\bcomputer|keyboard|\bdisk\b|floppy|dvd|input|\bid\b|\batm\b", "DIGITAL"),
+    (r"celebrat|party|tada", "CONFETTI"),
+    (r"firework", "FIREWORKS"),
+    (r"smok|cloud|wind\b|fog", "SMOKE"),
+    (r"building|house|castle|city|tower|stadium|apartment|skyscraper", "WINDOWS"),
+    (r"diamond|gem\b|crystal|jewel|medal|trophy", "SPARKLE"),
+    (r"\bmagic|wizard|witch|\bmage", "MAGIC"),
+    (r"bulb|\blamp|lantern|light\b", "GLOW"),
+    (r"eye\b|eyes\b", "LOOK"),
+    (r"\bface\b", "BLINK"),
+]
+
+EFFECT_SUBGROUP = {
+    "face-smiling": "BLINK", "face-affection": "HEARTS", "face-tongue": "BLINK",
+    "face-hand": "BLINK", "face-neutral-skeptical": "BLINK", "face-sleepy": "SLEEPY",
+    "face-unwell": "BLINK", "face-hat": "BLINK", "face-glasses": "SHINE",
+    "face-concerned": "BLINK", "face-negative": "ANGRY", "face-costume": "GHOSTLY",
+    "cat-face": "BLINK", "monkey-face": "BLINK", "heart": "HEARTBEAT", "emotion": "SPARKLE",
+    "hand-fingers-open": "SHINE", "hand-fingers-partial": "SHINE",
+    "hand-single-finger": "SHINE", "hand-fingers-closed": "SHINE", "hands": "SPARKLE",
+    "hand-prop": "SHINE", "body-parts": "SHINE", "person": "BLINK", "person-gesture": "BLINK",
+    "person-role": "BLINK", "person-fantasy": "MAGIC", "person-activity": "SHINE",
+    "person-sport": "SHINE", "person-resting": "SLEEPY", "family": "HEARTS",
+    "person-symbol": "SHINE", "skin-tone": "SHINE", "hair-style": "SHINE",
+    "animal-mammal": "BLINK", "animal-bird": "BLINK", "animal-amphibian": "BLINK",
+    "animal-reptile": "BLINK", "animal-marine": "BUBBLES", "animal-bug": "SWAY",
+    "plant-flower": "SWAY", "plant-other": "SWAY", "food-fruit": "SHINE",
+    "food-vegetable": "SHINE", "food-prepared": "STEAM", "food-asian": "STEAM",
+    "food-sweet": "SPARKLE", "drink": "BUBBLES", "dishware": "SHINE", "place-map": "RIPPLE",
+    "place-geographic": "TWINKLE", "place-building": "WINDOWS", "place-religious": "GLOW",
+    "place-other": "TWINKLE", "transport-ground": "SMOKE", "transport-water": "RIPPLE",
+    "transport-air": "SMOKE", "hotel": "SHINE", "time": "CLOCK", "sky-weather": "GLOW",
+    "event": "CONFETTI", "award-medal": "SPARKLE", "sport": "SHINE", "game": "SPARKLE",
+    "arts-crafts": "SPARKLE", "clothing": "SHINE", "sound": "SOUND", "music": "NOTES",
+    "musical-instrument": "NOTES", "phone": "SCREEN", "computer": "DIGITAL",
+    "light-video": "GLOW", "book-paper": "SHINE", "money": "SHINE", "mail": "SHINE",
+    "writing": "SHINE", "office": "SHINE", "lock": "SHINE", "tool": "SHINE",
+    "science": "ZAP", "medical": "HEARTBEAT", "household": "SHINE", "other-object": "SHINE",
+    "transport-sign": "GLOW", "warning": "BEACON", "arrow": "SHINE", "religion": "GLOW",
+    "zodiac": "TWINKLE", "av-symbol": "DIGITAL", "gender": "SHINE", "math": "DIGITAL",
+    "punctuation": "BEACON", "currency": "SHINE", "other-symbol": "SHINE", "keycap": "DIGITAL",
+    "alphanum": "DIGITAL", "geometric": "GLOW", "flag": "FLAG", "country-flag": "FLAG",
+    "subdivision-flag": "FLAG",
+}
+
 # Picker tabs, in display order (emojibase group ids); "component" is not pickable.
 PICKER_GROUPS = [0, 1, 3, 4, 5, 6, 7, 8, 9]
 
@@ -262,6 +451,21 @@ def motion_names(repo):
     src = open(os.path.join(repo, "app/src/main/java/com/dressence/nothinglauncherplus/anim/"
                                   "Motion.java"), encoding="utf-8").read()
     return set(re.findall(r"^    ([A-Z_]+)\(\"", src, re.M))
+
+
+def effect_names(repo):
+    src = open(os.path.join(repo, "app/src/main/java/com/dressence/nothinglauncherplus/anim/"
+                                  "DotEffect.java"), encoding="utf-8").read()
+    return set(re.findall(r"^    ([A-Z_]+) \{", src, re.M))
+
+
+def pick(label, subgroup, exact, rules, defaults):
+    if label in exact:
+        return exact[label], "exact"
+    found = next((m for p, m in rules if p.search(label)), None)
+    if found is not None:
+        return found, "rule"
+    return defaults[subgroup], "subgroup"
 
 
 def main(data_dir, repo):
@@ -275,6 +479,12 @@ def main(data_dir, repo):
     unknown = used - known
     if unknown:
         sys.exit("unknown motions: %s" % sorted(unknown))
+    effects = effect_names(repo)
+    effect_rules = [(re.compile(p), m) for p, m in EFFECT_RULES]
+    unknown = {m for m in list(EFFECT_EXACT.values()) + [m for _, m in EFFECT_RULES]
+               + list(EFFECT_SUBGROUP.values())} - effects
+    if unknown:
+        sys.exit("unknown effects: %s" % sorted(unknown))
 
     lines = []
     stats = {"exact": 0, "rule": 0, "subgroup": 0}
@@ -283,26 +493,27 @@ def main(data_dir, repo):
         if group not in PICKER_GROUPS:
             continue
         label = e["label"].lower()
-        if label in EXACT:
-            motion, how = EXACT[label], "exact"
-        else:
-            motion = next((m for p, m in rules if p.search(label)), None)
-            how = "rule"
-            if motion is None:
-                motion, how = SUBGROUP_DEFAULT[subgroups[str(e["subgroup"])]], "subgroup"
+        subgroup = subgroups[str(e["subgroup"])]
+        motion, how = pick(label, subgroup, EXACT, rules, SUBGROUP_DEFAULT)
+        effect, _ = pick(label, subgroup, EFFECT_EXACT, effect_rules, EFFECT_SUBGROUP)
         stats[how] += 1
-        lines.append("%s\t%d\t%s\t%s" % (e["emoji"], PICKER_GROUPS.index(group), motion,
-                                         e["label"]))
+        lines.append("%s\t%d\t%s\t%s\t%s" % (e["emoji"], PICKER_GROUPS.index(group), motion,
+                                             effect, e["label"]))
 
     out = os.path.join(repo, "app/src/main/assets/emoji_motions.tsv")
     with open(out, "w", encoding="utf-8") as f:
         f.write("# Generated by tools/gen_emoji_motions.py from emojibase-data (MIT).\n")
-        f.write("# emoji<TAB>picker group<TAB>motion<TAB>name\n")
+        f.write("# emoji<TAB>picker group<TAB>motion<TAB>effect<TAB>name\n")
         f.write("\n".join(lines) + "\n")
     used_motions = {l.split("\t")[2] for l in lines}
     print("emojis=%d %s motions used=%d/%d" % (len(lines), stats, len(used_motions),
                                                len(known) - 1))
     print("never used:", sorted(known - used_motions - {"NONE"}))
+    used_effects = {}
+    for l in lines:
+        used_effects[l.split("\t")[3]] = used_effects.get(l.split("\t")[3], 0) + 1
+    print("effects:", sorted(used_effects.items(), key=lambda kv: -kv[1]))
+    print("effects never used:", sorted(effects - set(used_effects) - {"NONE"}))
 
 
 if __name__ == "__main__":

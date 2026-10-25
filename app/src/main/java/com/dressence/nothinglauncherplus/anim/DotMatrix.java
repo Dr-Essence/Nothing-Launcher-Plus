@@ -67,6 +67,22 @@ final class DotMatrix {
     private final Rect square = new Rect();
     private Bitmap glyph;
 
+    /** The emoji at rest, the regions effects work on, and the frame they paint. */
+    private final int[] restDots = new int[GRID * GRID];
+    private final Scene scene = new Scene(GRID);
+    private final Matrix restPose = new Matrix();
+    private final Matrix restInverse = new Matrix();
+    private final Matrix forward = new Matrix();
+    private final Matrix inverse = new Matrix();
+    private final float[] values = new float[9];
+    private final float[] forwardMap = new float[6];
+    private final float[] inverseMap = new float[6];
+    private static final float[] IDENTITY = {1, 0, 0, 0, 1, 0};
+
+    /** The label, lit on the panel's own dots (see {@link #setLabel}). */
+    private final DotLabel label = new DotLabel();
+    private final Paint labelPaint = new Paint();
+
     DotMatrix(boolean darkBackground) {
         BitmapShader shader = new BitmapShader(frame, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -75,39 +91,120 @@ final class DotMatrix {
         litPaint.setShader(shader);
         litPaint.setFilterBitmap(false);
         unlitPaint.setColor(darkBackground ? UNLIT_DARK : UNLIT_LIGHT);
+        labelPaint.setFilterBitmap(false);
+        float base = RENDER * FILL / GLYPH;
+        restPose.setScale(base, base);
+        restPose.postTranslate((RENDER - GLYPH * base) / 2f, (RENDER - GLYPH * base) / 2f);
+        restPose.invert(restInverse);
     }
 
     /** {@code color} is used for plain text; emoji keep their own colours. */
     void setText(CharSequence text, int color) {
         glyph = text == null || text.length() == 0 ? null : glyph(text.toString(), color);
+        // The resting frame, once: what effects find their regions in and paint over.
+        rasterize(null);
+        System.arraycopy(dots, 0, restDots, 0, dots.length);
+        scene.regions = glyph != null ? new Regions(restDots, GRID) : null;
         Arrays.fill(shown, 1); // Force the next render to count as a change.
     }
 
     /** Renders {@code p} into the grid; returns true if any dot changed. */
     boolean render(Pose p) {
-        render.eraseColor(Color.TRANSPARENT);
-        if (glyph != null && p.alpha > 0) {
-            float base = RENDER * FILL / GLYPH;
-            float px = p.pivotX * RENDER;
-            float py = p.pivotY * RENDER;
-            // A turn around the vertical axis reads as the emoji narrowing to an edge and back.
-            float turn = (float) Math.cos(Math.toRadians(p.rotationY + p.spinY));
-            pose.setScale(base, base);
-            pose.postTranslate((RENDER - GLYPH * base) / 2f, (RENDER - GLYPH * base) / 2f);
-            pose.postScale(p.scaleX * turn, p.scaleY, px, py);
-            pose.postRotate(p.rotation + p.spin, px, py);
-            pose.postTranslate(p.tx * RENDER, p.ty * RENDER);
-            glyphPaint.setAlpha(Math.round(Math.min(1, p.alpha) * 255));
-            renderCanvas.drawBitmap(glyph, pose, glyphPaint);
+        return render(p, DotEffect.NONE, 0, 0, Float.MAX_VALUE, 0);
+    }
+
+    /**
+     * Renders {@code p} with {@code effect} playing on top at {@code time} seconds, flared by
+     * {@code boost} (0..1) {@code since} seconds after a reaction; returns true if any dot
+     * changed.
+     */
+    boolean render(Pose p, DotEffect effect, float time, float boost, float since, int seed) {
+        boolean still = p.isRest();
+        if (still) {
+            System.arraycopy(restDots, 0, dots, 0, dots.length);
+        } else {
+            rasterize(p);
         }
-        render.getPixels(samples, 0, RENDER, 0, 0, RENDER, RENDER);
-        quantize();
+        if (effect != DotEffect.NONE && scene.regions != null) {
+            System.arraycopy(dots, 0, scene.dots, 0, dots.length);
+            if (still) {
+                scene.map(IDENTITY, IDENTITY);
+            } else {
+                mapScene();
+            }
+            scene.t = time;
+            scene.boost = boost;
+            scene.since = since;
+            scene.seed = seed;
+            effect.apply(scene);
+            System.arraycopy(scene.dots, 0, dots, 0, dots.length);
+        }
         if (Arrays.equals(dots, shown)) {
             return false;
         }
         System.arraycopy(dots, 0, shown, 0, dots.length);
         frame.setPixels(dots, 0, GRID, 1, 1, GRID, GRID);
         return true;
+    }
+
+    /** Draws the glyph posed by {@code p} (null: at rest) and samples it into the dots. */
+    private void rasterize(Pose p) {
+        render.eraseColor(Color.TRANSPARENT);
+        if (glyph != null && (p == null || p.alpha > 0)) {
+            pose.set(restPose);
+            if (p != null) {
+                float px = p.pivotX * RENDER;
+                float py = p.pivotY * RENDER;
+                // A turn around the vertical axis reads as the emoji narrowing to an edge.
+                float turn = (float) Math.cos(Math.toRadians(p.rotationY + p.spinY));
+                pose.postScale(p.scaleX * turn, p.scaleY, px, py);
+                pose.postRotate(p.rotation + p.spin, px, py);
+                pose.postTranslate(p.tx * RENDER, p.ty * RENDER);
+            }
+            glyphPaint.setAlpha(p == null ? 255 : Math.round(Math.min(1, p.alpha) * 255));
+            renderCanvas.drawBitmap(glyph, pose, glyphPaint);
+        }
+        render.getPixels(samples, 0, RENDER, 0, 0, RENDER, RENDER);
+        quantize();
+    }
+
+    /**
+     * Tells the effect how the posed frame relates to the resting one, in dots: forward takes a
+     * resting dot to where it is shown now, the inverse takes a shown dot back to its resting
+     * spot. Both are the glyph pose relative to the rest pose, measured in grid units.
+     */
+    private void mapScene() {
+        forward.set(restInverse);
+        forward.preScale(SUPERSAMPLE, SUPERSAMPLE);
+        forward.postConcat(pose);
+        forward.postScale(1f / SUPERSAMPLE, 1f / SUPERSAMPLE);
+        if (!forward.invert(inverse)) {
+            scene.map(null, null); // Turned edge-on: nothing to paint on.
+            return;
+        }
+        forward.getValues(values);
+        System.arraycopy(values, 0, forwardMap, 0, 6);
+        inverse.getValues(values);
+        System.arraycopy(values, 0, inverseMap, 0, 6);
+        scene.map(inverseMap, forwardMap);
+    }
+
+    /**
+     * Shows {@code text} in dots at {@code area} (view coordinates, usually where the hidden
+     * folder name sits), in {@code color}; null text removes it.
+     */
+    void setLabel(CharSequence text, int color, Rect area) {
+        label.set(text, color, area);
+    }
+
+    /** Advances a label too long for the panel by one dot when due; true if it moved. */
+    boolean scrollLabel(long nowNanos) {
+        return label.scroll(nowNanos);
+    }
+
+    /** Nanoseconds until the label next scrolls, or {@link Long#MAX_VALUE} if it fits. */
+    long labelWait(long nowNanos) {
+        return label.untilScroll(nowNanos);
     }
 
     /** Averages each dot's 3 x 3 samples and snaps its opacity to a panel level. */
@@ -171,6 +268,7 @@ final class DotMatrix {
             mask = mask(pitch, columns, rows, left, top, width, height, panel, corner);
             canvas.drawBitmap(mask, 0, 0, unlitPaint);
             drawLit(canvas, mask, 0, 0, pitch, emojiLeft, emojiTop);
+            label.draw(canvas, mask, labelPaint, pitch, columns, left, top);
         } else {
             int side = Math.round(GRID * pitch);
             square.set(0, 0, side, side);

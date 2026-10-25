@@ -3,6 +3,7 @@ package com.dressence.nothinglauncherplus.hook;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Outline;
 import android.net.Uri;
 import android.util.LruCache;
@@ -13,12 +14,16 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.anim.AnimatedEmojiView;
+import com.dressence.nothinglauncherplus.anim.DotEffect;
 import com.dressence.nothinglauncherplus.anim.Motion;
 
 import java.io.InputStream;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -38,6 +43,9 @@ final class FolderCovers {
     private static final float CORNER_RATIO = 0.22f;
     private static final float EMOJI_RATIO = 0.62f;
 
+    /** The real colour of folder names hidden behind a dot panel (to restore and to light). */
+    private static final Map<TextView, Integer> NAME_COLORS = new WeakHashMap<>();
+
     private final ExecutorService loader = Executors.newSingleThreadExecutor();
     private final LruCache<String, Bitmap> cache = new LruCache<String, Bitmap>(24 * 1024 * 1024) {
         @Override
@@ -48,16 +56,25 @@ final class FolderCovers {
 
     /**
      * Shows {@code folder}'s cover on the tile, or restores the stock previews. Emoji covers play
-     * their motion when {@code animate} is set and are drawn as dots when {@code dotMatrix} is.
+     * their motion and effect when {@code animate} is set and are drawn as dots when
+     * {@code dotMatrix} is; then the folder's {@code name} is lit on the same dot screen too.
      */
-    void apply(FrameLayout tile, View previews, Config.Folder folder, boolean animate,
-            boolean dotMatrix) {
+    void apply(FrameLayout tile, View previews, TextView name, Config.Folder folder,
+            boolean animate, boolean dotMatrix) {
         CoverView cover = tile.findViewWithTag(COVER_TAG);
         DotPanel panel = tile.findViewWithTag(PANEL_TAG);
         boolean dots = folder != null && dotMatrix && folder.coverImageVersion == 0
                 && !folder.coverText.isEmpty();
         if (panel != null && !dots) {
             panel.hide();
+        }
+        // In dots the name is drawn by the panel; the real one keeps its place, in clear ink
+        // (not alpha 0: the launcher animates view alpha itself).
+        if (dots && !NAME_COLORS.containsKey(name)) {
+            NAME_COLORS.put(name, name.getCurrentTextColor());
+            name.setTextColor(Color.TRANSPARENT);
+        } else if (!dots && NAME_COLORS.containsKey(name)) {
+            name.setTextColor(NAME_COLORS.remove(name));
         }
         if (folder == null || !folder.hasCover()) {
             if (cover != null) {
@@ -71,7 +88,7 @@ final class FolderCovers {
                 cover.setVisibility(View.GONE);
             }
             if (panel == null) {
-                panel = new DotPanel(tile, previews);
+                panel = new DotPanel(tile, previews, name);
                 panel.setTag(PANEL_TAG);
                 // Behind the name and everything else: the tile itself becomes the screen.
                 tile.addView(panel, 0, new FrameLayout.LayoutParams(
@@ -79,7 +96,9 @@ final class FolderCovers {
             }
             previews.setVisibility(View.INVISIBLE);
             panel.show(folder.coverText,
-                    animate ? Motion.parse(folder.coverMotion) : Motion.NONE, folder.id.hashCode());
+                    animate ? Motion.parse(folder.coverMotion) : Motion.NONE,
+                    animate ? DotEffect.parse(folder.coverEffect) : DotEffect.NONE,
+                    folder.id.hashCode());
             return;
         }
         if (cover == null) {
@@ -136,32 +155,54 @@ final class FolderCovers {
 
     /**
      * The whole tile as a dot screen: unlit dots everywhere, the emoji lit in a square where the
-     * app previews would be. The square follows the (invisible) preview grid's layout.
+     * app previews would be and the folder name lit where the name would be. Both follow the
+     * hidden views' layout. Pressing the tile makes the emoji react.
      */
     private static final class DotPanel extends AnimatedEmojiView
             implements View.OnLayoutChangeListener {
-        private final View tile;
+        private final ViewGroup tile;
         private final View previews;
+        private final TextView name;
         private final android.graphics.Rect square = new android.graphics.Rect();
         private final android.graphics.Rect card = new android.graphics.Rect();
+        private final android.graphics.Rect label = new android.graphics.Rect();
+        private String shownLabel;
+        private boolean pressed;
 
-        DotPanel(View tile, View previews) {
+        DotPanel(ViewGroup tile, View previews, TextView name) {
             super(tile.getContext());
             this.tile = tile;
             this.previews = previews;
+            this.name = name;
             setDotMatrix(true);
+            // Follows the tile's pressed state, so a touch on the tile reaches drawableStateChanged.
+            setDuplicateParentStateEnabled(true);
             previews.addOnLayoutChangeListener(this);
+            name.addOnLayoutChangeListener(this);
         }
 
-        void show(String text, Motion motion, long seed) {
-            setEmoji(text, motion, seed);
+        void show(String text, Motion motion, DotEffect effect, long seed) {
+            setEmoji(text, motion, effect, seed);
             setVisibility(VISIBLE);
+            shownLabel = null;
             place();
         }
 
         void hide() {
             setEmoji("", Motion.NONE, 0);
+            setDotLabel(null, 0, null);
+            shownLabel = null;
             setVisibility(GONE);
+        }
+
+        @Override
+        protected void drawableStateChanged() {
+            super.drawableStateChanged();
+            boolean now = isPressed();
+            if (now && !pressed) {
+                react();
+            }
+            pressed = now;
         }
 
         @Override
@@ -195,6 +236,30 @@ final class FolderCovers {
             card.offset(-getLeft(), -getTop()); // Tile to panel coordinates (tile padding).
             card.intersect(0, 0, getWidth(), getHeight());
             setDotPanel(square, card, corner);
+            placeLabel();
+        }
+
+        /** Lights the folder name where the (hidden) name view sits, in its colour. */
+        private void placeLabel() {
+            if (name.getWidth() == 0 || name.getParent() == null) {
+                return;
+            }
+            label.set(0, 0, name.getWidth(), name.getHeight());
+            try {
+                tile.offsetDescendantRectToMyCoords(name, label);
+            } catch (IllegalArgumentException e) {
+                return; // The name is no longer inside this tile.
+            }
+            label.offset(-getLeft(), -getTop());
+            String text = String.valueOf(name.getText());
+            Integer color = NAME_COLORS.get(name);
+            int ink = (color != null ? color : name.getCurrentTextColor()) | 0xFF000000;
+            String key = text + label.toShortString() + ink;
+            if (key.equals(shownLabel)) {
+                return; // Unchanged: keep a scrolling name where it is.
+            }
+            shownLabel = key;
+            setDotLabel(text, ink, label);
         }
 
         /** Sets {@code out} to the tile's card in tile coordinates; returns its corner radius. */

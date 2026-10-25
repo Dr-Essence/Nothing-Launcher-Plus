@@ -54,6 +54,7 @@ final class Covers {
     static void useImage(Config.Folder folder) {
         folder.coverText = "";
         folder.coverMotion = "";
+        folder.coverEffect = "";
         folder.coverImageVersion = System.currentTimeMillis();
     }
 
@@ -61,12 +62,14 @@ final class Covers {
         deleteImage(context, folder);
         folder.coverText = text;
         folder.coverMotion = motion;
+        folder.coverEffect = EmojiCatalog.get(context).effectFor(text).name();
     }
 
     static void clear(Context context, Config.Folder folder) {
         deleteImage(context, folder);
         folder.coverText = "";
         folder.coverMotion = "";
+        folder.coverEffect = "";
     }
 
     static void deleteImage(Context context, Config.Folder folder) {

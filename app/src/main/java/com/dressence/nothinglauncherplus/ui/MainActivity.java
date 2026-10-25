@@ -254,12 +254,16 @@ public class MainActivity extends Activity {
                 + (now != target ? " (idling at " + now + " Hz)" : "");
     }
 
-    /** Emoji covers set before animations existed get their automatic motion once. */
+    /** Emoji covers set before motions or effects existed get their automatic ones once. */
     private void assignMissingMotions() {
         boolean changed = false;
         for (Config.Folder folder : store.config.folders) {
             if (!folder.coverText.isEmpty() && folder.coverMotion.isEmpty()) {
                 folder.coverMotion = EmojiCatalog.get(this).motionFor(folder.coverText).name();
+                changed = true;
+            }
+            if (!folder.coverText.isEmpty() && folder.coverEffect.isEmpty()) {
+                folder.coverEffect = EmojiCatalog.get(this).effectFor(folder.coverText).name();
                 changed = true;
             }
         }

@@ -47,14 +47,30 @@ plus your folders.
   dots like an image on an LED panel, with edge dots dimming in between for smooth motion.
   Frames whose dots don't change aren't redrawn, and a frame is two draws of one shared dot
   mask. The module's folder list and the emoji picker show the dot versions too.
+- **Living dots**: on top of its motion, every emoji plays an effect inside its own dots,
+  chosen for what it is. A TV fills with static (and now and then colour bars), a crystal ball
+  swirls with magic, faces blink (a real blink: half-closed, shut into a "‿" lash line, open),
+  tears and sweat run down the face and form again dot by dot, fire flickers, clouds rain,
+  coffee steams, buildings light their windows one by one, speakers pulse, notes rise, stars
+  twinkle, clocks tick, sirens flash, fish blow bubbles, and so on: 36 effects, mapped to every
+  keyboard emoji by the same generator as the motions. Effects find their parts of the emoji by
+  analysing its resting dots (screens, glass balls, eyes, water, window panes), so they work on
+  any emoji with no hand-drawn assets, follow the emoji as it moves, and play at 24 fps like a
+  real LED panel.
+- **Reactions**: touch a folder and its emoji reacts at once (its motion plus a flare of its
+  effect, a double blink for faces); opening the drawer makes the covers on screen greet you,
+  one after another.
+- **The name is on the screen too**: the folder name is lit on the same dots below the emoji in a
+  5 x 7 LED font (accents and emoji in names are rasterized onto the dots, in colour), and a
+  name too long for the tile scrolls through it a dot at a time.
 
 - **98 hand-tuned motions** (wave, heartbeat, hop, laugh, ring, launch, coin flip, flag wave,
   swim, flicker, …) built on spring physics: anticipation, squash and stretch, overshoot and
   settle. Each starts and ends at rest; `MotionQa`-style checks during development verify there
   are no jumps at 240 fps and no out-of-range poses.
-- **Every emoji is mapped** by `tools/gen_emoji_motions.py`: exact CLDR-name overrides, then name
-  keywords, then its Unicode subgroup. The folder editor shows the chosen motion and lets you pick
-  any other, or none.
+- **Every emoji is mapped** by `tools/gen_emoji_motions.py` to a motion and an effect: exact
+  CLDR-name overrides, then name keywords, then its Unicode subgroup. The folder editor shows the
+  chosen motion and lets you pick any other, or none.
 - **Unique per folder**: speed, strength, pause length and phase come from the folder id, so two
   folders with the same motion never move in sync.
 - **Cheap**: one shared vsync callback drives all covers, and only GPU-composited transform

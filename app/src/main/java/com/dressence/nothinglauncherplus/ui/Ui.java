@@ -25,6 +25,7 @@ import android.widget.TextView;
 import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.CoverProvider;
 import com.dressence.nothinglauncherplus.anim.AnimatedEmojiView;
+import com.dressence.nothinglauncherplus.anim.DotEffect;
 import com.dressence.nothinglauncherplus.anim.Motion;
 
 /**
@@ -264,7 +265,10 @@ final class Ui {
                 text.setDotPanel(badgeRect, badgeRect, size * 0.22f);
             }
             text.setEmoji(folder.coverText,
-                    animate ? Motion.parse(folder.coverMotion) : Motion.NONE, folder.id.hashCode());
+                    animate ? Motion.parse(folder.coverMotion) : Motion.NONE,
+                    animate ? DotEffect.parse(folder.coverEffect) : DotEffect.NONE,
+                    folder.id.hashCode());
+            text.setOnClickListener(v -> text.react());
             text.setTextSize(TypedValue.COMPLEX_UNIT_PX, size * 0.6f);
             // The emoji may hop past the badge edge mid-animation.
             badge.setClipToOutline(false);

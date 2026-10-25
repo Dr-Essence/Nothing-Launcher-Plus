@@ -9,6 +9,7 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.anim.MotionDriver;
 import com.dressence.nothinglauncherplus.sound.Sfx;
 
 import java.lang.reflect.Constructor;
@@ -73,6 +74,9 @@ final class SmartDrawer {
 
     private final ClassLoader cl;
     private final ConfigStore store;
+    /** Lets the drawer slide in before the covers greet it. */
+    private static final long GREETING_DELAY_MS = 180;
+
     private final FolderCovers covers;
 
     /** AppStatusInfo field holding the app's launch intent URI. */
@@ -96,6 +100,7 @@ final class SmartDrawer {
         Hooks.install("sheet title", this::hookSheetTitle);
         Hooks.install("loose app spans", this::hookLooseAppSpans);
         Hooks.install("loose app spacing", this::hookLooseAppSpacing);
+        Hooks.install("cover greeting", this::hookCoverGreeting);
         store.addChangeListener(this::refresh);
         // Rotation changes the tile count; Nothing's drawer does not ask again by itself.
         Hooks.install("smart grid rotation", () -> XposedHelpers.findAndHookMethod(
@@ -106,6 +111,25 @@ final class SmartDrawer {
                         refresh();
                     }
                 }));
+    }
+
+    /** Opening the drawer greets it: the folder covers on screen react, one after another. */
+    private void hookCoverGreeting() {
+        Class<?> states = XposedHelpers.findClass("com.android.launcher3.LauncherState", cl);
+        Object allApps = XposedHelpers.getStaticObjectField(states, "ALL_APPS");
+        XposedHelpers.findAndHookMethod("com.android.launcher3.Launcher", cl, "onStateSetStart",
+                states, new XC_MethodHook() {
+                    private Object last;
+
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        if (param.args[0] == allApps && last != allApps
+                                && store.get().animateCovers) {
+                            MotionDriver.get().reactAll(GREETING_DELAY_MS);
+                        }
+                        last = param.args[0];
+                    }
+                });
     }
 
     // ---------------------------------------------------------------------------------------
@@ -615,15 +639,15 @@ final class SmartDrawer {
             protected void afterHookedMethod(MethodHookParam param) {
                 Config.Folder folder =
                         store.get().folderForKey(GroupItems.category(param.args[0]));
+                TextView name = (TextView) XposedHelpers.callMethod(
+                        param.thisObject, "getFolderName");
                 if (folder != null) {
-                    TextView name = (TextView) XposedHelpers.callMethod(
-                            param.thisObject, "getFolderName");
                     name.setText(folder.name);
                 }
                 View previews = (View) XposedHelpers.callMethod(
                         param.thisObject, "getFolderIconContainer");
                 resizeTile((View) param.thisObject, previews);
-                covers.apply((FrameLayout) param.thisObject, previews, folder,
+                covers.apply((FrameLayout) param.thisObject, previews, name, folder,
                         store.get().animateCovers, store.get().dotMatrix);
             }
         });

@@ -107,6 +107,7 @@ public class EmojiPickerActivity extends Activity {
         preview = new AnimatedEmojiView(this);
         preview.setTextSize(TypedValue.COMPLEX_UNIT_SP, 52);
         preview.setDotMatrix(dotMatrix);
+        preview.setOnClickListener(v -> preview.react());
         card.addView(preview, new LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
@@ -252,9 +253,10 @@ public class EmojiPickerActivity extends Activity {
             return;
         }
         selected = entry;
-        preview.setEmoji(entry.emoji, entry.motion, seed);
+        preview.setEmoji(entry.emoji, entry.motion, entry.effect, seed);
         previewName.setText(capitalize(entry.name));
-        previewMotion.setText("Animation · " + entry.motion.title);
+        previewMotion.setText("Animation · " + entry.motion.title
+                + (dotMatrix ? " · " + entry.effect.title() : ""));
     }
 
     private EmojiCatalog.Entry firstOf(int index) {

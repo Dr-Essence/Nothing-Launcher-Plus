@@ -60,6 +60,8 @@ public final class Config {
         public String coverText = "";
         /** {@code anim.Motion} name played by the emoji cover; empty means not chosen yet. */
         public String coverMotion = "";
+        /** {@code anim.DotEffect} name played inside the dots; empty means not chosen yet. */
+        public String coverEffect = "";
         /** Last-modified time of the cover image; 0 when the folder has no cover image. */
         public long coverImageVersion;
 
@@ -192,6 +194,7 @@ public final class Config {
             Folder folder = new Folder(obj.getString("id"), obj.optString("name", "Folder"));
             folder.coverText = obj.optString("coverText", "");
             folder.coverMotion = obj.optString("coverMotion", "");
+            folder.coverEffect = obj.optString("coverEffect", "");
             folder.coverImageVersion = obj.optLong("coverImage", 0);
             JSONArray apps = obj.optJSONArray("apps");
             if (apps != null) {
@@ -216,6 +219,9 @@ public final class Config {
                 }
                 if (!folder.coverMotion.isEmpty()) {
                     obj.put("coverMotion", folder.coverMotion);
+                }
+                if (!folder.coverEffect.isEmpty()) {
+                    obj.put("coverEffect", folder.coverEffect);
                 }
                 if (folder.coverImageVersion != 0) {
                     obj.put("coverImage", folder.coverImageVersion);

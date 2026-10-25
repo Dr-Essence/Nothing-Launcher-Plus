@@ -26,6 +26,7 @@ import java.util.ArrayList;
 public final class MotionDriver implements Choreographer.FrameCallback {
 
     private static final long OFFSCREEN_POLL_MS = 250;
+    private static final long STAGGER_MS = 70;
     private static MotionDriver instance;
 
     private final ArrayList<AnimatedEmojiView> views = new ArrayList<>();
@@ -51,6 +52,34 @@ public final class MotionDriver implements Choreographer.FrameCallback {
 
     void remove(AnimatedEmojiView view) {
         views.remove(view);
+    }
+
+    /**
+     * Makes every emoji on screen react, after {@code delayMs}, staggered left to right and top
+     * to bottom so the reaction ripples across them.
+     */
+    public void reactAll(long delayMs) {
+        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        handler.postDelayed(() -> {
+            ArrayList<AnimatedEmojiView> shown = new ArrayList<>();
+            for (AnimatedEmojiView view : views) {
+                if (view.isShown() && isOnScreen(view)) {
+                    shown.add(view);
+                }
+            }
+            int[] a = new int[2];
+            int[] b = new int[2];
+            shown.sort((x, y) -> {
+                x.getLocationOnScreen(a);
+                y.getLocationOnScreen(b);
+                return a[1] / 64 != b[1] / 64 ? Integer.compare(a[1], b[1])
+                        : Integer.compare(a[0], b[0]);
+            });
+            for (int i = 0; i < shown.size(); i++) {
+                AnimatedEmojiView view = shown.get(i);
+                handler.postDelayed(view::react, i * STAGGER_MS);
+            }
+        }, delayMs);
     }
 
     /** Re-evaluates on the next frame (e.g. something became visible). */

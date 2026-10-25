@@ -39,6 +39,12 @@ public final class Pose {
         pivotY = 0.5f;
     }
 
+    /** True if this is the resting pose (nothing moved, nothing faded). */
+    boolean isRest() {
+        return tx == 0 && ty == 0 && scaleX == 1 && scaleY == 1 && rotation == 0
+                && rotationY == 0 && spin == 0 && spinY == 0 && alpha == 1;
+    }
+
     /** Scales every deviation from rest by {@code amount} (per-folder variation). */
     void amplify(float amount) {
         tx *= amount;
