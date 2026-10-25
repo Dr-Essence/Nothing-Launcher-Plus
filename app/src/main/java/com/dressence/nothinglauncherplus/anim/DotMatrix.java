@@ -63,9 +63,10 @@ final class DotMatrix {
     private final Paint glowPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Bitmap frame =
             Bitmap.createBitmap(GRID + 2, GRID + 2, Bitmap.Config.ARGB_8888);
-    private final Bitmap render = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
-    private final Canvas renderCanvas = new Canvas(render);
-    private final int[] samples = new int[RENDER * RENDER];
+    /** Scratch for rendering a pose; shared, as every view renders on the main thread. */
+    private static Bitmap render;
+    private static Canvas renderCanvas;
+    private static final int[] samples = new int[RENDER * RENDER];
     private final int[] dots = new int[GRID * GRID];
     private final int[] shown = new int[GRID * GRID];
     private final Matrix pose = new Matrix();
@@ -78,6 +79,7 @@ final class DotMatrix {
 
     /** The emoji at rest, the regions effects work on, and the frame they paint. */
     private final int[] restDots = new int[GRID * GRID];
+    private boolean regionsStale;
     private final Scene scene = new Scene(GRID);
     private final Matrix restPose = new Matrix();
     private final Matrix restInverse = new Matrix();
@@ -121,7 +123,9 @@ final class DotMatrix {
         // The resting frame, once: what effects find their regions in and paint over.
         rasterize(null);
         System.arraycopy(dots, 0, restDots, 0, dots.length);
-        scene.regions = glyph != null ? new Regions(restDots, GRID) : null;
+        // Analysed on first use: most views (picker cells, previews) never run an effect.
+        scene.regions = null;
+        regionsStale = glyph != null;
         Arrays.fill(shown, 1); // Force the next render to count as a change.
     }
 
@@ -143,6 +147,10 @@ final class DotMatrix {
             System.arraycopy(restDots, 0, dots, 0, dots.length);
         } else {
             rasterize(p);
+        }
+        if (effect != DotEffect.NONE && regionsStale) {
+            regionsStale = false;
+            scene.regions = new Regions(restDots, GRID);
         }
         if (effect != DotEffect.NONE && scene.regions != null) {
             System.arraycopy(dots, 0, scene.dots, 0, dots.length);
@@ -170,6 +178,10 @@ final class DotMatrix {
 
     /** Draws the glyph posed by {@code p} (null: at rest) and samples it into the dots. */
     private void rasterize(Pose p) {
+        if (render == null) {
+            render = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
+            renderCanvas = new Canvas(render);
+        }
         render.eraseColor(Color.TRANSPARENT);
         if (glyph != null && (p == null || p.alpha > 0)) {
             pose.set(restPose);

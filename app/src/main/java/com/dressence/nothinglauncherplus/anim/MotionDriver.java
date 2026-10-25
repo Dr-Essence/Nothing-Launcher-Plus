@@ -7,6 +7,7 @@ import android.view.Choreographer;
 import android.view.View;
 import android.view.ViewParent;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
 /**
@@ -29,7 +30,11 @@ public final class MotionDriver implements Choreographer.FrameCallback {
     private static final long STAGGER_MS = 70;
     private static MotionDriver instance;
 
-    private final ArrayList<AnimatedEmojiView> views = new ArrayList<>();
+    /**
+     * Weakly held: a list's recycled cells can leave a screen without ever being told they
+     * were detached, and must not keep that screen alive.
+     */
+    private final ArrayList<WeakReference<AnimatedEmojiView>> views = new ArrayList<>();
     private final Rect visible = new Rect();
     private boolean scheduled;
 
@@ -44,14 +49,30 @@ public final class MotionDriver implements Choreographer.FrameCallback {
     }
 
     void add(AnimatedEmojiView view) {
-        if (!views.contains(view)) {
-            views.add(view);
+        if (indexOf(view) < 0) {
+            views.add(new WeakReference<>(view));
         }
         wake();
     }
 
     void remove(AnimatedEmojiView view) {
-        views.remove(view);
+        int i = indexOf(view);
+        if (i >= 0) {
+            views.remove(i);
+        }
+    }
+
+    /** Index of {@code view}, dropping collected entries on the way. */
+    private int indexOf(AnimatedEmojiView view) {
+        for (int i = views.size() - 1; i >= 0; i--) {
+            AnimatedEmojiView v = views.get(i).get();
+            if (v == null) {
+                views.remove(i);
+            } else if (v == view) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
@@ -62,8 +83,9 @@ public final class MotionDriver implements Choreographer.FrameCallback {
         android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
         handler.postDelayed(() -> {
             ArrayList<AnimatedEmojiView> shown = new ArrayList<>();
-            for (AnimatedEmojiView view : views) {
-                if (view.isShown() && isOnScreen(view)) {
+            for (WeakReference<AnimatedEmojiView> ref : views) {
+                AnimatedEmojiView view = ref.get();
+                if (view != null && view.isShown() && isOnScreen(view)) {
                     shown.add(view);
                 }
             }
@@ -104,8 +126,12 @@ public final class MotionDriver implements Choreographer.FrameCallback {
         boolean windowVisible = false;
         long nextPlay = Long.MAX_VALUE;
 
-        for (int i = 0; i < views.size(); i++) {
-            AnimatedEmojiView view = views.get(i);
+        for (int i = views.size() - 1; i >= 0; i--) {
+            AnimatedEmojiView view = views.get(i).get();
+            if (view == null) {
+                views.remove(i);
+                continue;
+            }
             if (view.getWindowVisibility() != View.VISIBLE || !view.isShown()) {
                 view.rest();
                 continue;
