@@ -36,6 +36,8 @@ final class Voice {
     float drop;
     /** One-pole low-pass coefficient: 1 = open, smaller = darker. */
     float cutoff;
+    /** One-pole low-cut coefficient: 0 = off, larger = thinner (removes rumble). */
+    float lowCut;
     /** Slow filter sweep: the cutoff breathes by this fraction at this rate (Hz). */
     float sweepDepth;
     float sweepRate;
@@ -74,6 +76,7 @@ final class Voice {
     private float fmLevel;
     private float lowL;
     private float lowR;
+    private float bassL;
     private float swept;
     private float panL;
     private float panR;
@@ -95,6 +98,7 @@ final class Voice {
         vibratoRate = 5;
         drop = 0;
         cutoff = 1;
+        lowCut = 0;
         sweepDepth = 0;
         sweepRate = 0.08f;
         fmRatio = 1;
@@ -128,11 +132,13 @@ final class Voice {
         fmLevel = 1;
         lowL = 0;
         lowR = 0;
+        bassL = 0;
         swept = cutoff;
         double angle = (Math.max(-1, Math.min(1, pan)) + 1) * Math.PI / 4;
         panL = (float) (Math.cos(angle) * Math.sqrt(2));
         panR = (float) (Math.sin(angle) * Math.sqrt(2));
-        lfsr = 1;
+        // Seed the noise from the pitch, so two noise voices at different pitches never match.
+        lfsr = 1 + (Float.floatToIntBits(freq) * 7919 & 0x3FFF);
         noisePhase = 0;
         noise = 1;
         active = true;
@@ -242,7 +248,12 @@ final class Voice {
         phase += step;
         phase -= Math.floor(phase);
         lowL += co * (s - lowL);
-        float out = lowL * level;
+        float filtered = lowL;
+        if (lowCut > 0) {
+            bassL += lowCut * (filtered - bassL);
+            filtered -= bassL;
+        }
+        float out = filtered * level;
         left = out * panL;
         right = out * panR;
         return true;

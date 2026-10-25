@@ -36,25 +36,38 @@ public enum Style {
     },
 
     /**
-     * PS2-browser style: a single dense, chorused cluster around middle C, swelling slowly and
-     * changing chord every few bars, with a rare faint sparkle sliding down above it.
+     * PS2-browser style, built from a reference recording: wide filtered noise breathing in and
+     * out about every six seconds, a cluster of every note of the scale between F3 and F4 with a
+     * low rumble, a slow soft ping line, and rare glints sliding down.
      */
-    SYSTEM_BROWSER("System Browser", "PS2-style · one swelling chorused cluster, faint sparkles",
-            60, 0.5f, 0.88f, 0.9f, 6, 0.35f, 3, Composer.LYDIAN, new int[] {0, 2, 5, 9},
-            new int[][] {{0, 1, 5}, {0, 4, 1}, {5, 1, 0}}, 4f, 0.55f) {
+    SYSTEM_BROWSER("System Browser", "PS2-style · breathing air, scale cluster, soft pings",
+            60, 0.5f, 0.88f, 0.9f, 6, 0.4f, 2, Composer.MAJOR, new int[] {5, 7, 0, 2},
+            new int[][] {{0, 5, 3, 4}, {5, 3, 0, 0}, {0, 3, 5, 4}}, 4f, 0.55f) {
         @Override
         void step(Composer c, int step) {
             int s = step % 16;
             if (s == 0) {
                 c.nextBar();
+                if (c.bar() % 4 == 0) {
+                    // Overlapping wind layers, one per side, so the air never stops.
+                    c.play(Patch.WIND, 108, 16 * 5, 1, -0.9f);
+                    c.play(Patch.WIND, 109, 16 * 5, 1, 0.9f);
+                }
                 if (c.bar() % barsPerChord == 0) {
-                    for (int note : c.voicing(55, 0, 2, 4, 6)) { // Close cluster near C4.
-                        c.play(Patch.CLUSTER, note, 16 * barsPerChord - 4, 0.8f);
+                    for (int note : c.voicing(53, 0, 1, 2, 4, 5, 7)) { // Scale cluster.
+                        c.play(Patch.CLUSTER, note, 16 * barsPerChord - 4, 0.75f,
+                                c.random.nextFloat() * 1.6f - 0.8f);
                     }
+                    c.play(Patch.RUMBLE, c.note(c.chord(), 29), 16 * barsPerChord, 1);
                 }
             }
-            if (s % 4 == 0 && c.chance(0.04f)) {
-                int[] high = c.voicing(91, 0, 2, 4);
+            if (c.bar() % 8 >= 4 && s % 4 == 0 && c.chance(0.5f)) {
+                int[] pings = c.voicing(79, 0, 2, 4, 7);
+                c.play(Patch.PING, pings[c.random.nextInt(pings.length)], 2, 1,
+                        c.random.nextFloat() * 1.4f - 0.7f);
+            }
+            if (c.chance(0.015f)) {
+                int[] high = c.voicing(96, 0, 2, 4);
                 c.play(Patch.GLINT, high[c.random.nextInt(3)], 3, 1,
                         c.random.nextFloat() * 1.4f - 0.7f);
             }

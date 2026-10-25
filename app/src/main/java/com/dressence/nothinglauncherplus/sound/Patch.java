@@ -206,7 +206,7 @@ interface Patch {
     Patch CLUSTER = v -> {
         v.wave = Voice.SUPERSAW;
         v.detune = 1.004f;
-        v.spread = 0.6f;
+        v.spread = 0.9f;
         v.gain = 0.06f;
         v.attack = 1.4f;
         v.decay = 4f;
@@ -215,10 +215,51 @@ interface Patch {
         v.cutoff = 0.34f;
         v.reverb = 0.55f;
     };
+    /**
+     * The PS2 air: wide, dark noise whose filter opens and closes about every six seconds, the
+     * breathing "wind" under the browser. Play two, panned apart, at slightly different clock
+     * rates so left and right never match.
+     */
+    Patch WIND = v -> {
+        v.wave = Voice.NOISE;
+        v.gain = 0.04f;
+        v.attack = 3f;
+        v.decay = 10f;
+        v.sustain = 1f;
+        v.release = 3f;
+        v.cutoff = 0.06f;
+        v.lowCut = 0.05f;
+        v.sweepDepth = 0.9f;
+        v.sweepRate = 0.16f;
+        v.reverb = 0.35f;
+    };
+    /** Low rumble under the cluster. */
+    Patch RUMBLE = v -> {
+        v.wave = Voice.SINE;
+        v.gain = 0.018f;
+        v.attack = 2f;
+        v.decay = 8f;
+        v.sustain = 0.8f;
+        v.release = 3f;
+        v.reverb = 0.1f;
+    };
+    /** Soft, slow ping for the twinkling line above the cluster. */
+    Patch PING = v -> {
+        v.wave = Voice.FM;
+        v.fmRatio = 2f;
+        v.fmIndex = 0.25f;
+        v.fmDecay = 0.2f;
+        v.gain = 0.03f;
+        v.attack = 0.01f;
+        v.decay = 0.6f;
+        v.release = 0.5f;
+        v.reverb = 0.5f;
+        v.echo = 0.45f;
+    };
     /** Faint sparkle that slides gently down, high above the cluster. */
     Patch GLINT = v -> {
         v.wave = Voice.SINE;
-        v.gain = 0.025f;
+        v.gain = 0.01f;
         v.attack = 0.05f;
         v.decay = 0.9f;
         v.release = 0.5f;

@@ -78,8 +78,9 @@ Both off by default; switch them on in the module's **Sound** section.
   PlayStation-menu kind come first, deliberately simple and matched by measurement (spectrum,
   stereo width, swell rate, register) to reference recordings: *Home Menu* (PS4-style: one warm
   chorused tone playing slow, ringing notes that overlap into chords, F3 to G4, with phrases and
-  pauses; the default) and *System Browser* (PS2-style: one dense chorused cluster near middle C,
-  swelling slowly, with faint sparkles). No bass, no drums, nothing above about 2 kHz. Then *Crystal Shore*
+  pauses; the default) and *System Browser* (PS2-style: wide filtered noise breathing in and out
+  every few seconds, a cluster of every note of the scale between F3 and F4 over a low rumble, a
+  slow soft ping line and rare glints sliding down). No drums, almost nothing above 2 kHz. Then *Crystal Shore*
   (90s new-age shimmer and surf), *Shop Lounge* (swung e-piano, walking bass, vibes), *Starlight
   Lullaby* (16-bit music box and flute) and *Pixel Meadow* (8-bit overworld).
 - Each style has a master tone control; the calm ones keep essentially nothing above 2 kHz, and
