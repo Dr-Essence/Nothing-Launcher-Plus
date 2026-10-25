@@ -143,6 +143,7 @@ final class FolderCovers {
         private final View tile;
         private final View previews;
         private final android.graphics.Rect square = new android.graphics.Rect();
+        private final android.graphics.Rect card = new android.graphics.Rect();
 
         DotPanel(View tile, View previews) {
             super(tile.getContext());
@@ -175,7 +176,11 @@ final class FolderCovers {
             place();
         }
 
-        /** Same square the image cover uses, in tile coordinates (the panel fills the tile). */
+        /**
+         * The emoji goes where the image cover would (centred in the hidden preview grid); the
+         * dot screen fills the card the launcher actually draws, taken from the tile's outline
+         * (the shape it clips and casts shadows with), which can sit inside the view's bounds.
+         */
         private void place() {
             int pw = previews.getWidth();
             int ph = previews.getHeight();
@@ -183,21 +188,36 @@ final class FolderCovers {
                 return;
             }
             int side = (int) (Math.min(pw, ph) * COVER_SCALE);
-            int cx = previews.getLeft() + pw / 2;
-            int cy = previews.getTop() + ph / 2;
+            int cx = previews.getLeft() + pw / 2 - getLeft();
+            int cy = previews.getTop() + ph / 2 - getTop();
             square.set(cx - side / 2, cy - side / 2, cx - side / 2 + side, cy - side / 2 + side);
-            setDotPanel(square, tileCorner());
+            float corner = cardOutline(card);
+            card.offset(-getLeft(), -getTop()); // Tile to panel coordinates (tile padding).
+            card.intersect(0, 0, getWidth(), getHeight());
+            setDotPanel(square, card, corner);
         }
 
-        private float tileCorner() {
-            android.graphics.drawable.Drawable bg = tile.getBackground();
-            if (bg instanceof android.graphics.drawable.GradientDrawable) {
-                float r = ((android.graphics.drawable.GradientDrawable) bg).getCornerRadius();
-                if (r > 0) {
-                    return r;
-                }
+        /** Sets {@code out} to the tile's card in tile coordinates; returns its corner radius. */
+        private float cardOutline(android.graphics.Rect out) {
+            out.set(0, 0, tile.getWidth(), tile.getHeight());
+            float fallback = Math.min(tile.getWidth(), tile.getHeight()) * TILE_CORNER_RATIO;
+            android.view.ViewOutlineProvider provider = tile.getOutlineProvider();
+            if (provider == null) {
+                return fallback;
             }
-            return Math.min(tile.getWidth(), tile.getHeight()) * TILE_CORNER_RATIO;
+            android.graphics.Outline outline = new android.graphics.Outline();
+            try {
+                provider.getOutline(tile, outline);
+            } catch (RuntimeException e) {
+                return fallback;
+            }
+            android.graphics.Rect shape = new android.graphics.Rect();
+            if (!outline.getRect(shape) || shape.isEmpty()) {
+                return fallback; // No outline, or not a rounded rectangle.
+            }
+            out.set(shape);
+            float radius = outline.getRadius();
+            return radius > 0 ? radius : fallback;
         }
     }
 

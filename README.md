@@ -39,8 +39,10 @@ plus your folders.
 ## Emoji animations
 
 - **Dot matrix** (on by default, switch in the module): the whole folder tile becomes a Nothing
-  dot screen, with faint unlit dots edge to edge (kept inside its rounded corners) and the emoji
-  lit in colour as a 32 x 32 dot image on the same grid. Motion is rendered into the grid each
+  dot screen. The dots fill the card the launcher actually draws (read from the tile's own
+  outline, so they follow its shape and rounded corners and never spill past it), as many whole
+  dots as fit with equal margins on every side, and the emoji is lit in colour as a 32 x 32 dot
+  image snapped onto the same grid. Motion is rendered into the grid each
   frame (3 x 3 supersampled, four solid brightness steps per dot), so an emoji moves across the
   dots like an image on an LED panel, with edge dots dimming in between for smooth motion.
   Frames whose dots don't change aren't redrawn, and a frame is two draws of one shared dot

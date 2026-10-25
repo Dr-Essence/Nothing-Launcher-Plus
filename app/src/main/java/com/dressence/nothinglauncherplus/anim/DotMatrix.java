@@ -18,7 +18,8 @@ import java.util.Arrays;
 /**
  * Draws an emoji as a coloured Nothing-style dot matrix: a square of 32 x 32 round dots, each lit
  * in the emoji's colour at one of a few brightness steps. The dots can continue past the emoji
- * as a panel of unlit dots on the same pitch, so a whole folder tile reads as one dot screen.
+ * as a panel of unlit dots on the same pitch, filling a folder tile edge to edge, so the whole
+ * tile reads as one dot screen.
  *
  * <p>Motion is rendered into the grid, not applied to the finished picture: every frame the
  * emoji is posed, sampled down to 32 x 32 with 3 x 3 supersampling and quantized, so it moves
@@ -140,11 +141,12 @@ final class DotMatrix {
     }
 
     /**
-     * Draws the emoji square at {@code content} (null: the largest centred square). With
-     * {@code panel}, unlit dots on the same pitch fill the whole {@code width} x {@code height},
-     * kept inside rounded corners of radius {@code corner}.
+     * Draws the emoji square at {@code content} (null: the largest centred square). With a
+     * {@code panel} rectangle, that whole area becomes the screen: as many whole dots as fit,
+     * centred so the margins are equal on every side, kept inside rounded corners of radius
+     * {@code corner}, with the emoji square snapped onto the same grid.
      */
-    void draw(Canvas canvas, int width, int height, Rect content, boolean panel, float corner) {
+    void draw(Canvas canvas, int width, int height, Rect content, Rect panel, float corner) {
         if (content == null) {
             int side = Math.min(width, height);
             square.set((width - side) / 2, (height - side) / 2,
@@ -156,38 +158,46 @@ final class DotMatrix {
         }
         float pitch = content.width() / (float) GRID;
         Bitmap mask;
-        float maskLeft;
-        float maskTop;
-        if (panel) {
-            // Extend the emoji's grid outwards: same pitch, aligned to its dots.
-            float left = content.left - (float) Math.floor(content.left / pitch) * pitch;
-            float top = content.top - (float) Math.floor(content.top / pitch) * pitch;
-            mask = mask(pitch, (int) ((width - left) / pitch), (int) ((height - top) / pitch),
-                    left, top, width, height, corner);
-            maskLeft = 0;
-            maskTop = 0;
+        float emojiLeft = content.left;
+        float emojiTop = content.top;
+        if (panel != null && !panel.isEmpty()) {
+            int columns = (int) (panel.width() / pitch);
+            int rows = (int) (panel.height() / pitch);
+            float left = panel.left + (panel.width() - columns * pitch) / 2f;
+            float top = panel.top + (panel.height() - rows * pitch) / 2f;
+            // Snap the emoji onto the panel's dots.
+            emojiLeft = left + Math.round((content.left - left) / pitch) * pitch;
+            emojiTop = top + Math.round((content.top - top) / pitch) * pitch;
+            mask = mask(pitch, columns, rows, left, top, width, height, panel, corner);
+            canvas.drawBitmap(mask, 0, 0, unlitPaint);
+            drawLit(canvas, mask, 0, 0, pitch, emojiLeft, emojiTop);
         } else {
             int side = Math.round(GRID * pitch);
-            mask = mask(pitch, GRID, GRID, 0, 0, side, side, 0);
-            maskLeft = content.left;
-            maskTop = content.top;
+            square.set(0, 0, side, side);
+            mask = mask(pitch, GRID, GRID, 0, 0, side, side, square, 0);
+            canvas.drawBitmap(mask, emojiLeft, emojiTop, unlitPaint);
+            drawLit(canvas, mask, emojiLeft, emojiTop, pitch, emojiLeft, emojiTop);
         }
-        // Frame pixel (1, 1) is the emoji square's first dot; the border around it is empty.
+    }
+
+    /** Frame pixel (1, 1) is the emoji square's first dot; the border around it is empty. */
+    private void drawLit(Canvas canvas, Bitmap mask, float maskLeft, float maskTop, float pitch,
+            float emojiLeft, float emojiTop) {
         shaderMatrix.setScale(pitch, pitch);
-        shaderMatrix.postTranslate(content.left - pitch, content.top - pitch);
+        shaderMatrix.postTranslate(emojiLeft - pitch, emojiTop - pitch);
         litPaint.getShader().setLocalMatrix(shaderMatrix);
-        canvas.drawBitmap(mask, maskLeft, maskTop, unlitPaint);
         canvas.drawBitmap(mask, maskLeft, maskTop, litPaint);
     }
 
     /**
      * A {@code width} x {@code height} alpha mask of {@code columns} x {@code rows} round dots
-     * starting at ({@code left}, {@code top}), skipping dots outside rounded corners of radius
-     * {@code corner}. Shared by every view with the same geometry.
+     * starting at ({@code left}, {@code top}), skipping dots that would leave {@code bounds}'
+     * rounded corners of radius {@code corner}. Shared by every view with the same geometry.
      */
     private static Bitmap mask(float pitch, int columns, int rows, float left, float top,
-            int width, int height, float corner) {
-        String key = width + "x" + height + "@" + pitch + "+" + left + "," + top + "r" + corner;
+            int width, int height, Rect bounds, float corner) {
+        String key = width + "x" + height + "@" + pitch + "+" + left + "," + top + "/"
+                + bounds.toShortString() + "r" + corner;
         Bitmap mask = MASKS.get(key);
         if (mask != null) {
             return mask;
@@ -197,7 +207,8 @@ final class DotMatrix {
         Canvas canvas = new Canvas(mask);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         float radius = pitch * DOT / 2f;
-        RectF inner = new RectF(corner, corner, width - corner, height - corner);
+        RectF inner = new RectF(bounds.left + corner, bounds.top + corner,
+                bounds.right - corner, bounds.bottom - corner);
         for (int y = 0; y < rows; y++) {
             for (int x = 0; x < columns; x++) {
                 float cx = left + (x + 0.5f) * pitch;

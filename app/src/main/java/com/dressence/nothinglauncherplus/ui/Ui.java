@@ -260,7 +260,8 @@ final class Ui {
             text.setDotMatrix(dotMatrix);
             if (dotMatrix) {
                 // The whole badge is the dot screen, dots kept inside its rounded corners.
-                text.setDotPanel(new Rect(0, 0, size, size), size * 0.22f);
+                Rect badgeRect = new Rect(0, 0, size, size);
+                text.setDotPanel(badgeRect, badgeRect, size * 0.22f);
             }
             text.setEmoji(folder.coverText,
                     animate ? Motion.parse(folder.coverMotion) : Motion.NONE, folder.id.hashCode());

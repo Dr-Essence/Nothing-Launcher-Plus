@@ -34,9 +34,9 @@ public class AnimatedEmojiView extends TextView {
     private float phase;
     private boolean atRest = true;
     private DotMatrix dots;
-    /** Where the emoji square sits (null: centred), and whether dots fill the whole view. */
+    /** Where the emoji square sits (null: centred) and the dot screen around it (null: none). */
     private Rect dotContent;
-    private boolean dotPanel;
+    private Rect dotPanel;
     private float dotCorner;
 
     public AnimatedEmojiView(Context context) {
@@ -66,16 +66,16 @@ public class AnimatedEmojiView extends TextView {
     }
 
     /**
-     * Places the dot-matrix emoji at {@code content} and fills the rest of the view with unlit
-     * dots on the same pitch, inside rounded corners of radius {@code corner}: the whole view
-     * becomes one dot screen.
+     * Places the dot-matrix emoji at {@code content} and turns {@code panel} (view coordinates)
+     * into one dot screen around it: whole dots edge to edge, inside rounded corners of radius
+     * {@code corner}.
      */
-    public void setDotPanel(Rect content, float corner) {
-        if (content.equals(dotContent) && dotPanel && corner == dotCorner) {
+    public void setDotPanel(Rect content, Rect panel, float corner) {
+        if (content.equals(dotContent) && panel.equals(dotPanel) && corner == dotCorner) {
             return;
         }
         dotContent = new Rect(content);
-        dotPanel = true;
+        dotPanel = new Rect(panel);
         dotCorner = corner;
         invalidate();
     }
