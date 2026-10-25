@@ -221,6 +221,7 @@ final class Regions {
         if (comp == null) {
             return;
         }
+        comp = roundPart(comp);
         float sx = 0, sy = 0;
         long r = 0, g = 0, b = 0;
         for (int i : comp) {
@@ -236,6 +237,48 @@ final class Regions {
         ballRadius = (float) Math.sqrt(comp.length / Math.PI);
         ballColor = 0xFF000000 | (int) (r / comp.length) << 16 | (int) (g / comp.length) << 8
                 | (int) (b / comp.length);
+    }
+
+    /**
+     * The round part of a ball-like area, without what it stands on (a crystal ball's base, a
+     * globe's stand): the disc as wide as its widest row near the top, hanging from its top.
+     */
+    private int[] roundPart(int[] comp) {
+        int top = size, bottom = -1;
+        for (int i : comp) {
+            top = Math.min(top, i / size);
+            bottom = Math.max(bottom, i / size);
+        }
+        int[] left = new int[size];
+        int[] right = new int[size];
+        java.util.Arrays.fill(left, size);
+        java.util.Arrays.fill(right, -1);
+        for (int i : comp) {
+            int y = i / size;
+            left[y] = Math.min(left[y], i % size);
+            right[y] = Math.max(right[y], i % size);
+        }
+        int widest = -1;
+        int limit = top + Math.round((bottom - top) * 0.7f);
+        for (int y = top; y <= limit; y++) {
+            if (right[y] >= 0 && (widest < 0 || right[y] - left[y] > right[widest] - left[widest])) {
+                widest = y;
+            }
+        }
+        if (widest < 0) {
+            return comp;
+        }
+        float radius = (right[widest] - left[widest] + 1) / 2f;
+        float cx = (left[widest] + right[widest]) / 2f;
+        float cy = top - 0.5f + radius;
+        int[] out = new int[comp.length];
+        int n = 0;
+        for (int i : comp) {
+            if (Math.hypot(i % size - cx, i / size - cy) <= radius + 0.2f) {
+                out[n++] = i;
+            }
+        }
+        return n >= comp.length / 3 ? java.util.Arrays.copyOf(out, n) : comp;
     }
 
     /**

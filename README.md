@@ -69,7 +69,7 @@ plus your folders.
   effect, a double blink for faces); opening the drawer makes the covers on screen greet you,
   one after another.
 - **The name is on the screen too**: the folder name is lit on the same dots below the emoji in a
-  5 x 7 LED font (accents and emoji in names are rasterized onto the dots, in colour), and a
+  compact 3 x 5 LED font (accents and emoji in names are rasterized onto the dots, in colour), and a
   name too long for the tile scrolls through it a dot at a time.
 
 - **98 hand-tuned motions** (wave, heartbeat, hop, laugh, ring, launch, coin flip, flag wave,

@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * A line of text lit on a dot panel's own dots, like the lettering on a Nothing Glyph or an LED
- * sign: 7 dots tall in a {@link DotFont}, anything the font lacks (accents, emoji) rasterized
+ * sign: 5 dots tall in a {@link DotFont}, anything the font lacks (accents, emoji) rasterized
  * from the system font onto the same dots, emoji in their own colours. Text wider than the
  * panel scrolls through it one whole dot at a time, with a pause at the start.
  */
@@ -64,7 +64,7 @@ final class DotLabel {
                 }
             }
             if (glyph != null) {
-                for (int x = 0; x < DotFont.WIDTH; x++) {
+                for (int x = 0; x < glyph[0].length; x++) {
                     int[] col = new int[ROWS];
                     for (int y = 0; y < ROWS; y++) {
                         col[y] = glyph[y][x] ? color : 0;
