@@ -109,22 +109,16 @@ the screen is touched.
 3. Force-stop Nothing Launcher, or use the "Restart Nothing Launcher (root)" button in the app.
 4. In Nothing Launcher settings, set *Drawer layout* to **Smart (Beta)** and tap **Custom folders**.
 
-## Signing
+## Updates and signing
 
-Android installs an update only when it is signed with the same key as the installed version.
-Uninstalling to switch keys deletes the saved folders. Release builds therefore always use one
-key, which is kept out of this public repo:
+Every build is signed with the same key (`signing/update.jks`, committed on purpose), so a new
+APK installs straight over the old one and keeps your folders. After an update the module
+restarts Nothing Launcher by itself (root), and LSPosed loads the new code right away: no
+uninstall, no reboot. Set `SIGNING_KEYSTORE`, `SIGNING_PASSWORD` and `SIGNING_KEY_ALIAS` to build
+with a private key instead.
 
-- **CI:** set the repository secrets `SIGNING_KEYSTORE_BASE64` (the base64-encoded `.jks`) and
-  `SIGNING_PASSWORD`. Without them the workflow still builds, but it signs with a throwaway debug
-  key and shows a warning.
-- **Local:** `SIGNING_KEYSTORE=/path/to/release.jks SIGNING_PASSWORD=... ./gradlew assembleRelease`
-  (key alias `nlplus`, or set `SIGNING_KEY_ALIAS`).
-
-Before switching an existing install to a differently signed build, use **Export** in the
-module, uninstall, install the new build and **Import** the file.
-
-Keep a backup of the keystore. If it is lost, no future update can install over your current one.
+Builds from before v0.5.0 were signed with throwaway keys: switch once with **Export**,
+uninstall, install, **Import**.
 
 ## How it works (reverse-engineering notes, v4.0.20)
 

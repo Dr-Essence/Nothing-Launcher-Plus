@@ -96,6 +96,15 @@ final class SmartDrawer {
         Hooks.install("loose app spans", this::hookLooseAppSpans);
         Hooks.install("loose app spacing", this::hookLooseAppSpacing);
         store.addChangeListener(this::refresh);
+        // Rotation changes the tile count; Nothing's drawer does not ask again by itself.
+        Hooks.install("smart grid rotation", () -> XposedHelpers.findAndHookMethod(
+                XposedHelpers.findClass("com.android.launcher3.Launcher", cl),
+                "dispatchDeviceProfileChanged", new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        refresh();
+                    }
+                }));
     }
 
     // ---------------------------------------------------------------------------------------

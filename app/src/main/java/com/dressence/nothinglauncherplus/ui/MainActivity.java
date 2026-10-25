@@ -11,6 +11,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.UpdateReceiver;
 import com.dressence.nothinglauncherplus.anim.FrameRates;
 
 /** Module settings: drawer options and the list of custom folders. */
@@ -229,18 +230,11 @@ public class MainActivity extends Activity {
 
     private void restartLauncher() {
         new Thread(() -> {
-            boolean ok;
-            try {
-                Process p = Runtime.getRuntime().exec(new String[]{
-                        "su", "-c", "am force-stop " + Config.LAUNCHER_PKG});
-                ok = p.waitFor() == 0;
-            } catch (Exception e) {
-                ok = false;
-            }
-            boolean success = ok;
+            boolean success = UpdateReceiver.restartLauncher();
             runOnUiThread(() -> Toast.makeText(this, success ? "Launcher restarted"
                     : "Root not available; force stop Nothing Launcher from App info",
                     Toast.LENGTH_LONG).show());
         }).start();
     }
+
 }

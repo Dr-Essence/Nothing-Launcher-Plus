@@ -10,22 +10,22 @@ android {
         applicationId 'com.dressence.nothinglauncherplus'
         minSdk 31
         targetSdk 36
-        versionCode 4
-        versionName '0.4.0'
+        versionCode 5
+        versionName '0.5.0'
     }
 
-    // Updates must always be signed with the same key, otherwise Android refuses to install them
-    // over the previous version (and uninstalling first wipes the saved folders). The release key
-    // lives outside the repo: CI decodes it from secrets, local builds point at it via env vars.
-    def releaseKeystore = System.getenv('SIGNING_KEYSTORE')
+    // Every build is signed with the same key so updates install over each other and keep the
+    // saved folders. The key is committed on purpose (signing/update.jks): it only identifies this
+    // module's builds and protects nothing else. SIGNING_KEYSTORE / SIGNING_PASSWORD /
+    // SIGNING_KEY_ALIAS can point at a private key instead.
+    def keystore = System.getenv('SIGNING_KEYSTORE') ?: rootProject.file('signing/update.jks').path
+    def password = System.getenv('SIGNING_PASSWORD') ?: 'nlplus-update'
     signingConfigs {
-        release {
-            if (releaseKeystore) {
-                storeFile file(releaseKeystore)
-                storePassword System.getenv('SIGNING_PASSWORD')
-                keyAlias System.getenv('SIGNING_KEY_ALIAS') ?: 'nlplus'
-                keyPassword System.getenv('SIGNING_PASSWORD')
-            }
+        update {
+            storeFile file(keystore)
+            storePassword password
+            keyAlias System.getenv('SIGNING_KEY_ALIAS') ?: 'nlplus'
+            keyPassword password
         }
     }
 
@@ -33,7 +33,10 @@ android {
         release {
             // Hook code resolves launcher classes by name/reflection; keep it unobfuscated.
             minifyEnabled false
-            signingConfig releaseKeystore ? signingConfigs.release : signingConfigs.debug
+            signingConfig signingConfigs.update
+        }
+        debug {
+            signingConfig signingConfigs.update
         }
     }
 

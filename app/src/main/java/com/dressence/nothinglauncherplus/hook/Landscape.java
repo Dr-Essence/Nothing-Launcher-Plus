@@ -36,6 +36,8 @@ final class Landscape {
     private static final float REFERENCE_SHORT = 1080f;
     /** Landscape Smart drawer: tile width relative to the drawer height. */
     private static final float SMART_TILE_TO_HEIGHT = 0.55f;
+    /** Largest landscape icon relative to its cell, leaving room for folder rings and dots. */
+    private static final float ICON_TO_CELL = 0.8f;
 
     private final ClassLoader cl;
     private final ConfigStore store;
@@ -51,6 +53,8 @@ final class Landscape {
         Hooks.install("home rotation", this::hookRotation);
         Hooks.install("landscape layout", this::hookDeviceProfile);
         Hooks.install("landscape smart drawer", this::hookSmartProfile);
+        Hooks.install("landscape icon fit", this::hookIconFit);
+        Hooks.install("landscape hotseat log", this::hookHotseatLog);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -305,6 +309,64 @@ final class Landscape {
         } catch (Throwable t) {
             Hooks.log("landscape profile log failed: " + t);
         }
+    }
+
+    /**
+     * Nothing's grid keeps its 6-8 rows in landscape, so a row is only ~90-140 px tall while the
+     * grid asks for 150+ px icons; they were drawn cut in half. After every icon sizing pass,
+     * cap the icon to what a cell can hold, drop the label and resize hotseat and folder icons.
+     */
+    private void hookIconFit() {
+        Class<?> base = XposedHelpers.findClass("com.android.launcher3.DeviceProfile", cl);
+        XposedHelpers.findAndHookMethod(base, "updateIconSize", float.class, Context.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Object o = param.thisObject;
+                        if (!isPhoneLandscape(o)) {
+                            return;
+                        }
+                        try {
+                            fitIcons(o);
+                        } catch (Throwable t) {
+                            Hooks.log("landscape icon fit failed: " + t);
+                        }
+                    }
+                });
+    }
+
+    private void fitIcons(Object o) throws Exception {
+        Point cell = (Point) XposedHelpers.callMethod(o, "getCellSize");
+        int fit = (int) (Math.min(cell.x, cell.y) * ICON_TO_CELL);
+        int icon = XposedHelpers.getIntField(o, "iconSizePx");
+        if (fit <= 0 || icon <= fit) {
+            return;
+        }
+        int height = overlap(o, fit);
+        XposedHelpers.setIntField(o, "iconSizePx", fit);
+        XposedHelpers.setIntField(o, "iconTextSizePx", 0);
+        XposedHelpers.setIntField(o, "iconDrawablePaddingPx", 0);
+        XposedHelpers.setIntField(o, "cellWidthPx", fit);
+        XposedHelpers.setIntField(o, "cellHeightPx", height);
+        XposedHelpers.setIntField(o, "cellYPaddingPx", Math.max(0, (cell.y - height) / 2));
+        XposedHelpers.callMethod(o, "updateHotseatSizes", fit);
+        XposedHelpers.callMethod(o, "updateFolderIconSize");
+        XposedHelpers.setIntField(o, "folderIconOffsetYPx",
+                (fit - XposedHelpers.getIntField(o, "folderIconSizePx")) / 2);
+    }
+
+    /** Logs how the hotseat is laid out, to compare with the profile it was given. */
+    private void hookHotseatLog() {
+        Class<?> hotseat = XposedHelpers.findClass("com.android.launcher3.Hotseat", cl);
+        XposedHelpers.findAndHookMethod(hotseat, "resetLayout", boolean.class, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                Object view = param.thisObject;
+                Hooks.log("hotseat layout vertical=" + param.args[0]
+                        + " grid=" + XposedHelpers.callMethod(view, "getCountX") + "x"
+                        + XposedHelpers.callMethod(view, "getCountY"));
+            }
+        });
     }
 
     // ---------------------------------------------------------------------------------------
