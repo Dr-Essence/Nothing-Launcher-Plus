@@ -119,7 +119,7 @@ final class ReorderList extends LinearLayout {
         if (ev.getActionMasked() != MotionEvent.ACTION_DOWN) {
             return dragRow != null;
         }
-        boolean onHandle = isLayoutRtl()
+        boolean onHandle = getLayoutDirection() == LAYOUT_DIRECTION_RTL
                 ? ev.getX() < handleWidth : ev.getX() > getWidth() - handleWidth;
         int index = (int) (ev.getY() / rowHeight);
         if (!onHandle || index < 0 || index >= getChildCount()) {
