@@ -7,48 +7,52 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Shader;
 import android.os.Build;
 import android.text.TextPaint;
 import android.util.LruCache;
-import android.util.SparseArray;
 
 import java.util.Arrays;
 
 /**
- * Draws an emoji as a coloured Nothing-style dot matrix: a 25 x 25 grid of round dots (the size
- * of Nothing's Glyph Matrix), each lit in the emoji's colour at one of a few brightness steps.
+ * Draws an emoji as a coloured Nothing-style dot matrix: a square of 32 x 32 round dots, each lit
+ * in the emoji's colour at one of a few brightness steps. The dots can continue past the emoji
+ * as a panel of unlit dots on the same pitch, so a whole folder tile reads as one dot screen.
  *
  * <p>Motion is rendered into the grid, not applied to the finished picture: every frame the
- * emoji is posed, sampled down to 25 x 25 with 3 x 3 supersampling and quantized, so it moves
+ * emoji is posed, sampled down to 32 x 32 with 3 x 3 supersampling and quantized, so it moves
  * the way an image moves across an LED panel, dot by dot, with edge dots dimming in between for
  * smooth motion. A frame whose dots did not change is not redrawn.
  *
- * <p>Drawing is one GPU draw: an alpha-only mask of round dots, sized to the view and shared,
- * coloured by the 25 x 25 frame through a nearest-neighbour bitmap shader.
+ * <p>Drawing is two bitmap draws of one shared alpha-only mask of round dots: once in the faint
+ * unlit colour, once coloured by the frame through a nearest-neighbour shader. The frame has a
+ * transparent border, so panel dots outside the emoji square stay dark.
  */
 final class DotMatrix {
 
-    static final int GRID = 25;
+    static final int GRID = 32;
     private static final int SUPERSAMPLE = 3;
     private static final int RENDER = GRID * SUPERSAMPLE;
     /** Source glyph resolution: 2x the supersampled grid, so posing never magnifies it. */
     private static final int GLYPH = RENDER * 2;
     /** Share of the grid the emoji fills at rest; the rest is room to move. */
-    private static final float FILL = 0.8f;
+    private static final float FILL = 0.82f;
     /** Dot diameter relative to the dot pitch. */
-    private static final float DOT = 0.78f;
-    /** Brightness steps a lit dot can take; dimmer than the first step is off. */
-    private static final int LEVELS = 5;
-    private static final float OFF_BELOW = 0.12f;
+    private static final float DOT = 0.8f;
+    /** Below this coverage a dot is off; above it, one of these opacities (crisp, not washed). */
+    private static final float OFF_BELOW = 0.14f;
+    private static final int[] LEVEL_ALPHA = {120, 175, 225, 255};
     /** Unlit dots stay faintly visible, like a real panel. */
-    private static final int UNLIT_DARK = 0x16FFFFFF;
-    private static final int UNLIT_LIGHT = 0x12000000;
+    private static final int UNLIT_DARK = 0x1AFFFFFF;
+    private static final int UNLIT_LIGHT = 0x14000000;
 
     private static final LruCache<String, Bitmap> GLYPHS = new LruCache<>(48);
-    private static final SparseArray<Bitmap> MASKS = new SparseArray<>();
+    private static final LruCache<String, Bitmap> MASKS = new LruCache<>(8);
 
-    private final Bitmap frame = Bitmap.createBitmap(GRID, GRID, Bitmap.Config.ARGB_8888);
+    /** The 32 x 32 frame inside a 1-dot transparent border (see class comment). */
+    private final Bitmap frame =
+            Bitmap.createBitmap(GRID + 2, GRID + 2, Bitmap.Config.ARGB_8888);
     private final Bitmap render = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
     private final Canvas renderCanvas = new Canvas(render);
     private final int[] samples = new int[RENDER * RENDER];
@@ -59,6 +63,7 @@ final class DotMatrix {
     private final Paint glyphPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint litPaint = new Paint();
     private final Paint unlitPaint = new Paint();
+    private final Rect square = new Rect();
     private Bitmap glyph;
 
     DotMatrix(boolean darkBackground) {
@@ -100,13 +105,14 @@ final class DotMatrix {
             return false;
         }
         System.arraycopy(dots, 0, shown, 0, dots.length);
-        frame.setPixels(dots, 0, GRID, 0, 0, GRID, GRID);
+        frame.setPixels(dots, 0, GRID, 1, 1, GRID, GRID);
         return true;
     }
 
-    /** Averages each dot's 3 x 3 samples and snaps its brightness to a panel level. */
+    /** Averages each dot's 3 x 3 samples and snaps its opacity to a panel level. */
     private void quantize() {
         int n = SUPERSAMPLE * SUPERSAMPLE;
+        int levels = LEVEL_ALPHA.length;
         for (int gy = 0; gy < GRID; gy++) {
             for (int gx = 0; gx < GRID; gx++) {
                 int a = 0, r = 0, g = 0, b = 0;
@@ -125,51 +131,94 @@ final class DotMatrix {
                 float coverage = a / (255f * n);
                 int dot = 0;
                 if (coverage >= OFF_BELOW) {
-                    int level = Math.max(1, Math.round(coverage * LEVELS));
-                    dot = Color.argb(level * 255 / LEVELS, r / a, g / a, b / a);
+                    int level = Math.min(levels, Math.max(1, Math.round(coverage * levels)));
+                    dot = Color.argb(LEVEL_ALPHA[level - 1], r / a, g / a, b / a);
                 }
                 dots[gy * GRID + gx] = dot;
             }
         }
     }
 
-    /** Draws the grid as the largest square that fits {@code width} x {@code height}. */
-    void draw(Canvas canvas, int width, int height) {
-        int side = Math.min(width, height);
-        if (side <= 0) {
+    /**
+     * Draws the emoji square at {@code content} (null: the largest centred square). With
+     * {@code panel}, unlit dots on the same pitch fill the whole {@code width} x {@code height},
+     * kept inside rounded corners of radius {@code corner}.
+     */
+    void draw(Canvas canvas, int width, int height, Rect content, boolean panel, float corner) {
+        if (content == null) {
+            int side = Math.min(width, height);
+            square.set((width - side) / 2, (height - side) / 2,
+                    (width + side) / 2, (height + side) / 2);
+            content = square;
+        }
+        if (content.width() <= 0 || width <= 0 || height <= 0) {
             return;
         }
-        float left = (width - side) / 2f;
-        float top = (height - side) / 2f;
-        Bitmap mask = mask(side);
-        shaderMatrix.setScale(side / (float) GRID, side / (float) GRID);
-        shaderMatrix.postTranslate(left, top);
+        float pitch = content.width() / (float) GRID;
+        Bitmap mask;
+        float maskLeft;
+        float maskTop;
+        if (panel) {
+            // Extend the emoji's grid outwards: same pitch, aligned to its dots.
+            float left = content.left - (float) Math.floor(content.left / pitch) * pitch;
+            float top = content.top - (float) Math.floor(content.top / pitch) * pitch;
+            mask = mask(pitch, (int) ((width - left) / pitch), (int) ((height - top) / pitch),
+                    left, top, width, height, corner);
+            maskLeft = 0;
+            maskTop = 0;
+        } else {
+            int side = Math.round(GRID * pitch);
+            mask = mask(pitch, GRID, GRID, 0, 0, side, side, 0);
+            maskLeft = content.left;
+            maskTop = content.top;
+        }
+        // Frame pixel (1, 1) is the emoji square's first dot; the border around it is empty.
+        shaderMatrix.setScale(pitch, pitch);
+        shaderMatrix.postTranslate(content.left - pitch, content.top - pitch);
         litPaint.getShader().setLocalMatrix(shaderMatrix);
-        canvas.drawBitmap(mask, left, top, unlitPaint);
-        canvas.drawBitmap(mask, left, top, litPaint);
+        canvas.drawBitmap(mask, maskLeft, maskTop, unlitPaint);
+        canvas.drawBitmap(mask, maskLeft, maskTop, litPaint);
     }
 
-    /** Round dots on a transparent square, alpha only; shared by every view of that size. */
-    private static Bitmap mask(int side) {
-        Bitmap mask = MASKS.get(side);
+    /**
+     * A {@code width} x {@code height} alpha mask of {@code columns} x {@code rows} round dots
+     * starting at ({@code left}, {@code top}), skipping dots outside rounded corners of radius
+     * {@code corner}. Shared by every view with the same geometry.
+     */
+    private static Bitmap mask(float pitch, int columns, int rows, float left, float top,
+            int width, int height, float corner) {
+        String key = width + "x" + height + "@" + pitch + "+" + left + "," + top + "r" + corner;
+        Bitmap mask = MASKS.get(key);
         if (mask != null) {
             return mask;
         }
-        if (MASKS.size() > 8) {
-            MASKS.clear(); // Sizes come and go with rotations; never keep many around.
-        }
-        mask = Bitmap.createBitmap(side, side, Bitmap.Config.ALPHA_8);
+        mask = Bitmap.createBitmap(Math.max(1, width), Math.max(1, height),
+                Bitmap.Config.ALPHA_8);
         Canvas canvas = new Canvas(mask);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        float pitch = side / (float) GRID;
         float radius = pitch * DOT / 2f;
-        for (int y = 0; y < GRID; y++) {
-            for (int x = 0; x < GRID; x++) {
-                canvas.drawCircle((x + 0.5f) * pitch, (y + 0.5f) * pitch, radius, paint);
+        RectF inner = new RectF(corner, corner, width - corner, height - corner);
+        for (int y = 0; y < rows; y++) {
+            for (int x = 0; x < columns; x++) {
+                float cx = left + (x + 0.5f) * pitch;
+                float cy = top + (y + 0.5f) * pitch;
+                if (corner > 0 && outsideRoundRect(cx, cy, radius, inner, corner)) {
+                    continue;
+                }
+                canvas.drawCircle(cx, cy, radius, paint);
             }
         }
-        MASKS.put(side, mask);
+        MASKS.put(key, mask);
         return mask;
+    }
+
+    /** True if a dot at (cx, cy) would stick out of the rounded rectangle's corners. */
+    private static boolean outsideRoundRect(float cx, float cy, float radius, RectF inner,
+            float corner) {
+        float dx = cx < inner.left ? inner.left - cx : cx > inner.right ? cx - inner.right : 0;
+        float dy = cy < inner.top ? inner.top - cy : cy > inner.bottom ? cy - inner.bottom : 0;
+        float reach = corner - radius;
+        return dx * dx + dy * dy > reach * reach;
     }
 
     /** The emoji (or text) drawn once, fitted to a GLYPH x GLYPH square by its ink bounds. */

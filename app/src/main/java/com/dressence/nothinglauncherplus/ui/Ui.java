@@ -6,6 +6,7 @@ import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -257,6 +258,10 @@ final class Ui {
         } else if (!folder.coverText.isEmpty()) {
             AnimatedEmojiView text = new AnimatedEmojiView(activity);
             text.setDotMatrix(dotMatrix);
+            if (dotMatrix) {
+                // The whole badge is the dot screen, dots kept inside its rounded corners.
+                text.setDotPanel(new Rect(0, 0, size, size), size * 0.22f);
+            }
             text.setEmoji(folder.coverText,
                     animate ? Motion.parse(folder.coverMotion) : Motion.NONE, folder.id.hashCode());
             text.setTextSize(TypedValue.COMPLEX_UNIT_PX, size * 0.6f);

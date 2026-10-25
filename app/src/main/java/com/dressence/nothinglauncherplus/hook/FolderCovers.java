@@ -30,6 +30,9 @@ import java.util.concurrent.Executors;
 final class FolderCovers {
 
     private static final String COVER_TAG = "nlplus_cover";
+    private static final String PANEL_TAG = "nlplus_dot_panel";
+    /** Tile corner radius relative to its smaller side, when its background doesn't say. */
+    private static final float TILE_CORNER_RATIO = 0.085f;
     /** Cover side relative to the smaller side of the preview area. */
     private static final float COVER_SCALE = 0.86f;
     private static final float CORNER_RATIO = 0.22f;
@@ -50,11 +53,33 @@ final class FolderCovers {
     void apply(FrameLayout tile, View previews, Config.Folder folder, boolean animate,
             boolean dotMatrix) {
         CoverView cover = tile.findViewWithTag(COVER_TAG);
+        DotPanel panel = tile.findViewWithTag(PANEL_TAG);
+        boolean dots = folder != null && dotMatrix && folder.coverImageVersion == 0
+                && !folder.coverText.isEmpty();
+        if (panel != null && !dots) {
+            panel.hide();
+        }
         if (folder == null || !folder.hasCover()) {
             if (cover != null) {
                 cover.setVisibility(View.GONE);
             }
             previews.setVisibility(View.VISIBLE);
+            return;
+        }
+        if (dots) {
+            if (cover != null) {
+                cover.setVisibility(View.GONE);
+            }
+            if (panel == null) {
+                panel = new DotPanel(tile, previews);
+                panel.setTag(PANEL_TAG);
+                // Behind the name and everything else: the tile itself becomes the screen.
+                tile.addView(panel, 0, new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+            previews.setVisibility(View.INVISIBLE);
+            panel.show(folder.coverText,
+                    animate ? Motion.parse(folder.coverMotion) : Motion.NONE, folder.id.hashCode());
             return;
         }
         if (cover == null) {
@@ -106,6 +131,73 @@ final class FolderCovers {
         } catch (Exception e) {
             Hooks.log("cover " + uri + " unavailable: " + e);
             return null;
+        }
+    }
+
+    /**
+     * The whole tile as a dot screen: unlit dots everywhere, the emoji lit in a square where the
+     * app previews would be. The square follows the (invisible) preview grid's layout.
+     */
+    private static final class DotPanel extends AnimatedEmojiView
+            implements View.OnLayoutChangeListener {
+        private final View tile;
+        private final View previews;
+        private final android.graphics.Rect square = new android.graphics.Rect();
+
+        DotPanel(View tile, View previews) {
+            super(tile.getContext());
+            this.tile = tile;
+            this.previews = previews;
+            setDotMatrix(true);
+            previews.addOnLayoutChangeListener(this);
+        }
+
+        void show(String text, Motion motion, long seed) {
+            setEmoji(text, motion, seed);
+            setVisibility(VISIBLE);
+            place();
+        }
+
+        void hide() {
+            setEmoji("", Motion.NONE, 0);
+            setVisibility(GONE);
+        }
+
+        @Override
+        public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or,
+                int ob) {
+            place();
+        }
+
+        @Override
+        protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+            super.onSizeChanged(w, h, oldw, oldh);
+            place();
+        }
+
+        /** Same square the image cover uses, in tile coordinates (the panel fills the tile). */
+        private void place() {
+            int pw = previews.getWidth();
+            int ph = previews.getHeight();
+            if (pw == 0 || ph == 0 || getWidth() == 0) {
+                return;
+            }
+            int side = (int) (Math.min(pw, ph) * COVER_SCALE);
+            int cx = previews.getLeft() + pw / 2;
+            int cy = previews.getTop() + ph / 2;
+            square.set(cx - side / 2, cy - side / 2, cx - side / 2 + side, cy - side / 2 + side);
+            setDotPanel(square, tileCorner());
+        }
+
+        private float tileCorner() {
+            android.graphics.drawable.Drawable bg = tile.getBackground();
+            if (bg instanceof android.graphics.drawable.GradientDrawable) {
+                float r = ((android.graphics.drawable.GradientDrawable) bg).getCornerRadius();
+                if (r > 0) {
+                    return r;
+                }
+            }
+            return Math.min(tile.getWidth(), tile.getHeight()) * TILE_CORNER_RATIO;
         }
     }
 

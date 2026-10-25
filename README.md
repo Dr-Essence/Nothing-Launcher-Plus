@@ -38,12 +38,13 @@ plus your folders.
 
 ## Emoji animations
 
-- **Dot matrix** (on by default, switch in the module): every emoji cover is drawn as a coloured
-  25 x 25 Nothing-style dot matrix, the size of Nothing's Glyph Matrix, with faintly visible
-  unlit dots. Motion is rendered into the grid each frame (3 x 3 supersampled, five brightness
-  steps per dot), so an emoji moves across the dots like an image on an LED panel, with edge
-  dots dimming in between for smooth motion. Frames whose dots don't change aren't redrawn, and
-  each frame is one GPU draw. The emoji picker shows the dot versions too.
+- **Dot matrix** (on by default, switch in the module): the whole folder tile becomes a Nothing
+  dot screen, with faint unlit dots edge to edge (kept inside its rounded corners) and the emoji
+  lit in colour as a 32 x 32 dot image on the same grid. Motion is rendered into the grid each
+  frame (3 x 3 supersampled, four solid brightness steps per dot), so an emoji moves across the
+  dots like an image on an LED panel, with edge dots dimming in between for smooth motion.
+  Frames whose dots don't change aren't redrawn, and a frame is two draws of one shared dot
+  mask. The module's folder list and the emoji picker show the dot versions too.
 
 - **98 hand-tuned motions** (wave, heartbeat, hop, laugh, ring, launch, coin flip, flag wave,
   swim, flicker, …) built on spring physics: anticipation, squash and stretch, overshoot and

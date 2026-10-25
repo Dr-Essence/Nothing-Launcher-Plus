@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
+import android.graphics.Rect;
 import android.os.Build;
 import android.view.Gravity;
 import android.view.View;
@@ -33,6 +34,10 @@ public class AnimatedEmojiView extends TextView {
     private float phase;
     private boolean atRest = true;
     private DotMatrix dots;
+    /** Where the emoji square sits (null: centred), and whether dots fill the whole view. */
+    private Rect dotContent;
+    private boolean dotPanel;
+    private float dotCorner;
 
     public AnimatedEmojiView(Context context) {
         super(context);
@@ -57,6 +62,21 @@ public class AnimatedEmojiView extends TextView {
         } else {
             dots = null;
         }
+        invalidate();
+    }
+
+    /**
+     * Places the dot-matrix emoji at {@code content} and fills the rest of the view with unlit
+     * dots on the same pitch, inside rounded corners of radius {@code corner}: the whole view
+     * becomes one dot screen.
+     */
+    public void setDotPanel(Rect content, float corner) {
+        if (content.equals(dotContent) && dotPanel && corner == dotCorner) {
+            return;
+        }
+        dotContent = new Rect(content);
+        dotPanel = true;
+        dotCorner = corner;
         invalidate();
     }
 
@@ -164,7 +184,7 @@ public class AnimatedEmojiView extends TextView {
     @Override
     protected void onDraw(Canvas canvas) {
         if (dots != null) {
-            dots.draw(canvas, getWidth(), getHeight());
+            dots.draw(canvas, getWidth(), getHeight(), dotContent, dotPanel, dotCorner);
         } else {
             super.onDraw(canvas);
         }
