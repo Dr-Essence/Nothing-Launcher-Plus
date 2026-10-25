@@ -41,6 +41,7 @@ public class LauncherHook implements IXposedHookLoadPackage {
         Hooks.install("settings entry", () -> SettingsEntry.install(cl, store));
         Hooks.install("drawer background", () -> DrawerBackground.install(cl, store));
         new Landscape(cl, store).install();
+        new LandscapeGrid(cl).install();
         Hooks.install("controller", () -> Gamepad.install(cl, store));
         Hooks.install("reload receiver", () -> hookReloadReceiver(cl));
     }

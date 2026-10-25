@@ -27,8 +27,9 @@ plus your folders.
   opens the module.
 - Long-press a drawer folder for the launcher's own popup: **Add to home screen** creates a real
   home-screen folder with the same name and apps; **Edit** (custom folders) opens the folder editor.
-- **Landscape (beta)**: the home screen and app drawer follow auto-rotate, laid out with
-  AOSP's landscape layout — see *Landscape* below.
+- **Landscape (beta)**: the home screen and app drawer follow auto-rotate. Each home page is
+  rearranged into a wide grid automatically, while your portrait layout stays as it is — see
+  *Landscape* below.
 - **Game controllers**: navigate home and the drawer with a DualSense, DualShock, Xbox, GameSir,
   Backbone or any standard gamepad — see *Controllers* below.
 - **Export / Import** saves folders, options and cover images to one file, so the setup survives
@@ -74,6 +75,22 @@ there, the module answers Nothing's sizing methods with AOSP's vertical-bar layo
   by AOSP's own logic when rows get tight;
 - the 1080×2392 reference transposed, so icons keep their size;
 - the Smart drawer gets 3–6 tile columns (4 on most phones) instead of two giant tiles.
+
+### Landscape grid
+
+A portrait page of C columns × R rows is shown in landscape as **2C × ⌈R/2⌉**: the top half
+of the page on the left, the bottom half on the right (a 4×6 page becomes 8×3). Cells keep
+almost exactly their portrait shape, so icons, folders and widgets look as they do in portrait.
+
+- Only the presentation changes. Positions go through AOSP's `CellPosMapper` (the hook tablets
+  use for two-panel pages), so whatever you move, add or resize in landscape is saved in portrait
+  coordinates, and rotating back shows your portrait layout.
+- Items that sit across the middle row are shown on the half that holds most of them, in a free
+  spot. Widgets taller than half the page are shown at half-page height; their real size is kept.
+- The launcher deletes items that overlap or leave the grid when it next loads. Every landscape
+  edit is therefore checked against the portrait page: anything that wouldn't fit there (a widget
+  dropped across the middle, for example) is moved to the nearest free portrait spot and the page
+  refreshes.
 
 Each landscape profile is logged (`NothingLauncher+: landscape profile …`) with its geometry, so
 LSPosed logs show exactly what was laid out. Portrait is untouched.
@@ -143,6 +160,7 @@ code is in `com.nothing.launcher.*`, and R8 has obfuscated most of it.
 | Nothing DeviceProfile | `v6.h` (overrides sizing; base methods made abstract) | Parameter type of the Smart profile's `n(Context, …)` |
 | Home rotation | `RotationHelper.notifyChange` / `mHomeRotationEnabled` | Names kept |
 | Smart drawer profile | `smart.z.n(Context, v6.h)` | Type of `SmartFolderContainer.smartProfile` |
+| Landscape grid | `CellPosMapper`, `Workspace.insertNewWorkspaceScreen`, `DeviceProfile.getCellSize`, `ModelWriter.updateItemInfoProps` | Names kept |
 | Controller keys | `Launcher.dispatchKeyEvent` | Name kept |
 | Display style pref | `pref_all_app_display_style` (false = Smart) | — |
 
