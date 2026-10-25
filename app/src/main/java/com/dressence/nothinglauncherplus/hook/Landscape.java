@@ -8,6 +8,7 @@ import android.graphics.Rect;
 import com.dressence.nothinglauncherplus.Config;
 
 import java.lang.reflect.Method;
+import java.util.List;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -30,6 +31,7 @@ final class Landscape {
     private static final String CLS_UTILITIES = "com.android.launcher3.Utilities";
     private static final String CLS_ROTATION_HELPER = "com.android.launcher3.states.RotationHelper";
     private static final String CLS_LAUNCHER = "com.android.launcher3.Launcher";
+    private static final String CLS_IDP = "com.android.launcher3.InvariantDeviceProfile";
 
     /** Nothing's portrait reference size, transposed for landscape. */
     private static final float REFERENCE_LONG = 2392f;
@@ -51,6 +53,7 @@ final class Landscape {
 
     void install() {
         Hooks.install("home rotation", this::hookRotation);
+        Hooks.install("landscape profiles", this::hookProfileChoice);
         Hooks.install("landscape layout", this::hookDeviceProfile);
         Hooks.install("landscape smart drawer", this::hookSmartProfile);
         Hooks.install("landscape icon fit", this::hookIconFit);
@@ -87,6 +90,30 @@ final class Landscape {
                         XposedHelpers.callMethod(launcher, "getRotationHelper"), "notifyChange");
             }
         });
+    }
+
+    /**
+     * Nothing builds a DeviceProfile for every orientation but drops the landscape ones from
+     * {@code supportedProfiles}, the list the launcher picks its profile from, so a rotated
+     * launcher kept laying out its portrait profile on a landscape window. With rotation on, pick
+     * from the full list (Nothing keeps it for Recents) so landscape gets its landscape profile.
+     */
+    private void hookProfileChoice() {
+        Class<?> idp = XposedHelpers.findClass(CLS_IDP, cl);
+        XposedHelpers.findAndHookMethod(idp, "getDeviceProfile", Context.class, List.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        Object o = param.thisObject;
+                        if (store.get().allowRotation && param.args[1]
+                                == XposedHelpers.getObjectField(o, "supportedProfiles")) {
+                            param.args[1] = XposedHelpers.getObjectField(
+                                    o, "recentActivitySupportedProfiles");
+                        }
+                    }
+                });
+        // getDeviceProfile(Context) only forwards to the hooked overload; keep it from inlining.
+        Hooks.deoptimizeAll(idp, "getDeviceProfile");
     }
 
     // ---------------------------------------------------------------------------------------
