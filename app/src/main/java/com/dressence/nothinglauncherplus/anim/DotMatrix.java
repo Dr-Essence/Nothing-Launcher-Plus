@@ -9,6 +9,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.text.TextPaint;
 import android.util.LruCache;
@@ -193,11 +194,12 @@ final class DotMatrix {
     }
 
     /**
-     * Shows {@code text} in dots at {@code area} (view coordinates, usually where the hidden
-     * folder name sits), in {@code color}; null text removes it.
+     * Shows {@code text} at {@code area} (view coordinates, usually where the hidden folder name
+     * sits), in {@code color}: in {@code typeface} at {@code size} px, or in dots when the
+     * typeface is null; null text removes it.
      */
-    void setLabel(CharSequence text, int color, Rect area) {
-        label.set(text, color, area);
+    void setLabel(CharSequence text, int color, Rect area, Typeface typeface, float size) {
+        label.set(text, color, area, typeface, size);
     }
 
     /** Advances a label too long for the panel by one dot when due; true if it moved. */

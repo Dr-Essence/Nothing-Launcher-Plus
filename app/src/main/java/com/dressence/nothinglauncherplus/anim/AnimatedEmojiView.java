@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.view.Gravity;
 import android.view.View;
@@ -140,12 +141,14 @@ public class AnimatedEmojiView extends TextView {
     }
 
     /**
-     * Shows a dot-matrix label at {@code area} (view coordinates), on the panel's own dots;
-     * null or empty text removes it.
+     * Shows a label at {@code area} (view coordinates) on the dot panel: in {@code typeface} at
+     * {@code size} px, or lit on the panel's own dots when the typeface is null; null or empty
+     * text removes it.
      */
-    public void setDotLabel(CharSequence text, int color, Rect area) {
+    public void setDotLabel(CharSequence text, int color, Rect area, Typeface typeface,
+            float size) {
         if (dots != null) {
-            dots.setLabel(text, color, area);
+            dots.setLabel(text, color, area, typeface, size);
             invalidate();
             MotionDriver.get().wake();
         }

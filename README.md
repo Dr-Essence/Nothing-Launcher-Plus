@@ -68,9 +68,11 @@ plus your folders.
 - **Reactions**: touch a folder and its emoji reacts at once (its motion plus a flare of its
   effect, a double blink for faces); opening the drawer makes the covers on screen greet you,
   one after another.
-- **The name is on the screen too**: the folder name is lit on the same dots below the emoji in a
-  compact 3 x 5 LED font (accents and emoji in names are rasterized onto the dots, in colour), and a
-  name too long for the tile scrolls through it a dot at a time.
+- **The name is on the screen too**, drawn by the dot panel in Nothing's own NDot 57 typeface at
+  the launcher's own name size. The font is not shipped with the module: it is loaded from the
+  phone (the system fonts, or Nothing's widgets app, which bundles it). Without it, the name is
+  lit on the panel's dots in a compact 3 x 5 LED font. A name too long for the tile scrolls
+  through it a dot's width at a time.
 
 - **98 hand-tuned motions** (wave, heartbeat, hop, laugh, ring, launch, coin flip, flag wave,
   swim, flicker, …) built on spring physics: anticipation, squash and stretch, overshoot and

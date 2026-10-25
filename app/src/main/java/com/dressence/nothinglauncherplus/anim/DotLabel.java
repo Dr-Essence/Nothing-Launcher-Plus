@@ -8,6 +8,7 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Shader;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.text.TextPaint;
 
@@ -16,7 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A line of text lit on a dot panel's own dots, like the lettering on a Nothing Glyph or an LED
+ * A folder name on the dot panel. With Nothing's own NDot typeface (found on the device) it is
+ * drawn in that font at the launcher's own name size, so it reads exactly like Nothing's
+ * lettering. Without it, the text is lit on the panel's own dots, like the lettering on a Nothing Glyph or an LED
  * sign: 5 dots tall in a {@link DotFont}, anything the font lacks (accents, emoji) rasterized
  * from the system font onto the same dots, emoji in their own colours. Text wider than the
  * panel scrolls through it one whole dot at a time, with a pause at the start.
@@ -40,19 +43,36 @@ final class DotLabel {
     private long start;
     /** Columns the panel had available when last drawn (for deciding to scroll). */
     private int window = Integer.MAX_VALUE;
+    /** Font mode: the text and its paint (null in dot mode). */
+    private String text;
+    private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+    private float textWidth;
 
-    void set(CharSequence text, int color, Rect where) {
+    /**
+     * Shows {@code value} centred on {@code where}: in {@code typeface} at {@code size} px if
+     * there is one, else in dots.
+     */
+    void set(CharSequence value, int color, Rect where, Typeface typeface, float size) {
         bitmap = null;
+        text = null;
         width = 0;
         offset = 0;
         start = System.nanoTime();
-        if (text == null || text.length() == 0 || where == null || where.isEmpty()) {
+        if (value == null || value.length() == 0 || where == null || where.isEmpty()) {
             return;
         }
         area.set(where);
+        if (typeface != null && size > 0) {
+            text = value.toString().trim();
+            textPaint.setTypeface(typeface);
+            textPaint.setTextSize(size);
+            textPaint.setColor(color);
+            textWidth = textPaint.measureText(text);
+            return;
+        }
         List<int[]> columns = new ArrayList<>();
         BreakIterator graphemes = BreakIterator.getCharacterInstance();
-        String s = text.toString().trim();
+        String s = value.toString().trim();
         graphemes.setText(s);
         for (int from = graphemes.first(), to = graphemes.next(); to != BreakIterator.DONE;
                 from = to, to = graphemes.next()) {
@@ -156,7 +176,7 @@ final class DotLabel {
     }
 
     private boolean scrolls() {
-        return bitmap != null && width > window;
+        return (bitmap != null || text != null) && width > window;
     }
 
     boolean scroll(long now) {
@@ -188,6 +208,10 @@ final class DotLabel {
      */
     void draw(Canvas canvas, Bitmap mask, Paint paint, float pitch, int columns, float left,
             float top) {
+        if (text != null) {
+            drawText(canvas, pitch, columns, left);
+            return;
+        }
         if (bitmap == null) {
             return;
         }
@@ -209,6 +233,33 @@ final class DotLabel {
                 int col = 1 - offset + copy * (width + LOOP_GAP);
                 place(paint, pitch, left + col * pitch, top + row * pitch);
                 canvas.drawBitmap(mask, 0, 0, paint);
+            }
+        }
+        canvas.restore();
+    }
+
+    /**
+     * The name in the NDot typeface, inside the panel's one-dot margin; a long name scrolls a
+     * dot's width at a time, like the dot version.
+     */
+    private void drawText(Canvas canvas, float pitch, int columns, float left) {
+        float from = left + pitch;
+        float to = left + (columns - 1) * pitch;
+        // Scrolling is counted in dots, so both modes move the same way.
+        window = (int) ((to - from) / pitch);
+        width = (int) Math.ceil(textWidth / pitch);
+        Paint.FontMetrics fm = textPaint.getFontMetrics();
+        float baseline = area.exactCenterY() - (fm.ascent + fm.descent) / 2;
+        canvas.save();
+        canvas.clipRect(from, area.top - pitch, to, area.bottom + pitch);
+        if (!scrolls()) {
+            float x = area.exactCenterX() - textWidth / 2;
+            x = Math.max(from, Math.min(to - textWidth, x));
+            canvas.drawText(text, x, baseline, textPaint);
+        } else {
+            for (int copy = 0; copy < 2; copy++) {
+                float x = from + (copy * (width + LOOP_GAP) - offset) * pitch;
+                canvas.drawText(text, x, baseline, textPaint);
             }
         }
         canvas.restore();

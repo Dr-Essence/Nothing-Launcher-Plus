@@ -190,7 +190,7 @@ final class FolderCovers {
 
         void hide() {
             setEmoji("", Motion.NONE, 0);
-            setDotLabel(null, 0, null);
+            setDotLabel(null, 0, null, null, 0);
             shownLabel = null;
             setVisibility(GONE);
         }
@@ -259,7 +259,8 @@ final class FolderCovers {
                 return; // Unchanged: keep a scrolling name where it is.
             }
             shownLabel = key;
-            setDotLabel(text, ink, label);
+            // Nothing's own NDot at the launcher's own name size; dots if the phone lacks it.
+            setDotLabel(text, ink, label, NdotFont.get(getContext()), name.getTextSize());
         }
 
         /** Sets {@code out} to the tile's card in tile coordinates; returns its corner radius. */
