@@ -284,13 +284,14 @@ final class DotMatrix {
         if (label.present()) {
             float dot = label.dot(pitch);
             int rows = label.rows() + 2;
-            float h = rows * dot;
+            // Half a dot of glass all round the dots, so none touches the rim.
+            float h = (rows + 1) * dot;
             float top = Math.max(panel.top + bezel, label.centerY() - h / 2);
             RectF pill = new RectF(panel.left + bezel, top, panel.right - bezel, top + h);
-            // Dots run right out to the pill's round ends (the mask follows the curve).
-            int cols = (int) (pill.width() / dot);
+            // Dots run out to the pill's round ends, following the curve inside the rim.
+            int cols = (int) ((pill.width() - dot) / dot);
             name = new Grid(dot, cols, rows, pill.left + (pill.width() - cols * dot) / 2,
-                    top, pill, h / 2);
+                    top + dot / 2, pill, h / 2);
         }
         // The emoji's screen fills the rest of the face.
         RectF glass = new RectF(panel.left + bezel,
@@ -303,8 +304,9 @@ final class DotMatrix {
             return;
         }
         pitch = side / GRID;
-        int columns = (int) (glass.width() / pitch);
-        int rows = (int) (glass.height() / pitch);
+        // At least half a dot of glass between the outer dots and the rim.
+        int columns = (int) ((glass.width() - pitch) / pitch);
+        int rows = (int) ((glass.height() - pitch) / pitch);
         float left = glass.left + (glass.width() - columns * pitch) / 2f;
         float top = glass.top + (glass.height() - rows * pitch) / 2f;
         Grid screen = new Grid(pitch, columns, rows, left, top, glass, inner);
@@ -396,14 +398,19 @@ final class DotMatrix {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         for (Grid g : grids) {
             float radius = g.pitch * DOT / 2f;
-            float corner = Math.min(g.corner, Math.min(g.bounds.width(), g.bounds.height()) / 2);
-            RectF inner = new RectF(g.bounds.left + corner, g.bounds.top + corner,
-                    g.bounds.right - corner, g.bounds.bottom - corner);
+            // Dots keep clear of the rim: they must fit inside the glass shrunk by this.
+            float inset = g.pitch * 0.25f;
+            RectF glass = new RectF(g.bounds);
+            glass.inset(inset, inset);
+            float corner = Math.max(0, Math.min(g.corner - inset,
+                    Math.min(glass.width(), glass.height()) / 2));
+            RectF inner = new RectF(glass.left + corner, glass.top + corner,
+                    glass.right - corner, glass.bottom - corner);
             for (int y = 0; y < g.rows; y++) {
                 for (int x = 0; x < g.columns; x++) {
                     float cx = g.left + (x + 0.5f) * g.pitch;
                     float cy = g.top + (y + 0.5f) * g.pitch;
-                    if (corner > 0 && outsideRoundRect(cx, cy, radius, inner, corner)) {
+                    if (outsideRoundRect(cx, cy, radius, inner, Math.max(corner, radius))) {
                         continue;
                     }
                     canvas.drawCircle(cx, cy, radius, paint);
