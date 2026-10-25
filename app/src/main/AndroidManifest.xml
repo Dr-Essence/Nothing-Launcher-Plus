@@ -11,7 +11,7 @@
     <application
         android:allowBackup="false"
         android:label="Nothing Launcher+"
-        android:theme="@android:style/Theme.DeviceDefault.DayNight">
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
         <meta-data android:name="xposedmodule" android:value="true" />
         <meta-data android:name="xposeddescription"
@@ -32,5 +32,16 @@
                 <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS" />
             </intent-filter>
         </activity>
+
+        <!-- Opened from the launcher's long-press "Edit" item on a custom folder. -->
+        <activity
+            android:name=".ui.FolderActivity"
+            android:exported="true" />
+
+        <!-- Read-only cover images for the launcher, which cannot read this app's files. -->
+        <provider
+            android:name=".CoverProvider"
+            android:authorities="com.dressence.nothinglauncherplus.covers"
+            android:exported="true" />
     </application>
 </manifest>

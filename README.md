@@ -8,14 +8,23 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
 
 ## Features
 
-- Create, rename, reorder and delete drawer folders, and pick the apps in each.
-- Adds a **Custom folders** row to *Nothing Launcher settings → App drawer & Search → Drawer
-  layout*, under the Default / Smart (Beta) picker. Tapping it opens the folder manager.
-- Choose whether custom folders appear before or after the automatic categories.
-- You can hide the automatic categories. Apps not in a custom folder then go to "Others".
-- Long-press any drawer folder (custom or automatic) and pick **Add to home screen** from the
-  launcher's own popup. The launcher creates a real home-screen folder with the same name and apps,
-  which you can then edit, move or delete like any other folder.
+Everything new is opt-in: with the defaults the drawer looks exactly like stock Smart (Beta)
+plus your folders.
+
+- Create, rename and delete drawer folders and pick the apps in each.
+- **Reorder apps inside a folder** by dragging them in the folder editor. The drawer tile and
+  the opened folder follow that order.
+- **Folder covers**: give a folder an image (centre-cropped to a square, stored at 1024 px) or an
+  emoji. The cover replaces the app previews on the drawer tile. It stays square and never
+  stretches.
+- **Apps without a folder as icons**: instead of an "Others" folder, the remaining apps are listed
+  as normal app icons below the folders.
+- **Drawer background opacity** slider, so the wallpaper shows through behind the folders.
+- Show custom folders before or after Nothing's categories, or hide the automatic categories.
+- A **Custom folders** row in *Nothing Launcher settings → App drawer & Search → Drawer layout*
+  opens the module.
+- Long-press a drawer folder for the launcher's own popup: **Add to home screen** creates a real
+  home-screen folder with the same name and apps; **Edit** (custom folders) opens the folder editor.
 - Changes apply right away through a reload broadcast. You don't need to restart the launcher.
 
 ## Requirements
@@ -61,6 +70,10 @@ code is in `com.nothing.launcher.*`, and R8 has obfuscated most of it.
 | Folder tile | `SmartFolderIcon.bind(GroupAdapterItem)` | Name kept |
 | Opened folder sheet | `SmartFullSheet.Companion.b(ActivityContext, SmartFolderIcon)` | Signature match |
 | Drawer settings screen | `AllAppSettingsFragment.onCreatePreferences` (`all_app_settings_preferences.xml`) | Name kept |
+| Group item factory (`GroupAdapterItem.Companion.create`) | `smart.e$b$a.a(int, String, List)` | Signature match |
+| Smart grid decoration | `smart.c` | Type of `NTLauncherAllAppsContainerView.gridDirection` |
+| Grid spans | `AllAppsGridAdapter$GridSpanSizer.getSpanSize` | Name kept |
+| Drawer background | `AllAppsState.getWorkspaceScrimColor` | Name kept |
 | Drawer → home folder | `OptionsPopupView.show`, `LauncherModel.addAndBindAddedWorkspaceItems`, `ModelWriter.addItemToDatabase` | Names kept |
 | Display style pref | `pref_all_app_display_style` (false = Smart) | — |
 
