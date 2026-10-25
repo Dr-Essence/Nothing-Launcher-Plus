@@ -95,25 +95,55 @@ final class Landscape {
     /**
      * Nothing builds a DeviceProfile for every orientation but drops the landscape ones from
      * {@code supportedProfiles}, the list the launcher picks its profile from, so a rotated
-     * launcher kept laying out its portrait profile on a landscape window. With rotation on, pick
-     * from the full list (Nothing keeps it for Recents) so landscape gets its landscape profile.
+     * launcher kept laying out its portrait profile on a landscape window. With rotation on, the
+     * list is swapped for the full one Nothing keeps for Recents. The field itself is changed
+     * because the lookups that read it are small enough for ART to inline past any hook.
      */
     private void hookProfileChoice() {
         Class<?> idp = XposedHelpers.findClass(CLS_IDP, cl);
-        XposedHelpers.findAndHookMethod(idp, "getDeviceProfile", Context.class, List.class,
+        XposedBridge.hookAllMethods(idp, "initGrid", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                if (param.args.length == 4) {
+                    applyProfileChoice(param.thisObject);
+                }
+            }
+        });
+        Class<?> launcherClass = XposedHelpers.findClass(CLS_LAUNCHER, cl);
+        XposedHelpers.findAndHookMethod(launcherClass, "dispatchDeviceProfileChanged",
                 new XC_MethodHook() {
                     @Override
-                    protected void beforeHookedMethod(MethodHookParam param) {
-                        Object o = param.thisObject;
-                        if (store.get().allowRotation && param.args[1]
-                                == XposedHelpers.getObjectField(o, "supportedProfiles")) {
-                            param.args[1] = XposedHelpers.getObjectField(
-                                    o, "recentActivitySupportedProfiles");
-                        }
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Object dp = XposedHelpers.callMethod(param.thisObject, "getDeviceProfile");
+                        Hooks.log("launcher profile " + XposedHelpers.getIntField(dp, "widthPx")
+                                + "x" + XposedHelpers.getIntField(dp, "heightPx")
+                                + " landscape=" + isPhoneLandscape(dp));
                     }
                 });
-        // getDeviceProfile(Context) only forwards to the hooked overload; keep it from inlining.
-        Hooks.deoptimizeAll(idp, "getDeviceProfile");
+        store.addChangeListener(() -> {
+            Object launcher = XposedHelpers.callMethod(
+                    XposedHelpers.getStaticObjectField(launcherClass, "ACTIVITY_TRACKER"),
+                    "getCreatedContext");
+            if (launcher != null) {
+                applyProfileChoice(XposedHelpers.getObjectField(
+                        XposedHelpers.callMethod(launcher, "getDeviceProfile"), "inv"));
+            }
+        });
+    }
+
+    private void applyProfileChoice(Object idp) {
+        Object portraitOnly = XposedHelpers.getAdditionalInstanceField(idp, "nlplusPortrait");
+        Object all = XposedHelpers.getObjectField(idp, "recentActivitySupportedProfiles");
+        Object current = XposedHelpers.getObjectField(idp, "supportedProfiles");
+        if (current != all) {
+            portraitOnly = current;
+            XposedHelpers.setAdditionalInstanceField(idp, "nlplusPortrait", current);
+        }
+        Object wanted = store.get().allowRotation || portraitOnly == null ? all : portraitOnly;
+        if (wanted != current) {
+            XposedHelpers.setObjectField(idp, "supportedProfiles", wanted);
+            Hooks.log("launcher profiles: " + (wanted == all ? "all orientations" : "portrait only"));
+        }
     }
 
     // ---------------------------------------------------------------------------------------
