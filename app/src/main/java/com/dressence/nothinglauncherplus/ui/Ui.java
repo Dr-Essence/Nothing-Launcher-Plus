@@ -267,7 +267,7 @@ final class Ui {
             text.setEmoji(folder.coverText,
                     animate ? Motion.parse(folder.coverMotion) : Motion.NONE,
                     animate ? DotEffect.parse(folder.coverEffect) : DotEffect.NONE,
-                    folder.id.hashCode());
+                    DotEffect.anchor(folder.coverEffect), folder.id.hashCode());
             text.setOnClickListener(v -> text.react());
             text.setTextSize(TypedValue.COMPLEX_UNIT_PX, size * 0.6f);
             // The emoji may hop past the badge edge mid-animation.

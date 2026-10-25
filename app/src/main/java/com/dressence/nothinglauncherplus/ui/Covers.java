@@ -62,7 +62,7 @@ final class Covers {
         deleteImage(context, folder);
         folder.coverText = text;
         folder.coverMotion = motion;
-        folder.coverEffect = EmojiCatalog.get(context).effectFor(text).name();
+        folder.coverEffect = EmojiCatalog.get(context).effectFor(text);
     }
 
     static void clear(Context context, Config.Folder folder) {

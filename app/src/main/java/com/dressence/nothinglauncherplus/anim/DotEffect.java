@@ -403,32 +403,131 @@ public enum DotEffect {
         }
     },
 
-    /** Speakers, megaphones, bells: sound waves ripple outwards. */
+    /** Speakers: their own sound waves light up inner to outer on the beat (see MusicEffects). */
     SOUND {
         @Override
         void apply(Scene s) {
-            Regions r = s.regions;
-            // Sound pulses travel out from the source through the emoji, brightening its dots
-            // as each wavefront passes, like a speaker cone thumping on an LED panel.
-            float cx = r.minX + (r.maxX - r.minX) * 0.3f;
-            float cy = (r.minY + r.maxY) / 2f;
-            for (int k = 0; k < 2; k++) {
-                float life = cycle(s, 1.1f - 0.4f * s.boost, k * 0.55f);
-                float rad = life * 26;
-                float strength = 0.85f * (1 - 0.6f * life);
-                for (int i = 0; i < s.dots.length; i++) {
-                    int ri = s.restIndex(i);
-                    if (ri < 0 || !r.ink[ri]) {
-                        continue;
-                    }
-                    float d = (float) Math.hypot(ri % r.size - cx, ri / r.size - cy);
-                    float edge = 1 - Math.abs(d - rad) / 2f;
-                    if (edge > 0) {
-                        s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFFFFFFF, strength * edge),
-                                s.dots[i] >>> 24);
-                    }
-                }
-            }
+            MusicEffects.speaker(s);
+        }
+    },
+
+    /** Muted speakers and bells: the red sign flares on the beat. */
+    MUTED {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.muted(s);
+        }
+    },
+
+    /** Bells: ding-ding, rings of light from where they are struck. */
+    BELL {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.bell(s);
+        }
+    },
+
+    /** Megaphones: syllables travelling through the horn to its mouth. */
+    HORN {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.horn(s);
+        }
+    },
+
+    /** Antennas and dishes: signal pulses from the tip. */
+    SIGNAL {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.signal(s);
+        }
+    },
+
+    /** Musical notes: each head lights up as its note sounds. */
+    MELODY {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.notes(s);
+        }
+    },
+
+    /** A score: a playhead runs along the staff. */
+    SCORE {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.score(s);
+        }
+    },
+
+    /** Headphones, radios, faders: equaliser bars to the beat. */
+    EQUALIZER {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.equaliser(s);
+        }
+    },
+
+    /** Microphones: the grille glints with a voice. */
+    MIC {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.mic(s);
+        }
+    },
+
+    /** Wind instruments: notes come out of the bell. */
+    WIND {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.wind(s);
+        }
+    },
+
+    /** String instruments: strummed strings vibrate. */
+    STRUM {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.strum(s);
+        }
+    },
+
+    /** Harps: a glissando across the strings. */
+    GLISS {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.gliss(s);
+        }
+    },
+
+    /** Keyboards: keys light up as a melody plays. */
+    KEYS {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.keys(s);
+        }
+    },
+
+    /** Drums: the head is hit and ripples. */
+    DRUM {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.drum(s);
+        }
+    },
+
+    /** Maracas: the beads rattle as they are shaken. */
+    MARACAS {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.maracas(s);
+        }
+    },
+
+    /** Mixing desks: the knobs turn. */
+    KNOBS {
+        @Override
+        void apply(Scene s) {
+            MusicEffects.knobs(s);
         }
     },
 
@@ -742,13 +841,13 @@ public enum DotEffect {
 
     abstract void apply(Scene s);
 
-    /** True for effects that belong on a face, so reactions can be expressive. */
     /** A display name: "STAR_EYES" reads "Star eyes". */
     public String title() {
         String s = name().replace('_', ' ').toLowerCase(java.util.Locale.ROOT);
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
+    /** True for effects that belong on a face, so reactions can be expressive. */
     public boolean isFace() {
         switch (this) {
             case BLINK: case HEARTS: case TEARS: case SWEAT: case SLEEPY: case ANGRY:
@@ -759,7 +858,14 @@ public enum DotEffect {
         }
     }
 
+    /**
+     * The effect named by a spec from the emoji table, "NAME" or "NAME:a,b,…" (with anchor
+     * points); anything unknown is {@link #SPARKLE}.
+     */
     public static DotEffect parse(String name) {
+        if (name != null && name.indexOf(':') >= 0) {
+            name = name.substring(0, name.indexOf(':'));
+        }
         if (name != null) {
             for (DotEffect e : values()) {
                 if (e.name().equals(name)) {
@@ -770,13 +876,31 @@ public enum DotEffect {
         return SPARKLE;
     }
 
+    /** The anchor points of a spec ("NAME:0.2,0.5"), or null when it has none. */
+    public static float[] anchor(String spec) {
+        int colon = spec == null ? -1 : spec.indexOf(':');
+        if (colon < 0) {
+            return null;
+        }
+        String[] parts = spec.substring(colon + 1).split(",");
+        float[] out = new float[parts.length];
+        try {
+            for (int i = 0; i < parts.length; i++) {
+                out[i] = Float.parseFloat(parts[i].trim());
+            }
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        return out;
+    }
+
     // -------------------------------------------------------------------------------------
     // Shared pieces
     // -------------------------------------------------------------------------------------
 
     private static final String[] HEART = {"x.x", "xxx", ".x."};
     private static final String[] ZED = {"xxx", ".x.", "xxx"};
-    private static final String[] NOTE = {".xx", ".x.", "xx."};
+    static final String[] NOTE = {"..xx", "..x.", "..x.", "xxx.", "xx.."};
     private static final String[] CROSS = {".x.", "xxx", ".x."};
 
     /** Position in a repeating life cycle of {@code period} seconds, 0..1. */

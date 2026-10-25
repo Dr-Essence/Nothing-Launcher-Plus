@@ -20,6 +20,8 @@ final class Scene {
     float boost;
     /** Seconds since the last reaction began (huge when there was none). */
     float since = Float.MAX_VALUE;
+    /** Points the emoji table gives an effect (fractions of the emoji's bounds), or null. */
+    float[] anchor;
     /** Per-emoji seed: every emoji runs its effect its own way. */
     int seed;
     /** Rest-to-output affine map: ox = a*x + b*y + c, oy = d*x + e*y + f. */
@@ -67,6 +69,19 @@ final class Scene {
     /** Lights the output dot nearest to resting position (x, y) in {@code color}. */
     void plotRest(float x, float y, int color) {
         plot(a * (x + 0.5f) + b * (y + 0.5f) + c, d * (x + 0.5f) + e * (y + 0.5f) + f, color);
+    }
+
+    /** Paints the output dot nearest to resting position (x, y), over whatever is there. */
+    void paintRest(float x, float y, int color) {
+        float ox = a * (x + 0.5f) + b * (y + 0.5f) + c;
+        float oy = d * (x + 0.5f) + e * (y + 0.5f) + f;
+        int ix = (int) Math.floor(ox);
+        int iy = (int) Math.floor(oy);
+        if (ix >= 0 && iy >= 0 && ix < size && iy < size && (color >>> 24) > 0) {
+            int i = iy * size + ix;
+            dots[i] = Scene.mix(dots[i] == 0 ? color & 0xFFFFFF : dots[i], color | 0xFF000000,
+                    (color >>> 24) / 255f) | 0xFF000000;
+        }
     }
 
     /** Lights output dot (x, y) unless it is already brighter. */

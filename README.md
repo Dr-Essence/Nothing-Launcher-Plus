@@ -52,8 +52,16 @@ plus your folders.
   swirls with magic, faces blink (a real blink: half-closed, shut into a "‿" lash line, open),
   tears and sweat run down the face and form again dot by dot, fire flickers, clouds rain,
   coffee steams, buildings light their windows one by one, speakers pulse, notes rise, stars
-  twinkle, clocks tick, sirens flash, fish blow bubbles, and so on: 36 effects, mapped to every
-  keyboard emoji by the same generator as the motions. Effects find their parts of the emoji by
+  twinkle, clocks tick, sirens flash, fish blow bubbles, and so on, mapped to every keyboard
+  emoji by the same generator as the motions.
+- **Music plays by its own logic**, all to one shared 96 BPM beat, so the music folders in the
+  drawer groove together: 🔊 lights its own drawn sound waves inner to outer like a volume
+  meter, 🎵 🎶 light each note head as it sounds, 🎼 runs a playhead along the staff, 🎹 plays a
+  melody on its keys (split where the black keys sit), 🥁 🪘 are hit and ripple from the head,
+  🎸 🎻 🪕 strings vibrate after each strum, 🎷 🎺 📯 blow notes out of the bell, 🎧 shows an
+  equaliser between the cups and 📻 in its display, 🎤 🎙️ glint with a voice, 🔔 rings
+  ding-ding from the clapper, 📢 speaks syllables through the horn, 🔇 🔕 flare their red sign,
+  🪇 rattle, 🎛️ turn their knobs. Effects find their parts of the emoji by
   analysing its resting dots (screens, glass balls, eyes, water, window panes), so they work on
   any emoji with no hand-drawn assets, follow the emoji as it moves, and play at 24 fps like a
   real LED panel.

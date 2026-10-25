@@ -24,6 +24,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.dressence.nothinglauncherplus.anim.AnimatedEmojiView;
+import com.dressence.nothinglauncherplus.anim.DotEffect;
 import com.dressence.nothinglauncherplus.anim.Motion;
 
 import java.util.ArrayList;
@@ -253,7 +254,8 @@ public class EmojiPickerActivity extends Activity {
             return;
         }
         selected = entry;
-        preview.setEmoji(entry.emoji, entry.motion, entry.effect, seed);
+        preview.setEmoji(entry.emoji, entry.motion, entry.effect,
+                DotEffect.anchor(entry.effectSpec), seed);
         previewName.setText(capitalize(entry.name));
         previewMotion.setText("Animation · " + entry.motion.title
                 + (dotMatrix ? " · " + entry.effect.title() : ""));

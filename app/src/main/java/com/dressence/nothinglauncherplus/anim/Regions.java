@@ -65,6 +65,8 @@ final class Regions {
     /** Small dark blobs in the upper part: eyes (of a face, an animal, a robot). */
     final boolean[] eyes;
     int eyeCount;
+    /** Per-effect analyses, computed once on first use. */
+    final java.util.Map<String, Object> memo = new java.util.HashMap<>();
     /** Window pane number of each dot (-1 for none), and how many panes there are. */
     final int[] window;
     int windowCount;

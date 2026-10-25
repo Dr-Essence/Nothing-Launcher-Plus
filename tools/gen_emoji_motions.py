@@ -373,6 +373,72 @@ EFFECT_EXACT = {
     "unicorn": "RAINBOW", "firefly": "GLOW", "butterfly": "SPARKLE", "peacock": "SPARKLE",
 }
 
+# Things that make sound, each with its own logic (see anim/MusicEffects.java). Anchor points
+# after the colon are fractions of the emoji's drawn bounds (Noto Color Emoji): where a horn's
+# narrow end, a bell's clapper or a guitar's bridge and nut are.
+EFFECT_MUSIC = {
+    # Speakers light their own drawn waves; the quiet one sends a small wave from its mouth.
+    "speaker high volume": "SOUND", "speaker medium volume": "SOUND",
+    "speaker low volume": "SOUND:0.97,0.3,-30", "speaking head": "SOUND",
+    "muted speaker": "MUTED", "bell with slash": "MUTED",
+    "bell": "BELL:0.5,0.92", "bellhop bell": "BELL:0.5,0.05",
+    "loudspeaker": "HORN:0.1,0.45", "megaphone": "HORN:0.05,0.75",
+    "satellite antenna": "SIGNAL:0.8,0.05",
+    "musical note": "MELODY", "musical notes": "MELODY", "musical score": "SCORE",
+    "headphone": "EQUALIZER:0.33,0.35,0.67,0.95", "radio": "EQUALIZER:0.5,0.48,0.885,0.65",
+    "level slider": "EQUALIZER:0.42,0.08,0.58,0.92", "control knobs": "KNOBS",
+    "microphone": "MIC:0.78,0.2,0.25", "studio microphone": "MIC:0.5,0.4,0.5",
+    "saxophone": "WIND:0.12,0.3,-0.3,-0.95", "trumpet": "WIND:0.1,0.85,-0.2,-1",
+    "postal horn": "WIND:0.8,0.4,-0.2,-1", "flute": "WIND:0.75,0.3,0.2,-1",
+    "guitar": "STRUM:0.3,0.72,0.92,0.08", "violin": "STRUM:0.35,0.65,0.85,0.12",
+    "banjo": "STRUM:0.22,0.75,0.9,0.08", "harp": "GLISS",
+    "musical keyboard": "KEYS", "accordion": "GLISS",
+    "drum": "DRUM", "long drum": "DRUM", "maracas": "MARACAS",
+}
+EFFECT_EXACT.update(EFFECT_MUSIC)
+
+# Where a keyword or subgroup default would miss the point of the emoji.
+EFFECT_FIXES = {
+    # Prohibition signs: the red sign flares, like a muted speaker.
+    "prohibited": "MUTED", "no entry": "MUTED", "no bicycles": "MUTED", "no littering": "MUTED",
+    "non-potable water": "MUTED", "no pedestrians": "MUTED", "no mobile phones": "MUTED",
+    "no one under eighteen": "MUTED", "no smoking": "MUTED", "mobile phone off": "MUTED",
+    # Keyword misfires.
+    "tear-off calendar": "SHINE", "clockwise vertical arrows": "SHINE",
+    "counterclockwise arrows button": "SHINE", "screwdriver": "SHINE",
+    "water buffalo": "BLINK", "watermelon": "SHINE", "bullseye": "SPARKLE", "oil drum": "SHINE", "lungs": "HEARTBEAT",
+    "wavy dash": "SHINE", "bell pepper": "SHINE", "water closet": "SHINE",
+    "magnifying glass tilted left": "SHINE", "magnifying glass tilted right": "SHINE",
+    "barber pole": "SHINE", "cyclone": "MAGIC", "umbrella": "RAIN", "closed umbrella": "SHINE",
+    # Food that isn't hot.
+    "cheese wedge": "SHINE", "butter": "SHINE", "salt": "SHINE", "canned food": "SHINE",
+    "sushi": "SHINE", "rice ball": "SHINE", "rice cracker": "SHINE", "green salad": "SHINE",
+    "sandwich": "SHINE", "egg": "SHINE", "popcorn": "CONFETTI", "fortune cookie": "SPARKLE",
+    "moon cake": "GLOW", "dango": "SHINE", "oden": "STEAM", "bento box": "SHINE",
+    # Vehicles without an engine don't smoke; signs and cable cars don't either.
+    "bicycle": "SHINE", "kick scooter": "SHINE", "skateboard": "SHINE", "roller skate": "SHINE",
+    "manual wheelchair": "SHINE", "wheel": "SHINE", "bus stop": "SHINE", "motorway": "SHINE",
+    "railway track": "SHINE", "fuel pump": "DRIP", "stop sign": "BEACON",
+    "construction": "BEACON", "parachute": "SWAY", "seat": "SHINE",
+    "suspension railway": "SWAY", "mountain cableway": "SWAY", "aerial tramway": "SWAY",
+    "wind chime": "SWAY", "horizontal traffic light": "BEACON",
+    "vertical traffic light": "BEACON",
+    # Phones ring; science bubbles; stars through a telescope.
+    "telephone": "BELL:0.5,0.5", "telephone receiver": "BELL:0.5,0.5",
+    "computer mouse": "SHINE", "computer disk": "SHINE", "test tube": "BUBBLES",
+    "alembic": "BUBBLES", "petri dish": "BUBBLES", "telescope": "TWINKLE",
+    "microscope": "SHINE", "syringe": "DRIP", "drop of blood": "DRIP", "pill": "SHINE",
+    "adhesive bandage": "SHINE", "crutch": "SHINE", "x-ray": "GLOW",
+    # People: firefighters blink like people; Santa brings snow; mages do magic.
+    "firefighter": "BLINK", "man firefighter": "BLINK", "woman firefighter": "BLINK",
+    "santa claus": "SNOW", "mrs. claus": "SNOW", "mx claus": "SNOW",
+    "mage": "MAGIC", "man mage": "MAGIC", "woman mage": "MAGIC", "fairy": "MAGIC",
+    "man fairy": "MAGIC", "woman fairy": "MAGIC", "genie": "MAGIC", "man genie": "MAGIC",
+    "woman genie": "MAGIC", "merperson": "BUBBLES", "merman": "BUBBLES",
+    "mermaid": "BUBBLES", "grinning cat with smiling eyes": "BLINK",
+}
+EFFECT_EXACT.update(EFFECT_FIXES)
+
 # Name keywords, tried in order when there is no exact entry.
 EFFECT_RULES = [
     (r"\bflag\b", "FLAG"),
@@ -383,16 +449,14 @@ EFFECT_RULES = [
     (r"angry|pouting|\brage", "ANGRY"),
     (r"\bheart\b", "HEARTBEAT"),
     (r"television|monitor|screen", "STATIC"),
-    (r"computer|laptop|phone\b|tablet", "SCREEN"),
+    (r"computer|laptop|\bphone\b|tablet", "SCREEN"),
     (r"\bfire|flame|torch|candle", "FLAME"),
     (r"\bstar\b|sparkl", "TWINKLE"),
     (r"lightning|voltage|electric", "ZAP"),
     (r"\brain\b|shower", "RAIN"),
     (r"snow|frost|freez", "SNOW"),
     (r"steam|hot |coffee|\btea\b", "STEAM"),
-    (r"music|note|song|guitar|piano|violin|trumpet|saxophone|drum|banjo|accordion|maracas|flute",
-     "NOTES"),
-    (r"speaker|bell\b|horn\b|loud|mute", "SOUND"),
+    (r"\bmusic|\bsong\b", "NOTES"),
     (r"\bwave\b|water|sea\b|ocean|lake|river", "RIPPLE"),
     (r"clock|o.clock|thirty", "CLOCK"),
     (r"siren|alarm|police|ambulance|fire engine", "BEACON"),
@@ -406,8 +470,9 @@ EFFECT_RULES = [
     (r"diamond|gem\b|crystal|jewel|medal|trophy", "SPARKLE"),
     (r"\bmagic|wizard|witch|\bmage", "MAGIC"),
     (r"bulb|\blamp|lantern|light\b", "GLOW"),
-    (r"eye\b|eyes\b", "LOOK"),
+    # Faces blink whatever their eyes look like; only eyes on their own look around.
     (r"\bface\b", "BLINK"),
+    (r"eye\b|eyes\b", "LOOK"),
 ]
 
 EFFECT_SUBGROUP = {
@@ -481,8 +546,8 @@ def main(data_dir, repo):
         sys.exit("unknown motions: %s" % sorted(unknown))
     effects = effect_names(repo)
     effect_rules = [(re.compile(p), m) for p, m in EFFECT_RULES]
-    unknown = {m for m in list(EFFECT_EXACT.values()) + [m for _, m in EFFECT_RULES]
-               + list(EFFECT_SUBGROUP.values())} - effects
+    unknown = {m.split(":")[0] for m in list(EFFECT_EXACT.values())
+               + [m for _, m in EFFECT_RULES] + list(EFFECT_SUBGROUP.values())} - effects
     if unknown:
         sys.exit("unknown effects: %s" % sorted(unknown))
 
@@ -511,7 +576,8 @@ def main(data_dir, repo):
     print("never used:", sorted(known - used_motions - {"NONE"}))
     used_effects = {}
     for l in lines:
-        used_effects[l.split("\t")[3]] = used_effects.get(l.split("\t")[3], 0) + 1
+        key = l.split("\t")[3].split(":")[0]
+        used_effects[key] = used_effects.get(key, 0) + 1
     print("effects:", sorted(used_effects.items(), key=lambda kv: -kv[1]))
     print("effects never used:", sorted(effects - set(used_effects) - {"NONE"}))
 

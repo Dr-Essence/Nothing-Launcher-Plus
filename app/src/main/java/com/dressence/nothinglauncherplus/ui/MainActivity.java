@@ -262,8 +262,12 @@ public class MainActivity extends Activity {
                 folder.coverMotion = EmojiCatalog.get(this).motionFor(folder.coverText).name();
                 changed = true;
             }
-            if (!folder.coverText.isEmpty() && folder.coverEffect.isEmpty()) {
-                folder.coverEffect = EmojiCatalog.get(this).effectFor(folder.coverText).name();
+            // Effects follow the emoji table (they aren't picked by hand), so a newer table
+            // updates them.
+            String effect = folder.coverText.isEmpty() ? ""
+                    : EmojiCatalog.get(this).effectFor(folder.coverText);
+            if (!effect.equals(folder.coverEffect)) {
+                folder.coverEffect = effect;
                 changed = true;
             }
         }

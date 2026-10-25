@@ -60,7 +60,10 @@ public final class Config {
         public String coverText = "";
         /** {@code anim.Motion} name played by the emoji cover; empty means not chosen yet. */
         public String coverMotion = "";
-        /** {@code anim.DotEffect} name played inside the dots; empty means not chosen yet. */
+        /**
+         * {@code anim.DotEffect} played inside the dots, as the emoji table gives it ("NAME" or
+         * "NAME:anchor,points"); empty means not chosen yet.
+         */
         public String coverEffect = "";
         /** Last-modified time of the cover image; 0 when the folder has no cover image. */
         public long coverImageVersion;

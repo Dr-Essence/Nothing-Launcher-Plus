@@ -110,15 +110,17 @@ final class DotMatrix {
 
     /** Renders {@code p} into the grid; returns true if any dot changed. */
     boolean render(Pose p) {
-        return render(p, DotEffect.NONE, 0, 0, Float.MAX_VALUE, 0);
+        return render(p, DotEffect.NONE, null, 0, 0, Float.MAX_VALUE, 0);
     }
 
     /**
-     * Renders {@code p} with {@code effect} playing on top at {@code time} seconds, flared by
+     * Renders {@code p} with {@code effect} (placed by {@code anchor}, if it takes one) playing
+     * on top at {@code time} seconds, flared by
      * {@code boost} (0..1) {@code since} seconds after a reaction; returns true if any dot
      * changed.
      */
-    boolean render(Pose p, DotEffect effect, float time, float boost, float since, int seed) {
+    boolean render(Pose p, DotEffect effect, float[] anchor, float time, float boost,
+            float since, int seed) {
         boolean still = p.isRest();
         if (still) {
             System.arraycopy(restDots, 0, dots, 0, dots.length);
@@ -133,6 +135,7 @@ final class DotMatrix {
                 mapScene();
             }
             scene.t = time;
+            scene.anchor = anchor;
             scene.boost = boost;
             scene.since = since;
             scene.seed = seed;

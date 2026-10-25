@@ -34,13 +34,16 @@ final class EmojiCatalog {
         final int group;
         final Motion motion;
         final DotEffect effect;
+        /** The effect as the table gives it, with its anchor points ("NAME:0.2,0.5"). */
+        final String effectSpec;
         final String name;
 
-        Entry(String emoji, int group, Motion motion, DotEffect effect, String name) {
+        Entry(String emoji, int group, Motion motion, String effectSpec, String name) {
             this.emoji = emoji;
             this.group = group;
             this.motion = motion;
-            this.effect = effect;
+            this.effect = DotEffect.parse(effectSpec);
+            this.effectSpec = effectSpec;
             this.name = name;
         }
     }
@@ -77,7 +80,7 @@ final class EmojiCatalog {
                 String[] f = line.split("\t", 5);
                 if (f.length == 5 && paint.hasGlyph(f[0])) {
                     entries.add(new Entry(f[0], Integer.parseInt(f[1]), Motion.parse(f[2]),
-                            DotEffect.parse(f[3]), f[4]));
+                            f[3], f[4]));
                 }
             }
         } catch (IOException | NumberFormatException e) {
@@ -96,10 +99,13 @@ final class EmojiCatalog {
         return entry != null ? entry.motion : Motion.PULSE;
     }
 
-    /** The effect that suits {@code text}: its emoji's own, or a sparkle for anything else. */
-    DotEffect effectFor(String text) {
+    /**
+     * The effect that suits {@code text}, as a spec with its anchor points: its emoji's own, or
+     * a sparkle for anything else.
+     */
+    String effectFor(String text) {
         Entry entry = find(text);
-        return entry != null ? entry.effect : DotEffect.SPARKLE;
+        return entry != null ? entry.effectSpec : DotEffect.SPARKLE.name();
     }
 
     /** Ignores variation selectors and skin tones, so every variant finds its base emoji. */

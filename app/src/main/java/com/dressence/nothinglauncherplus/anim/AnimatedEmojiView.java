@@ -39,6 +39,7 @@ public class AnimatedEmojiView extends TextView {
 
     private final Pose pose = new Pose();
     private DotEffect effect = DotEffect.NONE;
+    private float[] effectAnchor;
     private int effectSeed;
     private long effectFrame = -1;
     private long reactStart;
@@ -105,7 +106,14 @@ public class AnimatedEmojiView extends TextView {
      * dots; the same seed always plays them the same way.
      */
     public void setEmoji(CharSequence text, Motion motion, DotEffect effect, long seed) {
+        setEmoji(text, motion, effect, null, seed);
+    }
+
+    /** As above, with the effect's anchor points from the emoji table (see DotEffect#anchor). */
+    public void setEmoji(CharSequence text, Motion motion, DotEffect effect, float[] anchor,
+            long seed) {
         this.effect = effect != null ? effect : DotEffect.NONE;
+        effectAnchor = anchor;
         effectSeed = (int) (seed ^ (seed >>> 32));
         effectFrame = -1;
         reactStart = 0;
@@ -254,7 +262,8 @@ public class AnimatedEmojiView extends TextView {
             effectFrame = frame;
             float time = (frame % (EFFECT_FPS * 3600L)) / (float) EFFECT_FPS;
             float since = reactStart == 0 ? Float.MAX_VALUE : (nowNanos - reactStart) / 1e9f;
-            if (dots.render(pose, effect, time, boost(nowNanos), since, effectSeed)) {
+            if (dots.render(pose, effect, effectAnchor, time, boost(nowNanos), since,
+                    effectSeed)) {
                 invalidate();
             }
         }

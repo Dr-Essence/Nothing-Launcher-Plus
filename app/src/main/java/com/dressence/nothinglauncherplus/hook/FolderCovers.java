@@ -98,7 +98,7 @@ final class FolderCovers {
             panel.show(folder.coverText,
                     animate ? Motion.parse(folder.coverMotion) : Motion.NONE,
                     animate ? DotEffect.parse(folder.coverEffect) : DotEffect.NONE,
-                    folder.id.hashCode());
+                    DotEffect.anchor(folder.coverEffect), folder.id.hashCode());
             return;
         }
         if (cover == null) {
@@ -181,8 +181,8 @@ final class FolderCovers {
             name.addOnLayoutChangeListener(this);
         }
 
-        void show(String text, Motion motion, DotEffect effect, long seed) {
-            setEmoji(text, motion, effect, seed);
+        void show(String text, Motion motion, DotEffect effect, float[] anchor, long seed) {
+            setEmoji(text, motion, effect, anchor, seed);
             setVisibility(VISIBLE);
             shownLabel = null;
             place();
