@@ -296,14 +296,16 @@ final class DotMatrix {
             // Snap the emoji onto the panel's dots.
             emojiLeft = left + Math.round((content.left - left) / pitch) * pitch;
             emojiTop = top + Math.round((content.top - top) / pitch) * pitch;
-            mask = mask(pitch, columns, rows, left, top, width, height, panel, corner);
+            // The name's strip may switch to finer dots (see DotLabel#layout).
+            int[] band = label.layout(pitch, top);
+            mask = mask(pitch, columns, rows, left, top, width, height, panel, corner, band);
             canvas.drawBitmap(mask, 0, 0, unlitPaint);
             drawLit(canvas, mask, 0, 0, pitch, emojiLeft, emojiTop);
             label.draw(canvas, mask, labelPaint, pitch, columns, left, top);
         } else {
             int side = Math.round(GRID * pitch);
             square.set(0, 0, side, side);
-            mask = mask(pitch, GRID, GRID, 0, 0, side, side, square, 0);
+            mask = mask(pitch, GRID, GRID, 0, 0, side, side, square, 0, null);
             canvas.drawBitmap(mask, emojiLeft, emojiTop, unlitPaint);
             drawLit(canvas, mask, emojiLeft, emojiTop, pitch, emojiLeft, emojiTop);
         }
@@ -321,12 +323,14 @@ final class DotMatrix {
     /**
      * A {@code width} x {@code height} alpha mask of {@code columns} x {@code rows} round dots
      * starting at ({@code left}, {@code top}), skipping dots that would leave {@code bounds}'
-     * rounded corners of radius {@code corner}. Shared by every view with the same geometry.
+     * rounded corners of radius {@code corner}. A {@code band} {first row, row count, fineness}
+     * has finer dots in those rows, for a label. Shared by every view with the same geometry.
      */
     private static Bitmap mask(float pitch, int columns, int rows, float left, float top,
-            int width, int height, Rect bounds, float corner) {
+            int width, int height, Rect bounds, float corner, int[] band) {
         String key = width + "x" + height + "@" + pitch + "+" + left + "," + top + "/"
-                + bounds.toShortString() + "r" + corner;
+                + bounds.toShortString() + "r" + corner
+                + (band != null ? "b" + band[0] + "," + band[1] + "," + band[2] : "");
         Bitmap mask = MASKS.get(key);
         if (mask != null) {
             return mask;
@@ -339,6 +343,9 @@ final class DotMatrix {
         RectF inner = new RectF(bounds.left + corner, bounds.top + corner,
                 bounds.right - corner, bounds.bottom - corner);
         for (int y = 0; y < rows; y++) {
+            if (band != null && y >= band[0] && y < band[0] + band[1]) {
+                continue; // Finer dots here, below.
+            }
             for (int x = 0; x < columns; x++) {
                 float cx = left + (x + 0.5f) * pitch;
                 float cy = top + (y + 0.5f) * pitch;
@@ -346,6 +353,21 @@ final class DotMatrix {
                     continue;
                 }
                 canvas.drawCircle(cx, cy, radius, paint);
+            }
+        }
+        if (band != null) {
+            int fine = band[2];
+            float dot = pitch / fine;
+            float small = dot * DOT / 2f;
+            for (int y = band[0] * fine; y < (band[0] + band[1]) * fine; y++) {
+                for (int x = 0; x < columns * fine; x++) {
+                    float cx = left + (x + 0.5f) * dot;
+                    float cy = top + (y + 0.5f) * dot;
+                    if (corner > 0 && outsideRoundRect(cx, cy, small, inner, corner)) {
+                        continue;
+                    }
+                    canvas.drawCircle(cx, cy, small, paint);
+                }
             }
         }
         MASKS.put(key, mask);

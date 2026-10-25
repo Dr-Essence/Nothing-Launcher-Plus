@@ -17,58 +17,74 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A folder name on the dot panel. With Nothing's own NDot typeface (found on the device) it is
- * drawn in that font at the launcher's own name size, so it reads exactly like Nothing's
- * lettering. Without it, the text is lit on the panel's own dots, like the lettering on a Nothing Glyph or an LED
- * sign: 5 dots tall in a {@link DotFont}, anything the font lacks (accents, emoji) rasterized
- * from the system font onto the same dots, emoji in their own colours. Text wider than the
- * panel scrolls through it one whole dot at a time, with a pause at the start.
+ * A folder name lit on the dot panel, made of the screen's own dots.
+ *
+ * <p>With Nothing's NDot 57 typeface (found on the device) the letters are NDot's own 5 x 7 dot
+ * shapes at the launcher's name size. That is smaller than the panel's dots allow, so the
+ * panel switches to finer dots (a whole fraction of its pitch) in a strip under the name, and
+ * every NDot dot lands on one of them: NDot 57 puts its dots on an exact grid, one every tenth of
+ * the font size. Without the typeface the name is lit on the panel's own dots in the compact
+ * {@link DotFont}.
+ *
+ * <p>Anything the font lacks (emoji, accents) is rasterized from the system font onto the same
+ * dots, in its own colours. A name wider than the panel scrolls through it one dot at a time,
+ * with a pause at the start.
  */
 final class DotLabel {
 
-    private static final int ROWS = DotFont.HEIGHT;
-    private static final int GAP = 1;
+    /** NDot 57: dot spacing, and first dot centre from the origin and baseline, per font px. */
+    private static final float NDOT_PITCH = 0.1f;
+    private static final float NDOT_LEFT = 65f / 700;
+    private static final float NDOT_BOTTOM = 40f / 700;
+    private static final int NDOT_ROWS = 7;
+    /** Pixels per dot when tracing NDot glyphs. */
+    private static final int TRACE = 4;
     /** Blank dots between the end of scrolling text and its next start. */
     private static final int LOOP_GAP = 6;
-    private static final long STEP_NANOS = 110_000_000L;
+    private static final long STEP_NANOS = 90_000_000L;
     private static final long PAUSE_NANOS = 1_800_000_000L;
     /** Supersampling for characters the font lacks. */
     private static final int FALLBACK_SS = 4;
 
     private final Matrix matrix = new Matrix();
     private final Rect area = new Rect();
+    /** The lit dots, one pixel each, inside a transparent one-dot border. */
     private Bitmap bitmap;
     private int width;
+    private int rows;
+    /** The name's font size in px for NDot, 0 when lit on the panel's own dots. */
+    private float size;
     private int offset;
     private long start;
-    /** Columns the panel had available when last drawn (for deciding to scroll). */
+    /** Dots the panel had room for when last drawn (for deciding to scroll). */
     private int window = Integer.MAX_VALUE;
-    /** Font mode: the text and its paint (null in dot mode). */
-    private String text;
-    private final TextPaint textPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-    private float textWidth;
+
+    // Layout on the panel, from the last draw.
+    private int fine = 1;
+    private int bandTop;
+    private int bandRows;
 
     /**
-     * Shows {@code value} centred on {@code where}: in {@code typeface} at {@code size} px if
-     * there is one, else in dots.
+     * Shows {@code value} centred on {@code where}: in {@code typeface} (NDot) sized
+     * {@code size} px if there is one, else in the compact dot font.
      */
     void set(CharSequence value, int color, Rect where, Typeface typeface, float size) {
         bitmap = null;
-        text = null;
         width = 0;
         offset = 0;
         start = System.nanoTime();
+        this.size = typeface != null && size > 0 ? size : 0;
         if (value == null || value.length() == 0 || where == null || where.isEmpty()) {
             return;
         }
         area.set(where);
-        if (typeface != null && size > 0) {
-            text = value.toString().trim();
-            textPaint.setTypeface(typeface);
-            textPaint.setTextSize(size);
-            textPaint.setColor(color);
-            textWidth = textPaint.measureText(text);
-            return;
+        rows = this.size > 0 ? NDOT_ROWS : DotFont.HEIGHT;
+        TextPaint ndot = null;
+        if (this.size > 0) {
+            ndot = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+            ndot.setTypeface(typeface);
+            ndot.setTextSize(TRACE / NDOT_PITCH);
+            ndot.setColor(color);
         }
         List<int[]> columns = new ArrayList<>();
         BreakIterator graphemes = BreakIterator.getCharacterInstance();
@@ -77,45 +93,81 @@ final class DotLabel {
         for (int from = graphemes.first(), to = graphemes.next(); to != BreakIterator.DONE;
                 from = to, to = graphemes.next()) {
             String g = s.substring(from, to);
-            boolean[][] glyph = g.length() == 1 ? DotFont.glyph(g.charAt(0)) : null;
-            if (!columns.isEmpty()) {
-                for (int k = 0; k < GAP; k++) {
-                    columns.add(new int[ROWS]);
-                }
+            boolean plain = g.length() == 1 && g.charAt(0) < 0x2000;
+            if (ndot != null && plain) {
+                columns.addAll(trace(g, ndot));
+                continue;
+            }
+            boolean[][] glyph = ndot == null && g.length() == 1 ? DotFont.glyph(g.charAt(0)) : null;
+            if (!columns.isEmpty() && (ndot == null || !plain)) {
+                columns.add(new int[rows]); // Letter spacing (NDot's advance includes it).
             }
             if (glyph != null) {
                 for (int x = 0; x < glyph[0].length; x++) {
-                    int[] col = new int[ROWS];
-                    for (int y = 0; y < ROWS; y++) {
+                    int[] col = new int[rows];
+                    for (int y = 0; y < rows; y++) {
                         col[y] = glyph[y][x] ? color : 0;
                     }
                     columns.add(col);
                 }
             } else {
-                columns.addAll(raster(g, color));
+                columns.addAll(raster(g, color, rows));
+                if (ndot != null) {
+                    columns.add(new int[rows]);
+                }
             }
+        }
+        while (!columns.isEmpty() && blank(columns.get(columns.size() - 1))) {
+            columns.remove(columns.size() - 1);
         }
         width = columns.size();
         if (width == 0) {
             return;
         }
         // A transparent border, so the clamped shader leaves everything around the text dark.
-        bitmap = Bitmap.createBitmap(width + 2, ROWS + 2, Bitmap.Config.ARGB_8888);
+        bitmap = Bitmap.createBitmap(width + 2, rows + 2, Bitmap.Config.ARGB_8888);
         for (int x = 0; x < width; x++) {
-            for (int y = 0; y < ROWS; y++) {
+            for (int y = 0; y < rows; y++) {
                 bitmap.setPixel(x + 1, y + 1, columns.get(x)[y]);
             }
         }
     }
 
-    /** Draws one grapheme with the system font and samples it onto 7 rows of dots. */
-    private static List<int[]> raster(String g, int color) {
+    /**
+     * One NDot character, traced dot by dot: drawn so its dots fall on the centres of
+     * {@link #TRACE}-pixel cells, then each cell is on if its centre is.
+     */
+    private static List<int[]> trace(String c, TextPaint paint) {
+        float fontSize = paint.getTextSize();
+        int cols = Math.max(1, Math.round(paint.measureText(c) / TRACE));
+        Bitmap b = Bitmap.createBitmap(cols * TRACE, NDOT_ROWS * TRACE, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(b);
+        float half = TRACE / 2f;
+        canvas.drawText(c, half - NDOT_LEFT * fontSize,
+                (NDOT_ROWS - 1) * TRACE + half + NDOT_BOTTOM * fontSize, paint);
+        List<int[]> out = new ArrayList<>();
+        for (int x = 0; x < cols; x++) {
+            int[] col = new int[NDOT_ROWS];
+            for (int y = 0; y < NDOT_ROWS; y++) {
+                int p = b.getPixel(x * TRACE + TRACE / 2, y * TRACE + TRACE / 2);
+                if ((p >>> 24) > 100) {
+                    col[y] = p | 0xFF000000;
+                }
+            }
+            out.add(col);
+        }
+        b.recycle();
+        return out;
+    }
+
+    /** Draws one grapheme with the system font and samples it onto {@code rows} of dots. */
+    private static List<int[]> raster(String g, int color, int rows) {
         TextPaint paint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        int h = ROWS * FALLBACK_SS;
+        int h = rows * FALLBACK_SS;
         paint.setTextSize(h * 0.95f);
         paint.setColor(color);
         Paint.FontMetrics fm = paint.getFontMetrics();
-        // The whole line height fits the 7 rows, so emoji and accents are never cut off.
+        // The whole line height fits the rows, so emoji and accents are never cut off.
         float scale = h / (fm.descent - fm.ascent);
         int w = Math.max(FALLBACK_SS, (int) Math.ceil(paint.measureText(g) * scale));
         Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
@@ -128,8 +180,8 @@ final class DotLabel {
         List<int[]> out = new ArrayList<>();
         int n = FALLBACK_SS * FALLBACK_SS;
         for (int cx = 0; cx < cols; cx++) {
-            int[] col = new int[ROWS];
-            for (int cy = 0; cy < ROWS; cy++) {
+            int[] col = new int[rows];
+            for (int cy = 0; cy < rows; cy++) {
                 int a = 0, r = 0, gg = 0, bb = 0;
                 for (int sy = 0; sy < FALLBACK_SS; sy++) {
                     for (int sx = 0; sx < FALLBACK_SS; sx++) {
@@ -152,6 +204,7 @@ final class DotLabel {
             }
             out.add(col);
         }
+        b.recycle();
         // Trim blank columns either side.
         while (!out.isEmpty() && blank(out.get(0))) {
             out.remove(0);
@@ -160,8 +213,8 @@ final class DotLabel {
             out.remove(out.size() - 1);
         }
         if (out.isEmpty()) {
-            out.add(new int[ROWS]); // A space.
-            out.add(new int[ROWS]);
+            out.add(new int[rows]); // A space.
+            out.add(new int[rows]);
         }
         return out;
     }
@@ -175,8 +228,29 @@ final class DotLabel {
         return true;
     }
 
+    // -------------------------------------------------------------------------------------
+    // Layout and drawing
+    // -------------------------------------------------------------------------------------
+
+    /**
+     * Works out where the label sits on a panel of {@code pitch}-sized dots starting at
+     * {@code top}: how many finer dots fit in one panel dot (1 when the label uses the panel's
+     * own dots) and which panel rows it takes. Returns {first row, row count, fineness} when the
+     * panel should switch to finer dots in those rows, else null.
+     */
+    int[] layout(float pitch, float top) {
+        if (bitmap == null) {
+            return null;
+        }
+        fine = size > 0 ? Math.max(1, Math.round(pitch / (size * NDOT_PITCH))) : 1;
+        // The text plus a fine dot of margin above and below, in whole panel rows.
+        bandRows = (rows + 2 + fine - 1) / fine;
+        bandTop = Math.round((area.exactCenterY() - top) / pitch - bandRows / 2f);
+        return fine > 1 ? new int[] {bandTop, bandRows, fine} : null;
+    }
+
     private boolean scrolls() {
-        return (bitmap != null || text != null) && width > window;
+        return bitmap != null && width > window;
     }
 
     boolean scroll(long now) {
@@ -204,71 +278,42 @@ final class DotLabel {
 
     /**
      * Lights the label on the panel's dots ({@code columns} wide from ({@code left},
-     * {@code top}) at {@code pitch}), centred on its area, inside a one-dot margin.
+     * {@code top}) at {@code pitch}; finer dots in its strip when {@link #layout} asked for
+     * them), centred on its area, inside a one-dot margin.
      */
     void draw(Canvas canvas, Bitmap mask, Paint paint, float pitch, int columns, float left,
             float top) {
-        if (text != null) {
-            drawText(canvas, pitch, columns, left);
-            return;
-        }
         if (bitmap == null) {
             return;
         }
-        window = columns - 2;
-        int row = Math.round((area.exactCenterY() - top) / pitch - ROWS / 2f);
+        float dot = pitch / fine;
+        window = (columns - 2) * fine;
+        int row = bandTop * fine + (bandRows * fine - rows) / 2;
         if (paint.getShader() == null || ((Holder) paint.getShader()).bitmap != bitmap) {
             paint.setShader(new Holder(bitmap));
         }
         canvas.save();
-        canvas.clipRect(left + pitch, top + row * pitch, left + (columns - 1) * pitch,
-                top + (row + ROWS) * pitch);
+        canvas.clipRect(left + pitch, top + row * dot, left + (columns - 1) * pitch,
+                top + (row + rows) * dot);
         if (!scrolls()) {
-            int col = Math.round((area.exactCenterX() - left) / pitch - width / 2f);
-            col = Math.max(1, Math.min(columns - 1 - width, col));
-            place(paint, pitch, left + col * pitch, top + row * pitch);
+            int col = Math.round((area.exactCenterX() - left) / dot - width / 2f);
+            col = Math.max(fine, Math.min(columns * fine - fine - width, col));
+            place(paint, dot, left + col * dot, top + row * dot);
             canvas.drawBitmap(mask, 0, 0, paint);
         } else {
             for (int copy = 0; copy < 2; copy++) {
-                int col = 1 - offset + copy * (width + LOOP_GAP);
-                place(paint, pitch, left + col * pitch, top + row * pitch);
+                int col = fine - offset + copy * (width + LOOP_GAP);
+                place(paint, dot, left + col * dot, top + row * dot);
                 canvas.drawBitmap(mask, 0, 0, paint);
             }
         }
         canvas.restore();
     }
 
-    /**
-     * The name in the NDot typeface, inside the panel's one-dot margin; a long name scrolls a
-     * dot's width at a time, like the dot version.
-     */
-    private void drawText(Canvas canvas, float pitch, int columns, float left) {
-        float from = left + pitch;
-        float to = left + (columns - 1) * pitch;
-        // Scrolling is counted in dots, so both modes move the same way.
-        window = (int) ((to - from) / pitch);
-        width = (int) Math.ceil(textWidth / pitch);
-        Paint.FontMetrics fm = textPaint.getFontMetrics();
-        float baseline = area.exactCenterY() - (fm.ascent + fm.descent) / 2;
-        canvas.save();
-        canvas.clipRect(from, area.top - pitch, to, area.bottom + pitch);
-        if (!scrolls()) {
-            float x = area.exactCenterX() - textWidth / 2;
-            x = Math.max(from, Math.min(to - textWidth, x));
-            canvas.drawText(text, x, baseline, textPaint);
-        } else {
-            for (int copy = 0; copy < 2; copy++) {
-                float x = from + (copy * (width + LOOP_GAP) - offset) * pitch;
-                canvas.drawText(text, x, baseline, textPaint);
-            }
-        }
-        canvas.restore();
-    }
-
     /** Bitmap pixel (1, 1), the first label dot, onto the panel dot at (x, y). */
-    private void place(Paint paint, float pitch, float x, float y) {
-        matrix.setScale(pitch, pitch);
-        matrix.postTranslate(x - pitch, y - pitch);
+    private void place(Paint paint, float dot, float x, float y) {
+        matrix.setScale(dot, dot);
+        matrix.postTranslate(x - dot, y - dot);
         paint.getShader().setLocalMatrix(matrix);
     }
 
