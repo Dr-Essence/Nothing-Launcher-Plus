@@ -69,6 +69,24 @@ plus your folders.
 Emoji names and groups come from [emojibase-data](https://github.com/milesj/emojibase) (MIT),
 based on Unicode CLDR.
 
+## Sound
+
+Both off by default; switch them on in the module's **Sound** section.
+
+- **Background music**, generated live (never a loop, never a recording) and tuned to
+  A = 432 Hz. Five original styles in the manner of classic console menus:
+  *Pixel Meadow* (8-bit overworld: pulse lead, triangle bass), *Starlight Lullaby* (16-bit music
+  box and flute), *Memory Card* (2000s console ambient: glass bells, lydian pads), *Crystal
+  Shore* (90s new-age shimmer and surf) and *Shop Lounge* (swung e-piano, walking bass, vibes).
+  A composer writes the music as it plays: motif, answer and cadence over changing progressions,
+  a new progression every 16 bars and a new key every 32.
+- It plays only while the home screen or drawer is in front, fades in and out, never takes audio
+  focus (so it can't pause your music), and goes quiet while another app plays media or a call
+  is active. Synthesis runs on one audio thread into a power-saving track, about 1% of a core.
+- **Interface sounds**: console-style chimes for opening and closing the drawer and folders,
+  launching apps, turning pages, menus and controller focus, silent on silent or vibrate.
+- **Preview** the selected style in the module; music volume has its own slider.
+
 ## Landscape
 
 Nothing's DeviceProfile replaces AOSP's sizing with portrait-only math: cell width is derived

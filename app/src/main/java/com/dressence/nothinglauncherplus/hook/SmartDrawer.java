@@ -9,6 +9,7 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.sound.Sfx;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -675,6 +676,7 @@ final class SmartDrawer {
                         if (opened == null) {
                             return;
                         }
+                        LauncherSounds.effect(Sfx.OPEN_FOLDER);
                         Config.Folder folder = store.get().folderForKey(
                                 GroupItems.category(((View) param.args[1]).getTag()));
                         if (folder != null) {

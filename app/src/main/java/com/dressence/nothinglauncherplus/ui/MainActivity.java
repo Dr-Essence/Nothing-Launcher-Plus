@@ -13,6 +13,8 @@ import android.widget.Toast;
 import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.UpdateReceiver;
 import com.dressence.nothinglauncherplus.anim.FrameRates;
+import com.dressence.nothinglauncherplus.sound.SoundEngine;
+import com.dressence.nothinglauncherplus.sound.Style;
 
 /** Module settings: drawer options and the list of custom folders. */
 public class MainActivity extends Activity {
@@ -78,6 +80,8 @@ public class MainActivity extends Activity {
                     render();
                 });
 
+        addSoundSection(ui, config);
+
         ui.section("Landscape & controllers");
         ui.switchRow("Home screen rotation", "Home and app drawer follow auto-rotate (beta)",
                 config.allowRotation, checked -> {
@@ -127,18 +131,98 @@ public class MainActivity extends Activity {
                 null, v -> restartLauncher());
     }
 
-    private void addOpacityRow(Ui ui, Config config) {
-        LinearLayout row = ui.row("Drawer background", opacityLabel(config.drawerOpacity), null,
-                null, null);
+    private void addSoundSection(Ui ui, Config config) {
+        ui.section("Sound");
+        ui.switchRow("Interface sounds", "Console-style chimes for the drawer, folders, apps,"
+                + " pages and menus", config.uiSounds, checked -> {
+                    config.uiSounds = checked;
+                    store.save(this);
+                });
+        ui.switchRow("Background music", "Generated live and tuned to 432 Hz. Plays on the home"
+                + " screen only and goes quiet while other audio or a call plays", config.music,
+                checked -> {
+                    config.music = checked;
+                    store.save(this);
+                });
+        Style style = Style.parse(config.musicStyle);
+        ui.row("Music style", style.title + " · " + style.summary, null, ui.chevron(),
+                v -> chooseStyle(config));
+        addSliderRow(ui, "Music volume", config.musicVolume, value -> value + "%", value -> {
+            config.musicVolume = value;
+            store.save(this);
+            if (preview().isMusicPlaying()) {
+                preview().playMusic(Style.parse(config.musicStyle), value / 100f);
+            }
+        });
+        boolean previewing = preview().isMusicPlaying();
+        ui.row(previewing ? "Stop preview" : "Preview music",
+                previewing ? "Playing " + style.title : "Listen to the selected style here",
+                null, null, v -> {
+                    if (preview().isMusicPlaying()) {
+                        preview().stopMusic();
+                    } else {
+                        preview().playMusic(Style.parse(config.musicStyle),
+                                config.musicVolume / 100f);
+                    }
+                    render();
+                });
+    }
+
+    private void chooseStyle(Config config) {
+        Style[] styles = Style.values();
+        String[] names = new String[styles.length];
+        int checked = 0;
+        for (int i = 0; i < styles.length; i++) {
+            names[i] = styles[i].title + "\n" + styles[i].summary;
+            if (styles[i].name().equals(config.musicStyle)) {
+                checked = i;
+            }
+        }
+        Dialogs.builder(this)
+                .setTitle("Music style")
+                .setSingleChoiceItems(names, checked, (dialog, which) -> {
+                    config.musicStyle = styles[which].name();
+                    store.save(this);
+                    if (preview().isMusicPlaying()) {
+                        preview().playMusic(styles[which], config.musicVolume / 100f);
+                    }
+                    dialog.dismiss();
+                    render();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private SoundEngine preview() {
+        return SoundEngine.get(this);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        preview().stopMusic(); // Previews never outlive the settings screen.
+    }
+
+    private interface IntLabel {
+        String label(int value);
+    }
+
+    private interface IntChange {
+        void changed(int value);
+    }
+
+    /** A titled 0..100 slider; {@code onDone} runs when the finger lifts. */
+    private void addSliderRow(Ui ui, String title, int value, IntLabel label, IntChange onDone) {
+        LinearLayout row = ui.row(title, label.label(value), null, null, null);
         TextView summary = (TextView) ((LinearLayout) row.getChildAt(0)).getChildAt(1);
         SeekBar slider = new SeekBar(this);
         slider.setMax(100);
-        slider.setProgress(config.drawerOpacity);
+        slider.setProgress(value);
         slider.setPadding(ui.dp(24), ui.dp(4), ui.dp(24), ui.dp(12));
         slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                summary.setText(opacityLabel(progress));
+                summary.setText(label.label(progress));
             }
 
             @Override
@@ -147,11 +231,18 @@ public class MainActivity extends Activity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                config.drawerOpacity = seekBar.getProgress();
-                store.save(MainActivity.this);
+                onDone.changed(seekBar.getProgress());
             }
         });
         ui.content.addView(slider);
+    }
+
+    private void addOpacityRow(Ui ui, Config config) {
+        addSliderRow(ui, "Drawer background", config.drawerOpacity, MainActivity::opacityLabel,
+                value -> {
+                    config.drawerOpacity = value;
+                    store.save(this);
+                });
     }
 
     /** Reports what the panel offers, so it is clear what the animations will run at. */

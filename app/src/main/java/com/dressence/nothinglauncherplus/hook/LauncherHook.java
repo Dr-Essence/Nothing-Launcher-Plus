@@ -52,6 +52,7 @@ public class LauncherHook implements IXposedHookLoadPackage {
         new LandscapeGrid(cl).install();
         new LandscapeSurfaces(cl, store).install();
         Hooks.install("controller", () -> Gamepad.install(cl, store));
+        LauncherSounds.install(cl, store);
         Hooks.install("reload receiver", () -> hookReloadReceiver(cl));
     }
 

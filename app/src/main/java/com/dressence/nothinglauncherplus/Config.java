@@ -35,6 +35,10 @@ public final class Config {
     public static final String KEY_DRAWER_OPACITY = "drawer_opacity";
     public static final String KEY_ANIMATE_COVERS = "animate_covers";
     public static final String KEY_DOT_MATRIX = "dot_matrix";
+    public static final String KEY_UI_SOUNDS = "ui_sounds";
+    public static final String KEY_MUSIC = "music";
+    public static final String KEY_MUSIC_STYLE = "music_style";
+    public static final String KEY_MUSIC_VOLUME = "music_volume";
     public static final String KEY_ALLOW_ROTATION = "allow_rotation";
     public static final String KEY_CONTROLLER_NAV = "controller_nav";
 
@@ -91,6 +95,12 @@ public final class Config {
     public boolean animateCovers = true;
     /** Emoji covers drawn as a Nothing-style dot matrix. */
     public boolean dotMatrix = true;
+    public boolean uiSounds = false;
+    public boolean music = false;
+    /** A {@code sound.Style} name. */
+    public String musicStyle = "MEMORY_CARD";
+    /** 0..100. */
+    public int musicVolume = 45;
     /** Let the home screen and app drawer follow auto-rotate into landscape. */
     public boolean allowRotation = false;
     /** Game controller buttons (Y, L1/R1, X, Start) and focus animations. */
@@ -107,6 +117,10 @@ public final class Config {
         config.drawerOpacity = Math.max(0, Math.min(100, prefs.getInt(KEY_DRAWER_OPACITY, 100)));
         config.animateCovers = prefs.getBoolean(KEY_ANIMATE_COVERS, true);
         config.dotMatrix = prefs.getBoolean(KEY_DOT_MATRIX, true);
+        config.uiSounds = prefs.getBoolean(KEY_UI_SOUNDS, false);
+        config.music = prefs.getBoolean(KEY_MUSIC, false);
+        config.musicStyle = prefs.getString(KEY_MUSIC_STYLE, "MEMORY_CARD");
+        config.musicVolume = Math.max(0, Math.min(100, prefs.getInt(KEY_MUSIC_VOLUME, 45)));
         config.allowRotation = prefs.getBoolean(KEY_ALLOW_ROTATION, false);
         config.controllerNav = prefs.getBoolean(KEY_CONTROLLER_NAV, true);
         try {
@@ -126,6 +140,10 @@ public final class Config {
                 .putInt(KEY_DRAWER_OPACITY, drawerOpacity)
                 .putBoolean(KEY_ANIMATE_COVERS, animateCovers)
                 .putBoolean(KEY_DOT_MATRIX, dotMatrix)
+                .putBoolean(KEY_UI_SOUNDS, uiSounds)
+                .putBoolean(KEY_MUSIC, music)
+                .putString(KEY_MUSIC_STYLE, musicStyle)
+                .putInt(KEY_MUSIC_VOLUME, musicVolume)
                 .putBoolean(KEY_ALLOW_ROTATION, allowRotation)
                 .putBoolean(KEY_CONTROLLER_NAV, controllerNav);
         reindex();
@@ -141,6 +159,10 @@ public final class Config {
                 .put(KEY_DRAWER_OPACITY, drawerOpacity)
                 .put(KEY_ANIMATE_COVERS, animateCovers)
                 .put(KEY_DOT_MATRIX, dotMatrix)
+                .put(KEY_UI_SOUNDS, uiSounds)
+                .put(KEY_MUSIC, music)
+                .put(KEY_MUSIC_STYLE, musicStyle)
+                .put(KEY_MUSIC_VOLUME, musicVolume)
                 .put(KEY_ALLOW_ROTATION, allowRotation)
                 .put(KEY_CONTROLLER_NAV, controllerNav);
     }
@@ -153,6 +175,10 @@ public final class Config {
         config.drawerOpacity = Math.max(0, Math.min(100, json.optInt(KEY_DRAWER_OPACITY, 100)));
         config.animateCovers = json.optBoolean(KEY_ANIMATE_COVERS, true);
         config.dotMatrix = json.optBoolean(KEY_DOT_MATRIX, true);
+        config.uiSounds = json.optBoolean(KEY_UI_SOUNDS, false);
+        config.music = json.optBoolean(KEY_MUSIC, false);
+        config.musicStyle = json.optString(KEY_MUSIC_STYLE, "MEMORY_CARD");
+        config.musicVolume = Math.max(0, Math.min(100, json.optInt(KEY_MUSIC_VOLUME, 45)));
         config.allowRotation = json.optBoolean(KEY_ALLOW_ROTATION, false);
         config.controllerNav = json.optBoolean(KEY_CONTROLLER_NAV, true);
         config.readFolders(json.getJSONArray(KEY_FOLDERS));

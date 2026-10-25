@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 
 import com.dressence.nothinglauncherplus.anim.SpringInterpolator;
+import com.dressence.nothinglauncherplus.sound.Sfx;
 
 import java.lang.ref.WeakReference;
 
@@ -238,6 +239,7 @@ final class Gamepad {
                 newFocus.animate().scaleX(LIFT_SCALE).scaleY(LIFT_SCALE).translationZ(lift)
                         .setInterpolator(LIFT).setDuration(420).start();
                 lifted = new WeakReference<>(newFocus);
+                LauncherSounds.effect(Sfx.MOVE);
             }
         });
         // Touching the screen ends controller mode: drop the lift straight away.
