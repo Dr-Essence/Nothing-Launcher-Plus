@@ -44,6 +44,8 @@ final class Voice {
     float fmDecay;
     /** Supersaw detune, as a frequency ratio for the outermost oscillators. */
     float detune;
+    /** Supersaw stereo spread: 0 = centred, 1 = its two halves fully left and right. */
+    float spread;
     /** -1 left .. 1 right. */
     float pan;
     /** Shares of this voice sent to the reverb and the echo. */
@@ -99,6 +101,7 @@ final class Voice {
         fmIndex = 0;
         fmDecay = 0.2f;
         detune = 1.01f;
+        spread = 1;
         pan = 0;
         reverb = 0.2f;
         echo = 0;
@@ -197,8 +200,10 @@ final class Voice {
                     r += saw;
                 }
             }
-            lowL += co * (l * 0.5f - lowL);
-            lowR += co * (r * 0.5f - lowR);
+            float mid = (l + r) * 0.5f;
+            float side = (l - r) * 0.5f * spread;
+            lowL += co * ((mid + side) * 0.5f - lowL);
+            lowR += co * ((mid - side) * 0.5f - lowR);
             left = lowL * level;
             right = lowR * level;
             return true;

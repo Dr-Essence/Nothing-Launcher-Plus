@@ -184,6 +184,48 @@ interface Patch {
         v.release = 3f;
         v.reverb = 0.2f;
     };
+    /**
+     * The console-menu tone: one warm, harmonically rich voice (three-ish detuned saws for a
+     * gentle chorus), rolled off below 2 kHz, rising softly and ringing on so notes overlap
+     * into a chord. Measured against the PS4 theme: same register and spectrum, no bass.
+     */
+    Patch MENU_TONE = v -> {
+        v.wave = Voice.SUPERSAW;
+        v.detune = 1.0025f;
+        v.spread = 0.75f;
+        v.gain = 0.075f;
+        v.attack = 0.18f;
+        v.decay = 2.5f;
+        v.sustain = 0.55f;
+        v.release = 2.4f;
+        v.cutoff = 0.45f;
+        v.reverb = 0.45f;
+        v.echo = 0.12f;
+    };
+    /** The PS2-style cluster: the same tone detuned wide, so it beats and swells slowly. */
+    Patch CLUSTER = v -> {
+        v.wave = Voice.SUPERSAW;
+        v.detune = 1.004f;
+        v.spread = 0.6f;
+        v.gain = 0.06f;
+        v.attack = 1.4f;
+        v.decay = 4f;
+        v.sustain = 0.6f;
+        v.release = 3.5f;
+        v.cutoff = 0.34f;
+        v.reverb = 0.55f;
+    };
+    /** Faint sparkle that slides gently down, high above the cluster. */
+    Patch GLINT = v -> {
+        v.wave = Voice.SINE;
+        v.gain = 0.025f;
+        v.attack = 0.05f;
+        v.decay = 0.9f;
+        v.release = 0.5f;
+        v.drop = 0.35f;
+        v.reverb = 0.6f;
+        v.echo = 0.3f;
+    };
     /** Lush, wide string pad: supersaw spread across the stereo field, slow bloom. */
     Patch STRINGS = v -> {
         v.wave = Voice.SUPERSAW;

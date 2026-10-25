@@ -7,68 +7,56 @@ package com.dressence.nothinglauncherplus.sound;
  * are scale steps from the tonic (0 = I, 3 = IV, 4 = V, 5 = vi).
  */
 public enum Style {
-    /** PS4-era home screen: wide strings, a gentle plucked arpeggio bouncing left and right. */
-    HOME_MENU("Home Menu", "PS4-era home · wide strings, drifting plucked arpeggios", 76, 0.5f,
-            0.9f, 1.1f, 3, 0.45f, 2, Composer.MAJOR, new int[] {0, 2, 5, 7},
-            new int[][] {{0, 3, 5, 3}, {3, 0, 4, 5}, {0, 5, 3, 4}, {5, 3, 0, 4}}, 1.86f, 0.45f) {
-        private final int[] arp = {0, 2, 4, 7, 9, 7, 4, 2};
+    /**
+     * PS4-home style: one warm menu tone playing slow notes (about one every 0.7 s) that ring
+     * into each other as broken chords, between F3 and G4; a phrase of eight bars, then near
+     * silence for four, the way the console's theme breathes.
+     */
+    HOME_MENU("Home Menu", "PS4-style · one warm tone, slow ringing notes, space", 84, 0.5f,
+            0.86f, 0.8f, 4, 0.3f, 2, Composer.MAJOR, new int[] {0, 2, 5, 7},
+            new int[][] {{0, 3, 5, 4}, {3, 0, 4, 0}, {5, 3, 0, 4}, {0, 5, 3, 3}}, 4f, 0.6f) {
+        private final int[][] shapes = {{0, 2, 4, 7}, {0, 4, 2, 4}, {4, 2, 0, 2}, {0, 2, 4, 2}};
 
         @Override
         void step(Composer c, int step) {
             int s = step % 16;
             if (s == 0) {
                 c.nextBar();
-                if (c.bar() % barsPerChord == 0) {
-                    // Open voicing: root, fifth, octave, tenth; a soft sub underneath.
-                    for (int note : c.voicing(48, 0, 4, 7, 9)) {
-                        c.play(Patch.STRINGS, note, 30, 0.8f);
-                    }
-                    c.play(Patch.DRONE, c.note(c.chord(), 36), 30, 0.8f);
-                }
-                if (c.bar() % 4 == 1 && c.chance(0.6f)) {
-                    int[] glass = c.voicing(67, 4, 7);
-                    c.play(Patch.CRYSTAL, glass[c.random.nextInt(2)], 4, 0.8f,
-                            c.random.nextFloat() * 1.4f - 0.7f);
-                }
             }
-            // The arpeggio rests for two bars in eight, so the music breathes.
-            if (s % 2 == 0 && c.bar() % 8 < 6) {
-                int[] tones = c.voicing(60, arp);
-                float pan = (s / 2) % 2 == 0 ? -0.5f : 0.5f;
-                c.play(Patch.PLUCK, tones[s / 2], 2, s % 8 == 0 ? 1 : 0.7f, pan);
+            if (c.bar() % 12 >= 8 || s % 4 != 0) {
+                return; // Quarter notes only, and a rest after every phrase.
+            }
+            int[] shape = shapes[(c.bar() / 2) % shapes.length];
+            if (c.chance(0.85f)) {
+                int[] tones = c.voicing(52, shape);
+                float pan = c.random.nextFloat() * 0.4f - 0.2f;
+                c.play(Patch.MENU_TONE, tones[s / 4], 6, 0.7f + 0.3f * c.random.nextFloat(), pan);
             }
         }
     },
 
-    /** PS2-era system browser: dark strings, deep struck tones, crystals in a vast hall. */
-    SYSTEM_BROWSER("System Browser", "PS2-era browser · dark strings, deep tones, crystals",
-            52, 0.5f, 0.93f, 1.3f, 6, 0.5f, 2, Composer.MINOR, new int[] {0, 2, 5, 9},
-            new int[][] {{0, 5, 2, 6}, {0, 3, 0, 4}, {0, 5, 3, 6}}, 1.75f, 0.32f) {
+    /**
+     * PS2-browser style: a single dense, chorused cluster around middle C, swelling slowly and
+     * changing chord every few bars, with a rare faint sparkle sliding down above it.
+     */
+    SYSTEM_BROWSER("System Browser", "PS2-style · one swelling chorused cluster, faint sparkles",
+            60, 0.5f, 0.88f, 0.9f, 6, 0.35f, 3, Composer.LYDIAN, new int[] {0, 2, 5, 9},
+            new int[][] {{0, 1, 5}, {0, 4, 1}, {5, 1, 0}}, 4f, 0.55f) {
         @Override
         void step(Composer c, int step) {
             int s = step % 16;
             if (s == 0) {
                 c.nextBar();
                 if (c.bar() % barsPerChord == 0) {
-                    for (int note : c.voicing(48, 0, 2, 4, 8)) { // Minor add9.
-                        c.play(Patch.STRINGS, note, 30, 0.75f);
+                    for (int note : c.voicing(55, 0, 2, 4, 6)) { // Close cluster near C4.
+                        c.play(Patch.CLUSTER, note, 16 * barsPerChord - 4, 0.8f);
                     }
-                    int root = c.note(c.chord(), 36);
-                    c.play(Patch.DRONE, root, 30, 0.9f);
-                    c.play(Patch.DRONE, root + 7, 30, 0.5f);
-                }
-                if (c.chance(0.5f)) {
-                    c.play(Patch.BOOM, c.note(c.chord(), 36), 4, 0.9f,
-                            c.random.nextFloat() * 0.6f - 0.3f);
-                }
-                if (c.bar() % 4 == 2) {
-                    c.play(Patch.AIR, 84, 40, 1, c.random.nextFloat() * 1.2f - 0.6f);
                 }
             }
-            if (c.chance(0.07f)) {
-                int[] tones = c.voicing(67, 0, 2, 4, 7, 9);
-                c.play(Patch.CRYSTAL, tones[c.random.nextInt(tones.length)], 4,
-                        0.5f + 0.4f * c.random.nextFloat(), c.random.nextFloat() * 1.6f - 0.8f);
+            if (s % 4 == 0 && c.chance(0.04f)) {
+                int[] high = c.voicing(91, 0, 2, 4);
+                c.play(Patch.GLINT, high[c.random.nextInt(3)], 3, 1,
+                        c.random.nextFloat() * 1.4f - 0.7f);
             }
         }
     },
@@ -256,21 +244,13 @@ public enum Style {
     /** Called on every 16th note; step 0 of each bar must call {@link Composer#nextBar}. */
     abstract void step(Composer c, int step);
 
-    /**
-     * The opening swell when the music starts after a long silence, the way a console greets
-     * you: a rising whoosh, a wide chord blooming in, and a shimmer of crystals at its peak.
-     */
+    /** The opening when the music starts after a long silence: the menu tone swelling in. */
     void intro(Composer c) {
-        c.play(Patch.SWELL, 100, 40, 1, 0);
-        for (int note : c.voicing(48, 0, 4, 7, 9, 11)) {
-            c.play(Patch.STRINGS, note, 24, 0.9f);
-        }
-        int[] shimmer = c.voicing(72, 0, 4, 7, 9);
-        for (int i = 0; i < shimmer.length; i++) {
-            c.play(Patch.CRYSTAL, shimmer[i], 4, 0.8f - 0.12f * i, i % 2 == 0 ? -0.6f : 0.6f,
-                    2.3f + 0.09f * i);
+        for (int note : c.voicing(55, 0, 2, 4)) {
+            c.play(Patch.CLUSTER, note, 24, 0.7f);
         }
     }
+
 
     public static Style parse(String name) {
         for (Style s : values()) {

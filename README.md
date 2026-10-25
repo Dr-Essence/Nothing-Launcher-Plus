@@ -75,11 +75,11 @@ Both off by default; switch them on in the module's **Sound** section.
 
 - **Background music**, generated live (never a loop, never a recording) and tuned to
   A = 432 Hz, in stereo. Seven original styles in the manner of classic console menus. The
-  PlayStation-menu kind come first: *Home Menu* (PS4-era: wide supersaw strings, a gentle plucked
-  arpeggio bouncing left and right; the default), *System Browser* (PS2-era: dark strings, deep
-  struck tones, crystals in a vast hall) and *Memory Card* (glass bells over lydian pads). They
-  get a stereo hall reverb with pre-delay, ping-pong echoes and band-limited detuned pads, and
-  after a long silence the music opens with an original console-style swell. Then *Crystal Shore*
+  PlayStation-menu kind come first, deliberately simple and matched by measurement (spectrum,
+  stereo width, swell rate, register) to reference recordings: *Home Menu* (PS4-style: one warm
+  chorused tone playing slow, ringing notes that overlap into chords, F3 to G4, with phrases and
+  pauses; the default) and *System Browser* (PS2-style: one dense chorused cluster near middle C,
+  swelling slowly, with faint sparkles). No bass, no drums, nothing above about 2 kHz. Then *Crystal Shore*
   (90s new-age shimmer and surf), *Shop Lounge* (swung e-piano, walking bass, vibes), *Starlight
   Lullaby* (16-bit music box and flute) and *Pixel Meadow* (8-bit overworld).
 - Each style has a master tone control; the calm ones keep essentially nothing above 2 kHz, and
