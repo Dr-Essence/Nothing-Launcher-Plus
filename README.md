@@ -25,6 +25,8 @@ plus your folders.
   opens the module.
 - Long-press a drawer folder for the launcher's own popup: **Add to home screen** creates a real
   home-screen folder with the same name and apps; **Edit** (custom folders) opens the folder editor.
+- **Export / Import** saves folders, options and cover images to one file, so the setup survives
+  a reinstall.
 - Changes apply right away through a reload broadcast. You don't need to restart the launcher.
 
 ## Requirements
@@ -52,6 +54,9 @@ key, which is kept out of this public repo:
   key and shows a warning.
 - **Local:** `SIGNING_KEYSTORE=/path/to/release.jks SIGNING_PASSWORD=... ./gradlew assembleRelease`
   (key alias `nlplus`, or set `SIGNING_KEY_ALIAS`).
+
+Before switching an existing install to a differently signed build, use **Export** in the
+module, uninstall, install the new build and **Import** the file.
 
 Keep a backup of the keystore. If it is lost, no future update can install over your current one.
 

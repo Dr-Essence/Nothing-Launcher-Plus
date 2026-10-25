@@ -92,28 +92,61 @@ public final class Config {
         config.looseApps = prefs.getBoolean(KEY_LOOSE_APPS, false);
         config.drawerOpacity = Math.max(0, Math.min(100, prefs.getInt(KEY_DRAWER_OPACITY, 100)));
         try {
-            JSONArray array = new JSONArray(prefs.getString(KEY_FOLDERS, "[]"));
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject obj = array.getJSONObject(i);
-                Folder folder = new Folder(obj.getString("id"), obj.optString("name", "Folder"));
-                folder.coverText = obj.optString("coverText", "");
-                folder.coverImageVersion = obj.optLong("coverImage", 0);
-                JSONArray apps = obj.optJSONArray("apps");
-                if (apps != null) {
-                    for (int j = 0; j < apps.length(); j++) {
-                        folder.apps.add(apps.getString(j));
-                    }
-                }
-                config.folders.add(folder);
-            }
+            config.readFolders(new JSONArray(prefs.getString(KEY_FOLDERS, "[]")));
         } catch (JSONException ignored) {
-            // Corrupt config: fall back to whatever was parsed so far.
+            // Corrupt config: keep whatever was parsed so far.
         }
         config.reindex();
         return config;
     }
 
     public void write(SharedPreferences.Editor editor) {
+        editor.putString(KEY_FOLDERS, foldersJson().toString())
+                .putBoolean(KEY_CUSTOM_FIRST, customFirst)
+                .putBoolean(KEY_HIDE_BUILTIN, hideBuiltin)
+                .putBoolean(KEY_LOOSE_APPS, looseApps)
+                .putInt(KEY_DRAWER_OPACITY, drawerOpacity);
+        reindex();
+    }
+
+    /** Everything as one JSON object, for backups. */
+    public JSONObject toJson() throws JSONException {
+        return new JSONObject()
+                .put(KEY_FOLDERS, foldersJson())
+                .put(KEY_CUSTOM_FIRST, customFirst)
+                .put(KEY_HIDE_BUILTIN, hideBuiltin)
+                .put(KEY_LOOSE_APPS, looseApps)
+                .put(KEY_DRAWER_OPACITY, drawerOpacity);
+    }
+
+    public static Config fromJson(JSONObject json) throws JSONException {
+        Config config = new Config();
+        config.customFirst = json.optBoolean(KEY_CUSTOM_FIRST, true);
+        config.hideBuiltin = json.optBoolean(KEY_HIDE_BUILTIN, false);
+        config.looseApps = json.optBoolean(KEY_LOOSE_APPS, false);
+        config.drawerOpacity = Math.max(0, Math.min(100, json.optInt(KEY_DRAWER_OPACITY, 100)));
+        config.readFolders(json.getJSONArray(KEY_FOLDERS));
+        config.reindex();
+        return config;
+    }
+
+    private void readFolders(JSONArray array) throws JSONException {
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject obj = array.getJSONObject(i);
+            Folder folder = new Folder(obj.getString("id"), obj.optString("name", "Folder"));
+            folder.coverText = obj.optString("coverText", "");
+            folder.coverImageVersion = obj.optLong("coverImage", 0);
+            JSONArray apps = obj.optJSONArray("apps");
+            if (apps != null) {
+                for (int j = 0; j < apps.length(); j++) {
+                    folder.apps.add(apps.getString(j));
+                }
+            }
+            folders.add(folder);
+        }
+    }
+
+    private JSONArray foldersJson() {
         JSONArray array = new JSONArray();
         try {
             for (Folder folder : folders) {
@@ -132,12 +165,7 @@ public final class Config {
         } catch (JSONException e) {
             throw new IllegalStateException(e);
         }
-        editor.putString(KEY_FOLDERS, array.toString())
-                .putBoolean(KEY_CUSTOM_FIRST, customFirst)
-                .putBoolean(KEY_HIDE_BUILTIN, hideBuiltin)
-                .putBoolean(KEY_LOOSE_APPS, looseApps)
-                .putInt(KEY_DRAWER_OPACITY, drawerOpacity);
-        reindex();
+        return array;
     }
 
     /** An app lives in at most one custom folder; assigning it here removes it from the others. */

@@ -1,6 +1,8 @@
 package com.dressence.nothinglauncherplus.ui;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
@@ -16,6 +18,9 @@ public class MainActivity extends Activity {
     public static boolean isModuleActive() {
         return false;
     }
+
+    private static final int REQUEST_EXPORT = 1;
+    private static final int REQUEST_IMPORT = 2;
 
     private SettingsStore store;
 
@@ -76,6 +81,18 @@ public class MainActivity extends Activity {
                     FolderActivity.open(this, folder.id, true);
                 }));
 
+        ui.section("Backup");
+        ui.row("Export", "Save folders, options and covers to a file", null, null,
+                v -> startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE)
+                        .setType("application/json")
+                        .putExtra(Intent.EXTRA_TITLE, "nothing-launcher-plus-backup.json"),
+                        REQUEST_EXPORT));
+        ui.row("Import", "Replace the current setup with a backup file", null, null,
+                v -> startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE)
+                        .setType("*/*"), REQUEST_IMPORT));
+
         ui.section("Launcher");
         ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,
                 null, v -> restartLauncher());
@@ -111,6 +128,58 @@ public class MainActivity extends Activity {
     private static String opacityLabel(int opacity) {
         return opacity >= 100 ? "Opaque (stock)"
                 : opacity == 0 ? "Transparent" : opacity + "% opaque";
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Uri uri = data != null ? data.getData() : null;
+        if (resultCode != RESULT_OK || uri == null) {
+            return;
+        }
+        if (requestCode == REQUEST_EXPORT) {
+            Config snapshot = store.config;
+            runInBackground(() -> Backup.export(this, snapshot, uri), "Backup saved", null);
+        } else if (requestCode == REQUEST_IMPORT) {
+            Dialogs.builder(this)
+                    .setTitle("Import backup?")
+                    .setMessage("Your current folders and options will be replaced.")
+                    .setPositiveButton("Import", (d, w) -> {
+                        Config[] imported = new Config[1];
+                        runInBackground(() -> imported[0] = Backup.restore(this, uri),
+                                "Backup imported", () -> {
+                                    store.config = imported[0];
+                                    store.save(this);
+                                    render();
+                                });
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        }
+    }
+
+    private interface Work {
+        void run() throws Exception;
+    }
+
+    /** Runs {@code work} off the main thread, then {@code onSuccess} on it, and reports. */
+    private void runInBackground(Work work, String successMessage, Runnable onSuccess) {
+        new Thread(() -> {
+            String error = null;
+            try {
+                work.run();
+            } catch (Exception e) {
+                error = e.getMessage() != null ? e.getMessage() : e.toString();
+            }
+            String failure = error;
+            runOnUiThread(() -> {
+                if (failure == null && onSuccess != null) {
+                    onSuccess.run();
+                }
+                Toast.makeText(this, failure == null ? successMessage : "Failed: " + failure,
+                        Toast.LENGTH_LONG).show();
+            });
+        }).start();
     }
 
     private void restartLauncher() {
