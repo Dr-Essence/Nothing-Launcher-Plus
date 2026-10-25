@@ -98,7 +98,7 @@ public final class Config {
     public boolean uiSounds = false;
     public boolean music = false;
     /** A {@code sound.Style} name. */
-    public String musicStyle = "MEMORY_CARD";
+    public String musicStyle = "HOME_MENU";
     /** 0..100. */
     public int musicVolume = 45;
     /** Let the home screen and app drawer follow auto-rotate into landscape. */
@@ -119,7 +119,7 @@ public final class Config {
         config.dotMatrix = prefs.getBoolean(KEY_DOT_MATRIX, true);
         config.uiSounds = prefs.getBoolean(KEY_UI_SOUNDS, false);
         config.music = prefs.getBoolean(KEY_MUSIC, false);
-        config.musicStyle = prefs.getString(KEY_MUSIC_STYLE, "MEMORY_CARD");
+        config.musicStyle = prefs.getString(KEY_MUSIC_STYLE, "HOME_MENU");
         config.musicVolume = Math.max(0, Math.min(100, prefs.getInt(KEY_MUSIC_VOLUME, 45)));
         config.allowRotation = prefs.getBoolean(KEY_ALLOW_ROTATION, false);
         config.controllerNav = prefs.getBoolean(KEY_CONTROLLER_NAV, true);
@@ -177,7 +177,7 @@ public final class Config {
         config.dotMatrix = json.optBoolean(KEY_DOT_MATRIX, true);
         config.uiSounds = json.optBoolean(KEY_UI_SOUNDS, false);
         config.music = json.optBoolean(KEY_MUSIC, false);
-        config.musicStyle = json.optString(KEY_MUSIC_STYLE, "MEMORY_CARD");
+        config.musicStyle = json.optString(KEY_MUSIC_STYLE, "HOME_MENU");
         config.musicVolume = Math.max(0, Math.min(100, json.optInt(KEY_MUSIC_VOLUME, 45)));
         config.allowRotation = json.optBoolean(KEY_ALLOW_ROTATION, false);
         config.controllerNav = json.optBoolean(KEY_CONTROLLER_NAV, true);

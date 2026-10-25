@@ -12,6 +12,7 @@ final class Composer {
 
     static final int[] MAJOR = {0, 2, 4, 5, 7, 9, 11};
     static final int[] LYDIAN = {0, 2, 4, 6, 7, 9, 11};
+    static final int[] MINOR = {0, 2, 3, 5, 7, 8, 10};
 
     /** One melody note: start step in the bar, length in steps, scale degrees above the chord. */
     private static final class Note {

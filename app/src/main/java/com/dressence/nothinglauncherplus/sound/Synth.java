@@ -19,6 +19,7 @@ final class Synth {
     private Style style;
     private double samplesToStep;
     private int step;
+    private float toned;
 
     Synth(float rate, Style style, long seed) {
         this.rate = rate;
@@ -87,6 +88,8 @@ final class Synth {
             }
             float mixed = (dry + effects.reverb(wetIn) * style.reverbLevel + effects.echo(echoIn))
                     * style.level;
+            toned += style.tone * (mixed - toned); // Master tone: keeps calm styles low.
+            mixed = toned;
             // Gentle soft clip keeps chords from ever crackling.
             out[i] = mixed / (1 + Math.abs(mixed));
         }

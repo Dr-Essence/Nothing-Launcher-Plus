@@ -177,12 +177,69 @@ interface Patch {
     /** Deep sustained drone under ambient pads. */
     Patch DRONE = v -> {
         v.wave = Voice.SINE;
-        v.gain = 0.12f;
+        v.gain = 0.07f;
         v.attack = 2.5f;
         v.decay = 6f;
         v.sustain = 0.9f;
         v.release = 3f;
         v.reverb = 0.2f;
+    };
+    /** Warm console-menu pad: very dark, breathing slowly through its filter. */
+    Patch WARM_PAD = v -> {
+        v.wave = Voice.PAD;
+        v.detune = 1.004f;
+        v.gain = 0.075f;
+        v.attack = 3f;
+        v.decay = 6f;
+        v.sustain = 0.85f;
+        v.release = 5f;
+        v.cutoff = 0.08f;
+        v.sweepDepth = 0.5f;
+        v.sweepRate = 0.06f;
+        v.reverb = 0.7f;
+    };
+    /** Soft, dark piano-like key: gentle FM, long decay, no bright attack. */
+    Patch SOFT_KEYS = v -> {
+        v.wave = Voice.FM;
+        v.fmRatio = 1f;
+        v.fmIndex = 0.55f;
+        v.fmDecay = 0.9f;
+        v.gain = 0.11f;
+        v.attack = 0.015f;
+        v.decay = 2.4f;
+        v.sustain = 0.08f;
+        v.release = 1.8f;
+        v.cutoff = 0.22f;
+        v.reverb = 0.75f;
+        v.echo = 0.25f;
+    };
+    /** Distant low glass tone for dark menus. */
+    Patch LOW_GLASS = v -> {
+        v.wave = Voice.FM;
+        v.fmRatio = 1.414f;
+        v.fmIndex = 1.1f;
+        v.fmDecay = 1.5f;
+        v.gain = 0.07f;
+        v.attack = 0.4f;
+        v.decay = 3.5f;
+        v.sustain = 0;
+        v.release = 3f;
+        v.cutoff = 0.15f;
+        v.reverb = 0.9f;
+        v.echo = 0.35f;
+    };
+    /** Slow airy whoosh: dark noise swelling through a sweeping filter. */
+    Patch AIR = v -> {
+        v.wave = Voice.NOISE;
+        v.gain = 0.04f;
+        v.attack = 4f;
+        v.decay = 5f;
+        v.sustain = 0.7f;
+        v.release = 4f;
+        v.cutoff = 0.015f;
+        v.sweepDepth = 0.8f;
+        v.sweepRate = 0.1f;
+        v.reverb = 0.6f;
     };
     /** Ocean swell: very dark noise, slow in and out. */
     Patch SURF = v -> {

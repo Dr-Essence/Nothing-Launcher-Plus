@@ -74,10 +74,14 @@ based on Unicode CLDR.
 Both off by default; switch them on in the module's **Sound** section.
 
 - **Background music**, generated live (never a loop, never a recording) and tuned to
-  A = 432 Hz. Five original styles in the manner of classic console menus:
-  *Pixel Meadow* (8-bit overworld: pulse lead, triangle bass), *Starlight Lullaby* (16-bit music
-  box and flute), *Memory Card* (2000s console ambient: glass bells, lydian pads), *Crystal
-  Shore* (90s new-age shimmer and surf) and *Shop Lounge* (swung e-piano, walking bass, vibes).
+  A = 432 Hz. Seven original styles in the manner of classic console menus. The calm, low
+  PlayStation-menu kind come first: *Home Menu* (PS4-era home screen: warm breathing pads, sparse
+  soft keys, deep air; the default), *System Browser* (PS2-era: drones in fifths, dark minor
+  pads, distant glass) and *Memory Card* (glass bells over lydian pads). Then *Crystal Shore*
+  (90s new-age shimmer and surf), *Shop Lounge* (swung e-piano, walking bass, vibes), *Starlight
+  Lullaby* (16-bit music box and flute) and *Pixel Meadow* (8-bit overworld).
+- Each style has a master tone control; the calm ones keep essentially nothing above 2 kHz, and
+  loudness is matched on what a phone speaker actually plays (above 200 Hz).
   A composer writes the music as it plays: motif, answer and cadence over changing progressions,
   a new progression every 16 bars and a new key every 32.
 - It plays only while the home screen or drawer is in front, fades in and out, never takes audio

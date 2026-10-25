@@ -33,6 +33,9 @@ final class Voice {
     float drop;
     /** One-pole low-pass coefficient: 1 = open, smaller = darker. */
     float cutoff;
+    /** Slow filter sweep: the cutoff breathes by this fraction at this rate (Hz). */
+    float sweepDepth;
+    float sweepRate;
     float fmRatio;
     float fmIndex;
     float fmDecay;
@@ -56,6 +59,7 @@ final class Voice {
     private float fmMul;
     private float fmLevel;
     private float lowpass;
+    private float sweptCutoff;
     private int lfsr;
     private double noisePhase;
     private float noise;
@@ -74,6 +78,8 @@ final class Voice {
         vibratoRate = 5;
         drop = 0;
         cutoff = 1;
+        sweepDepth = 0;
+        sweepRate = 0.08f;
         fmRatio = 1;
         fmIndex = 0;
         fmDecay = 0.2f;
@@ -98,6 +104,7 @@ final class Voice {
         fmMul = (float) Math.exp(-1.0 / Math.max(1, fmDecay * sampleRate));
         fmLevel = 1;
         lowpass = 0;
+        sweptCutoff = cutoff;
         lfsr = 1;
         noisePhase = 0;
         noise = 1;
@@ -174,7 +181,12 @@ final class Voice {
         }
         phase += step;
         phase -= Math.floor(phase);
-        lowpass += cutoff * (s - lowpass);
+        if (sweepDepth > 0 && (age & 31) == 1) {
+            // A slow sweep only needs updating every 32 samples.
+            sweptCutoff = Math.max(0.002f, Math.min(1, cutoff * (1 + sweepDepth
+                    * (float) Math.sin(TAU * sweepRate * t))));
+        }
+        lowpass += (sweepDepth > 0 ? sweptCutoff : cutoff) * (s - lowpass);
         return lowpass * env * gain;
     }
 }
