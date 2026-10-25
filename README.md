@@ -74,16 +74,20 @@ based on Unicode CLDR.
 Both off by default; switch them on in the module's **Sound** section.
 
 - **Background music**, generated live (never a loop, never a recording) and tuned to
-  A = 432 Hz. Seven original styles in the manner of classic console menus. The calm, low
-  PlayStation-menu kind come first: *Home Menu* (PS4-era home screen: warm breathing pads, sparse
-  soft keys, deep air; the default), *System Browser* (PS2-era: drones in fifths, dark minor
-  pads, distant glass) and *Memory Card* (glass bells over lydian pads). Then *Crystal Shore*
+  A = 432 Hz, in stereo. Seven original styles in the manner of classic console menus. The
+  PlayStation-menu kind come first: *Home Menu* (PS4-era: wide supersaw strings, a gentle plucked
+  arpeggio bouncing left and right; the default), *System Browser* (PS2-era: dark strings, deep
+  struck tones, crystals in a vast hall) and *Memory Card* (glass bells over lydian pads). They
+  get a stereo hall reverb with pre-delay, ping-pong echoes and band-limited detuned pads, and
+  after a long silence the music opens with an original console-style swell. Then *Crystal Shore*
   (90s new-age shimmer and surf), *Shop Lounge* (swung e-piano, walking bass, vibes), *Starlight
   Lullaby* (16-bit music box and flute) and *Pixel Meadow* (8-bit overworld).
 - Each style has a master tone control; the calm ones keep essentially nothing above 2 kHz, and
   loudness is matched on what a phone speaker actually plays (above 200 Hz).
   A composer writes the music as it plays: motif, answer and cadence over changing progressions,
   a new progression every 16 bars and a new key every 32.
+- Tapping an app lets the music recede at once: over 1.6 s it fades and closes its filter, like a
+  console dimming its menu as a game starts.
 - It plays only while the home screen or drawer is in front, fades in and out, never takes audio
   focus (so it can't pause your music), and goes quiet while another app plays media or a call
   is active. Synthesis runs on one audio thread into a power-saving track, about 1% of a core.

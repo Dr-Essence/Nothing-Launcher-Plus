@@ -136,9 +136,19 @@ final class LauncherSounds {
                 XposedHelpers.findClass("com.android.launcher3.model.data.ItemInfo", cl),
                 new XC_MethodHook() {
                     @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        // Let the music recede as the app opens, not when the launcher pauses.
+                        if (engine != null) {
+                            engine.stopMusic();
+                        }
+                    }
+
+                    @Override
                     protected void afterHookedMethod(MethodHookParam param) {
                         if (param.getResult() != null) {
                             play(Sfx.LAUNCH);
+                        } else {
+                            apply(); // Nothing launched: carry on playing.
                         }
                     }
                 });

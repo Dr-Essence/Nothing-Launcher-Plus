@@ -24,9 +24,11 @@ import java.util.Map;
  * app for previews).
  *
  * <ul>
- *   <li>Music is synthesized live on one audio thread into a power-saving AudioTrack, and only
- *       while asked to play: the launcher asks while it is in front, so it stops with the screen
- *       off or an app open. Starts fade in, stops fade out.</li>
+ *   <li>Music is synthesized live, in stereo, on one audio thread, and only while asked to
+ *       play: the launcher asks while it is in front and lets go the moment an app is tapped.
+ *       Starts fade in (after a long silence, with a console-style opening swell); stops
+ *       recede over 1.6 s, quieter and more muffled, through a short buffer so the fade is
+ *       heard at once.</li>
  *   <li>It never takes audio focus, so it can't pause anyone's music; instead it fades out while
  *       any other app plays media or a call is active, and comes back afterwards.</li>
  *   <li>Interface sounds are rendered once into small WAV files and played through SoundPool;
@@ -36,10 +38,13 @@ import java.util.Map;
 public final class SoundEngine {
 
     private static final int RATE = 24000;
-    private static final int BLOCK = 960; // 40 ms
+    private static final int BLOCK = 720; // 30 ms
     private static final float FADE_IN_SECONDS = 2.5f;
-    private static final float FADE_OUT_SECONDS = 0.8f;
-    private static final String SFX_VERSION = "1";
+    /** Fading out also closes the master filter, so the music recedes rather than stops. */
+    private static final float FADE_OUT_SECONDS = 1.6f;
+    /** After this long without music, the next start opens with the console-style swell. */
+    private static final long INTRO_AFTER_SILENCE_MS = 10 * 60 * 1000;
+    private static final String SFX_VERSION = "2";
     private static SoundEngine instance;
 
     private final Context context;
@@ -54,6 +59,7 @@ public final class SoundEngine {
     private Thread thread;
     private Synth synth;
     private Style synthStyle;
+    private long silentSince;
 
     private SoundPool pool;
     private final Map<Sfx, Integer> sfxIds = new EnumMap<>(Sfx.class);
@@ -122,6 +128,9 @@ public final class SoundEngine {
         Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
         AudioTrack track = null;
         try {
+            // A short buffer (about four blocks) so a fade-out is heard the moment it starts.
+            int minBuffer = AudioTrack.getMinBufferSize(
+                    RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
             track = new AudioTrack.Builder()
                     .setAudioAttributes(new AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_GAME)
@@ -130,18 +139,18 @@ public final class SoundEngine {
                     .setAudioFormat(new AudioFormat.Builder()
                             .setSampleRate(RATE)
                             .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                            .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
                             .build())
                     .setTransferMode(AudioTrack.MODE_STREAM)
-                    .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_POWER_SAVING)
-                    .setBufferSizeInBytes(Math.max(BLOCK * 4 * 4, AudioTrack.getMinBufferSize(
-                            RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_FLOAT)))
+                    .setBufferSizeInBytes(Math.max(minBuffer, BLOCK * 2 * 4 * 4))
                     .build();
             track.play();
-            float[] block = new float[BLOCK];
+            float[] block = new float[BLOCK * 2];
             float gain = 0;
             float fadeIn = BLOCK / (FADE_IN_SECONDS * RATE);
             float fadeOut = BLOCK / (FADE_OUT_SECONDS * RATE);
+            boolean intro = silentSince == 0
+                    || System.currentTimeMillis() - silentSince > INTRO_AFTER_SILENCE_MS;
             while (true) {
                 Style current = style;
                 if (synth == null) {
@@ -151,7 +160,12 @@ public final class SoundEngine {
                     synth.setStyle(current);
                     synthStyle = current;
                 }
-                float target = wanted && !othersPlaying ? volume : 0;
+                if (intro) {
+                    synth.intro();
+                    intro = false;
+                }
+                boolean playing = wanted && !othersPlaying;
+                float target = playing ? volume : 0;
                 float next = target > gain ? Math.min(target, gain + fadeIn)
                         : Math.max(target, gain - fadeOut);
                 synchronized (lock) {
@@ -160,15 +174,20 @@ public final class SoundEngine {
                         break;
                     }
                 }
+                // Receding: muffle in step with the fade, back to clear as it returns.
+                synth.setMuffle(playing ? 0 : 1 - next / Math.max(0.01f, volume));
                 synth.render(block, BLOCK);
                 float step = (next - gain) / BLOCK;
                 for (int i = 0; i < BLOCK; i++) {
                     gain += step;
-                    block[i] *= gain * gain; // Perceptual fade curve.
+                    float g = gain * gain; // Perceptual fade curve.
+                    block[2 * i] *= g;
+                    block[2 * i + 1] *= g;
                 }
                 gain = next;
-                track.write(block, 0, BLOCK, AudioTrack.WRITE_BLOCKING);
+                track.write(block, 0, block.length, AudioTrack.WRITE_BLOCKING);
             }
+            silentSince = System.currentTimeMillis();
         } catch (Throwable t) {
             synchronized (lock) {
                 thread = null;

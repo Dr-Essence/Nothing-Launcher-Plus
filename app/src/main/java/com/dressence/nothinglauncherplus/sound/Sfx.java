@@ -7,9 +7,9 @@ package com.dressence.nothinglauncherplus.sound;
  */
 public enum Sfx {
 
-    /** Focus moved (controller) or a page turned. */
-    MOVE(new float[][] {{96, 0, 1}}, Patch.CHIME, 0.09f, 0.55f),
-    PAGE(new float[][] {{91, 0, 0.8f}}, Patch.CHIME, 0.12f, 0.45f),
+    /** Focus moved (controller) or a page turned: the soft tick of a console menu. */
+    MOVE(new float[][] {{84, 0, 1}}, Patch.TICK, 0.03f, 0.5f),
+    PAGE(new float[][] {{79, 0, 1}}, Patch.TICK, 0.03f, 0.45f),
     OPEN_DRAWER(new float[][] {{79, 0, 0.8f}, {86, 0.07f, 1}}, Patch.BELL, 0.25f, 0.6f),
     CLOSE_DRAWER(new float[][] {{86, 0, 0.8f}, {79, 0.07f, 0.9f}}, Patch.BELL, 0.25f, 0.55f),
     OPEN_FOLDER(new float[][] {{84, 0, 0.8f}, {91, 0.05f, 1}}, Patch.CHIME, 0.18f, 0.7f),
@@ -60,13 +60,14 @@ public enum Sfx {
                 if (n == starts[i]) {
                     voices[i].start(noteSeconds, RATE);
                 }
-                if (voices[i].active) {
-                    float s = voices[i].next();
+                if (voices[i].active && voices[i].next()) {
+                    float s = (voices[i].left + voices[i].right) * 0.5f;
                     dry += s;
                     wet += s * voices[i].reverb;
                 }
             }
-            float mixed = dry + effects.reverb(wet) * 0.6f;
+            effects.reverb(wet);
+            float mixed = dry + (effects.reverbL + effects.reverbR) * 0.3f;
             mixed = mixed / (1 + Math.abs(mixed));
             // Short fade at the very end so the tail never clicks.
             float fade = Math.min(1, (length - n) / (0.05f * RATE));

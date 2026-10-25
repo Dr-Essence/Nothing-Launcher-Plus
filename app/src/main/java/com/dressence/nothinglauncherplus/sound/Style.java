@@ -7,63 +7,68 @@ package com.dressence.nothinglauncherplus.sound;
  * are scale steps from the tonic (0 = I, 3 = IV, 4 = V, 5 = vi).
  */
 public enum Style {
-    /** PS4-era home screen: warm breathing pads, sparse soft keys, sub bass, air. */
-    HOME_MENU("Home Menu", "PS4-era home screen · warm pads, soft keys, deep air", 56, 0.5f,
-            0.9f, 1.3f, 6, 0.35f, 2, Composer.MAJOR, new int[] {0, 2, 5, 7},
-            new int[][] {{0, 5, 3, 4}, {3, 0, 5, 4}, {0, 2, 3, 3}, {5, 3, 0, 4}}, 1.93f, 0.3f) {
+    /** PS4-era home screen: wide strings, a gentle plucked arpeggio bouncing left and right. */
+    HOME_MENU("Home Menu", "PS4-era home · wide strings, drifting plucked arpeggios", 76, 0.5f,
+            0.9f, 1.1f, 3, 0.45f, 2, Composer.MAJOR, new int[] {0, 2, 5, 7},
+            new int[][] {{0, 3, 5, 3}, {3, 0, 4, 5}, {0, 5, 3, 4}, {5, 3, 0, 4}}, 1.86f, 0.45f) {
+        private final int[] arp = {0, 2, 4, 7, 9, 7, 4, 2};
+
         @Override
         void step(Composer c, int step) {
             int s = step % 16;
             if (s == 0) {
                 c.nextBar();
                 if (c.bar() % barsPerChord == 0) {
-                    // Open voicing in the low middle: 7th chord, root an octave down.
-                    int[] chord = c.chordNotes(4, 48);
-                    c.play(Patch.WARM_PAD, chord[0] - 12, 30, 0.8f);
-                    for (int i = 1; i < chord.length; i++) {
-                        c.play(Patch.WARM_PAD, chord[i], 30, 0.7f);
+                    // Open voicing: root, fifth, octave, tenth; a soft sub underneath.
+                    for (int note : c.voicing(48, 0, 4, 7, 9)) {
+                        c.play(Patch.STRINGS, note, 30, 0.8f);
                     }
-                    c.play(Patch.DRONE, c.note(c.chord(), 36), 30, 0.9f);
-                    if (c.bar() % 4 == 0) {
-                        c.play(Patch.AIR, 90, 40, 1);
-                    }
+                    c.play(Patch.DRONE, c.note(c.chord(), 36), 30, 0.8f);
+                }
+                if (c.bar() % 4 == 1 && c.chance(0.6f)) {
+                    int[] glass = c.voicing(67, 4, 7);
+                    c.play(Patch.CRYSTAL, glass[c.random.nextInt(2)], 4, 0.8f,
+                            c.random.nextFloat() * 1.4f - 0.7f);
                 }
             }
-            // A few soft keys per bar, never above the middle of the keyboard.
-            if (s % 2 == 0 && c.chance(s == 0 ? 0.5f : 0.12f)) {
-                int degree = c.chord() + 2 * c.random.nextInt(4);
-                c.play(Patch.SOFT_KEYS, c.note(degree, 55), 6, 0.6f + 0.3f * c.random.nextFloat());
-                if (c.chance(0.3f)) {
-                    c.play(Patch.SOFT_KEYS, c.note(degree - 2, 55), 6, 0.45f);
-                }
+            // The arpeggio rests for two bars in eight, so the music breathes.
+            if (s % 2 == 0 && c.bar() % 8 < 6) {
+                int[] tones = c.voicing(60, arp);
+                float pan = (s / 2) % 2 == 0 ? -0.5f : 0.5f;
+                c.play(Patch.PLUCK, tones[s / 2], 2, s % 8 == 0 ? 1 : 0.7f, pan);
             }
         }
     },
 
-    /** PS2-era system browser: deep drones in fifths, dark minor pads, distant glass, air. */
-    SYSTEM_BROWSER("System Browser", "PS2-era browser · deep drones, dark pads, distant glass",
-            50, 0.5f, 0.92f, 1.5f, 6, 0.4f, 2, Composer.MINOR, new int[] {0, 2, 5, 9},
-            new int[][] {{0, 5, 2, 6}, {0, 3, 0, 4}, {0, 5, 3, 6}}, 1.94f, 0.22f) {
+    /** PS2-era system browser: dark strings, deep struck tones, crystals in a vast hall. */
+    SYSTEM_BROWSER("System Browser", "PS2-era browser · dark strings, deep tones, crystals",
+            52, 0.5f, 0.93f, 1.3f, 6, 0.5f, 2, Composer.MINOR, new int[] {0, 2, 5, 9},
+            new int[][] {{0, 5, 2, 6}, {0, 3, 0, 4}, {0, 5, 3, 6}}, 1.75f, 0.32f) {
         @Override
         void step(Composer c, int step) {
             int s = step % 16;
             if (s == 0) {
                 c.nextBar();
                 if (c.bar() % barsPerChord == 0) {
-                    int root = c.note(c.chord(), 36);
-                    c.play(Patch.DRONE, root, 30, 1);
-                    c.play(Patch.DRONE, root + 7, 30, 0.6f);
-                    for (int note : c.chordNotes(3, 48)) {
-                        c.play(Patch.WARM_PAD, note, 30, 0.75f);
+                    for (int note : c.voicing(48, 0, 2, 4, 8)) { // Minor add9.
+                        c.play(Patch.STRINGS, note, 30, 0.75f);
                     }
+                    int root = c.note(c.chord(), 36);
+                    c.play(Patch.DRONE, root, 30, 0.9f);
+                    c.play(Patch.DRONE, root + 7, 30, 0.5f);
+                }
+                if (c.chance(0.5f)) {
+                    c.play(Patch.BOOM, c.note(c.chord(), 36), 4, 0.9f,
+                            c.random.nextFloat() * 0.6f - 0.3f);
                 }
                 if (c.bar() % 4 == 2) {
-                    c.play(Patch.AIR, 84, 40, 1);
+                    c.play(Patch.AIR, 84, 40, 1, c.random.nextFloat() * 1.2f - 0.6f);
                 }
             }
-            if (s % 4 == 0 && c.chance(0.09f)) {
-                int degree = c.chord() + 2 * c.random.nextInt(3);
-                c.play(Patch.LOW_GLASS, c.note(degree, 55), 4, 0.6f + 0.4f * c.random.nextFloat());
+            if (c.chance(0.07f)) {
+                int[] tones = c.voicing(67, 0, 2, 4, 7, 9);
+                c.play(Patch.CRYSTAL, tones[c.random.nextInt(tones.length)], 4,
+                        0.5f + 0.4f * c.random.nextFloat(), c.random.nextFloat() * 1.6f - 0.8f);
             }
         }
     },
@@ -71,7 +76,7 @@ public enum Style {
     /** Early-2000s console ambient menu: lydian pads, glass bells, deep drone. */
     MEMORY_CARD("Memory Card", "PS2-era memory screen · glass bells, lydian pads", 60, 0.5f,
             0.9f, 1.4f, 6, 0.45f, 2, Composer.LYDIAN, new int[] {0, 2, 4, 7},
-            new int[][] {{0, 1, 0, 1}, {0, 1, 5, 3}, {0, 5, 1, 4}}, 2.39f, 0.3f) {
+            new int[][] {{0, 1, 0, 1}, {0, 1, 5, 3}, {0, 5, 1, 4}}, 2.58f, 0.3f) {
         @Override
         void step(Composer c, int step) {
             int s = step % 16;
@@ -250,6 +255,22 @@ public enum Style {
 
     /** Called on every 16th note; step 0 of each bar must call {@link Composer#nextBar}. */
     abstract void step(Composer c, int step);
+
+    /**
+     * The opening swell when the music starts after a long silence, the way a console greets
+     * you: a rising whoosh, a wide chord blooming in, and a shimmer of crystals at its peak.
+     */
+    void intro(Composer c) {
+        c.play(Patch.SWELL, 100, 40, 1, 0);
+        for (int note : c.voicing(48, 0, 4, 7, 9, 11)) {
+            c.play(Patch.STRINGS, note, 24, 0.9f);
+        }
+        int[] shimmer = c.voicing(72, 0, 4, 7, 9);
+        for (int i = 0; i < shimmer.length; i++) {
+            c.play(Patch.CRYSTAL, shimmer[i], 4, 0.8f - 0.12f * i, i % 2 == 0 ? -0.6f : 0.6f,
+                    2.3f + 0.09f * i);
+        }
+    }
 
     public static Style parse(String name) {
         for (Style s : values()) {

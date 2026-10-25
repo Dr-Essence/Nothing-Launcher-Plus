@@ -113,8 +113,8 @@ interface Patch {
     };
     /** Warm detuned-saw pad, slowly fading in and out. */
     Patch PAD = v -> {
-        v.wave = Voice.PAD;
-        v.detune = 1.007f;
+        v.wave = Voice.SUPERSAW;
+        v.detune = 1.008f;
         v.gain = 0.06f;
         v.attack = 1.6f;
         v.decay = 4f;
@@ -184,10 +184,91 @@ interface Patch {
         v.release = 3f;
         v.reverb = 0.2f;
     };
+    /** Lush, wide string pad: supersaw spread across the stereo field, slow bloom. */
+    Patch STRINGS = v -> {
+        v.wave = Voice.SUPERSAW;
+        v.detune = 1.011f;
+        v.gain = 0.07f;
+        v.attack = 2.4f;
+        v.decay = 6f;
+        v.sustain = 0.85f;
+        v.release = 4.5f;
+        v.cutoff = 0.09f;
+        v.sweepDepth = 0.45f;
+        v.sweepRate = 0.05f;
+        v.reverb = 0.65f;
+    };
+    /** Soft plucked arpeggio note: round FM pluck with a little bite, made for echoes. */
+    Patch PLUCK = v -> {
+        v.wave = Voice.FM;
+        v.fmRatio = 1f;
+        v.fmIndex = 1.1f;
+        v.fmDecay = 0.12f;
+        v.gain = 0.085f;
+        v.attack = 0.003f;
+        v.decay = 0.55f;
+        v.release = 0.4f;
+        v.cutoff = 0.3f;
+        v.reverb = 0.55f;
+        v.echo = 0.4f;
+    };
+    /** Crystal: a soft, glassy FM tone that rings into the hall. */
+    Patch CRYSTAL = v -> {
+        v.wave = Voice.FM;
+        v.fmRatio = 3.01f;
+        v.fmIndex = 1.1f;
+        v.fmDecay = 0.9f;
+        v.gain = 0.05f;
+        v.attack = 0.01f;
+        v.decay = 2.2f;
+        v.release = 2f;
+        v.cutoff = 0.35f;
+        v.reverb = 0.85f;
+        v.echo = 0.45f;
+    };
+    /** Deep resonant tone, struck and left to ring in a vast room. */
+    Patch BOOM = v -> {
+        v.wave = Voice.FM;
+        v.fmRatio = 2f;
+        v.fmIndex = 0.9f;
+        v.fmDecay = 0.6f;
+        v.gain = 0.16f;
+        v.attack = 0.02f;
+        v.decay = 3.5f;
+        v.release = 3f;
+        v.cutoff = 0.2f;
+        v.reverb = 0.8f;
+    };
+    /** Navigation tick: a tiny, muted click with a soft room behind it. */
+    Patch TICK = v -> {
+        v.wave = Voice.FM;
+        v.fmRatio = 2f;
+        v.fmIndex = 0.6f;
+        v.fmDecay = 0.01f;
+        v.gain = 0.12f;
+        v.attack = 0.0008f;
+        v.decay = 0.025f;
+        v.release = 0.02f;
+        v.cutoff = 0.5f;
+        v.reverb = 0.6f;
+    };
+    /** Rising whoosh for the opening swell: noise through a filter that opens and closes. */
+    Patch SWELL = v -> {
+        v.wave = Voice.NOISE;
+        v.gain = 0.09f;
+        v.attack = 2.6f;
+        v.decay = 1f;
+        v.sustain = 0.3f;
+        v.release = 2.2f;
+        v.cutoff = 0.02f;
+        v.sweepDepth = 1.5f;
+        v.sweepRate = 0.18f;
+        v.reverb = 0.8f;
+    };
     /** Warm console-menu pad: very dark, breathing slowly through its filter. */
     Patch WARM_PAD = v -> {
-        v.wave = Voice.PAD;
-        v.detune = 1.004f;
+        v.wave = Voice.SUPERSAW;
+        v.detune = 1.006f;
         v.gain = 0.075f;
         v.attack = 3f;
         v.decay = 6f;

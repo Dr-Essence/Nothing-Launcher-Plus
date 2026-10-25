@@ -96,14 +96,37 @@ final class Composer {
         return notes;
     }
 
+    /** MIDI notes at the given scale-degree offsets above the current chord root. */
+    int[] voicing(int base, int... offsets) {
+        int[] notes = new int[offsets.length];
+        for (int i = 0; i < offsets.length; i++) {
+            notes[i] = note(chord + offsets[i], base);
+        }
+        return notes;
+    }
+
     boolean chance(float p) {
         return random.nextFloat() < p;
     }
 
     /** Plays one note of {@code patch}; {@code steps} is the held length in 16ths. */
     void play(Patch patch, float midi, float steps, float gain) {
+        play(patch, midi, steps, gain, Float.NaN);
+    }
+
+    /** As {@link #play(Patch, float, float, float)}, placed at {@code pan} (-1 left, 1 right). */
+    void play(Patch patch, float midi, float steps, float gain, float pan) {
+        play(patch, midi, steps, gain, pan, 0);
+    }
+
+    /** As above, starting {@code delaySeconds} from now. */
+    void play(Patch patch, float midi, float steps, float gain, float pan, float delaySeconds) {
         Voice v = synth.voice();
         patch.apply(v);
+        v.delay = delaySeconds;
+        if (!Float.isNaN(pan)) {
+            v.pan = pan;
+        }
         v.freq = Synth.hz(midi);
         v.gain *= gain;
         v.start(steps * synth.stepSeconds(), synth.rate);
