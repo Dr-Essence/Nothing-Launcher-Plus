@@ -16,6 +16,9 @@ import com.dressence.nothinglauncherplus.anim.FrameRates;
 import com.dressence.nothinglauncherplus.sound.SoundEngine;
 import com.dressence.nothinglauncherplus.sound.Style;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /** Module settings: drawer options and the list of custom folders. */
 public class MainActivity extends Activity {
 
@@ -99,12 +102,29 @@ public class MainActivity extends Activity {
         if (config.folders.isEmpty()) {
             ui.note("Create a folder, pick its apps, and it appears in the Smart (Beta) drawer.");
         }
-        for (Config.Folder folder : config.folders) {
-            int n = folder.apps.size();
-            ui.row(folder.name, n == 1 ? "1 app" : n + " apps",
-                    ui.coverPreview(folder, 40, config.animateCovers, config.dotMatrix),
-                    ui.chevron(), v -> FolderActivity.open(this, folder.id, false));
+        if (config.folders.size() > 1) {
+            ui.note("Drag ≡ to change the order in the drawer: folders fill its rows two at a"
+                    + " time, in this order.");
         }
+        List<String> ids = new ArrayList<>();
+        for (Config.Folder folder : config.folders) {
+            ids.add(folder.id);
+        }
+        ui.content.addView(new ReorderList(ui, ids, 72, id -> {
+            Config.Folder folder = config.folderForId(id);
+            int n = folder.apps.size();
+            return ui.detachedRow(folder.name, n == 1 ? "1 app" : n + " apps",
+                    ui.coverPreview(folder, 40, config.animateCovers, config.dotMatrix),
+                    null, v -> FolderActivity.open(this, folder.id, false));
+        }, order -> {
+            List<Config.Folder> sorted = new ArrayList<>();
+            for (String id : order) {
+                sorted.add(config.folderForId(id));
+            }
+            config.folders.clear();
+            config.folders.addAll(sorted);
+            store.save(this);
+        }));
         ui.pill("New folder", true, v -> Dialogs.promptText(this, "New folder", "", "Name",
                 name -> {
                     Config.Folder folder = new Config.Folder(

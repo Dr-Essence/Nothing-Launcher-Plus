@@ -130,6 +130,14 @@ final class Ui {
     /** A two-line row; {@code trailing} (switch, chevron, icon) sits on the right. */
     LinearLayout row(String title, String summary, View leading, View trailing,
             View.OnClickListener onClick) {
+        LinearLayout row = detachedRow(title, summary, leading, trailing, onClick);
+        content.addView(row);
+        return row;
+    }
+
+    /** {@link #row} without adding it to the page (e.g. for a {@link ReorderList}). */
+    LinearLayout detachedRow(String title, String summary, View leading, View trailing,
+            View.OnClickListener onClick) {
         LinearLayout row = new LinearLayout(activity);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -166,7 +174,6 @@ final class Ui {
             lp.setMarginStart(dp(16));
             row.addView(trailing, lp);
         }
-        content.addView(row);
         return row;
     }
 

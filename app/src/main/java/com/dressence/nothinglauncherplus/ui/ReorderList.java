@@ -20,14 +20,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Vertical list of apps that can be reordered by dragging the handle at the end of each row.
- * The container owns the gesture, so moving rows around never cancels the touch stream.
+ * Vertical list (apps in a folder, or the folders themselves) that can be reordered by dragging
+ * the handle at the end of each row; the rest of a row keeps its own click. The container owns
+ * the gesture, so moving rows around never cancels the touch stream.
  */
 @SuppressLint("ViewConstructor")
 final class ReorderList extends LinearLayout {
 
     interface Listener {
-        void onReordered(List<String> components);
+        void onReordered(List<String> keys);
+    }
+
+    /** Builds the row for one key (without the handle, which the list adds). */
+    interface RowFactory {
+        LinearLayout create(String key);
     }
 
     private final Listener listener;
@@ -63,25 +69,43 @@ final class ReorderList extends LinearLayout {
         }
     };
 
+    /** A list of apps (flattened component names) in the given order. */
     ReorderList(Ui ui, List<String> components, Listener listener) {
+        this(ui, components, 64, null, listener);
+    }
+
+    /** A list of {@code keys}, each row {@code rowHeightDp} tall, built by {@code factory}. */
+    ReorderList(Ui ui, List<String> keys, int rowHeightDp, RowFactory factory,
+            Listener listener) {
         super(ui.context());
         setOrientation(VERTICAL);
         this.listener = listener;
-        order = new ArrayList<>(components);
-        rowHeight = ui.dp(64);
+        order = new ArrayList<>(keys);
+        rowHeight = ui.dp(rowHeightDp);
         handleWidth = ui.dp(72);
         edge = ui.dp(72);
         scrollStep = ui.dp(10);
         dragBackground.setColor(Ui.SURFACE);
         dragBackground.setCornerRadius(ui.dp(16));
         PackageManager pm = getContext().getPackageManager();
-        for (String component : order) {
-            addView(createRow(ui, pm, component),
-                    new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, rowHeight));
+        for (String key : order) {
+            LinearLayout row = factory != null ? factory.create(key) : createRow(ui, pm, key);
+            row.addView(handle(ui), new LayoutParams(ui.dp(40), ViewGroup.LayoutParams.MATCH_PARENT));
+            addView(row, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, rowHeight));
         }
     }
 
-    private View createRow(Ui ui, PackageManager pm, String component) {
+    private TextView handle(Ui ui) {
+        TextView handle = new TextView(getContext());
+        handle.setText("≡");
+        handle.setTextColor(Ui.TEXT_SECONDARY);
+        handle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
+        handle.setGravity(Gravity.CENTER);
+        handle.setContentDescription("Drag to reorder");
+        return handle;
+    }
+
+    private LinearLayout createRow(Ui ui, PackageManager pm, String component) {
         LinearLayout row = new LinearLayout(getContext());
         row.setOrientation(HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
@@ -103,14 +127,6 @@ final class ReorderList extends LinearLayout {
         label.setSingleLine(true);
         label.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(label, new LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-        TextView handle = new TextView(getContext());
-        handle.setText("≡");
-        handle.setTextColor(Ui.TEXT_SECONDARY);
-        handle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
-        handle.setGravity(Gravity.CENTER);
-        handle.setContentDescription("Drag to reorder");
-        row.addView(handle, new LayoutParams(ui.dp(40), ViewGroup.LayoutParams.MATCH_PARENT));
         return row;
     }
 

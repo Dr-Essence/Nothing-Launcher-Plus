@@ -12,6 +12,9 @@ Everything new is opt-in: with the defaults the drawer looks exactly like stock 
 plus your folders.
 
 - Create, rename and delete drawer folders and pick the apps in each.
+- **Reorder the folders** by dragging them in the module's folder list. The drawer fills its
+  rows two folders at a time in that order, so you choose which folders share a row and which
+  row comes first.
 - **Reorder apps inside a folder** by dragging them in the folder editor. The drawer tile and
   the opened folder follow that order.
 - **Folder covers**: give a folder an image (centre-cropped to a square, stored at 1024 px) or an
