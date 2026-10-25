@@ -40,8 +40,11 @@ final class Landscape {
     /** Nothing's portrait reference size, transposed for landscape. */
     private static final float REFERENCE_LONG = 2392f;
     private static final float REFERENCE_SHORT = 1080f;
-    /** Landscape Smart drawer: tile width relative to the drawer height. */
-    private static final float SMART_TILE_TO_HEIGHT = 0.55f;
+    /**
+     * Landscape Smart drawer: tile width relative to the screen height. Tiles are 1.11x as tall
+     * as wide, so this shows about one and a half rows under the search bar.
+     */
+    private static final float SMART_TILE_TO_HEIGHT = 0.36f;
     /** Largest landscape icon relative to its cell, leaving room for folder rings and dots. */
     private static final float ICON_TO_CELL = 0.8f;
 
@@ -479,12 +482,13 @@ final class Landscape {
         }
         int width = XposedHelpers.getIntField(deviceProfile, "availableWidthPx");
         int height = XposedHelpers.getIntField(deviceProfile, "availableHeightPx");
-        return Math.max(3, Math.min(6, Math.round(width / (height * SMART_TILE_TO_HEIGHT))));
+        return Math.max(3, Math.min(7, Math.round(width / (height * SMART_TILE_TO_HEIGHT))));
     }
 
     /**
-     * The Smart drawer profile sizes two tiles across availableWidthPx. In landscape, compute it
-     * against the width two tiles of the N-column grid would take, then restore the real width.
+     * The Smart drawer profile sizes two tiles across availableWidthPx, and icons and padding
+     * from availableRatio. In landscape, compute it against the width two tiles of the N-column
+     * grid take and a ratio scaled to match, then restore both.
      */
     private void hookSmartProfile() throws Throwable {
         Class<?> dp = ntDeviceProfileClass();
@@ -504,8 +508,15 @@ final class Landscape {
                 int width = XposedHelpers.getIntField(profile, "availableWidthPx");
                 int tile = (int) Math.ceil((width - 2 * padding - (columns - 1) * gap)
                         / (float) columns);
+                int twoTiles = 2 * tile + 2 * padding + gap;
+                float ratio = XposedHelpers.getFloatField(profile, "availableRatio");
                 param.setObjectExtra("width", width);
-                XposedHelpers.setIntField(profile, "availableWidthPx", 2 * tile + 2 * padding + gap);
+                param.setObjectExtra("ratio", ratio);
+                XposedHelpers.setIntField(profile, "availableWidthPx", twoTiles);
+                // Icon and padding sizes follow availableRatio, not the tile: scale it by how
+                // much narrower the tiles are than in portrait (screen's short side).
+                XposedHelpers.setFloatField(profile, "availableRatio", ratio * twoTiles
+                        / (float) XposedHelpers.getIntField(profile, "heightPx"));
             }
 
             @Override
@@ -513,6 +524,8 @@ final class Landscape {
                 Object width = param.getObjectExtra("width");
                 if (width != null) {
                     XposedHelpers.setIntField(param.args[1], "availableWidthPx", (Integer) width);
+                    XposedHelpers.setFloatField(param.args[1], "availableRatio",
+                            (Float) param.getObjectExtra("ratio"));
                 }
             }
         });

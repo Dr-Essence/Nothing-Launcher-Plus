@@ -76,6 +76,18 @@ there, the module answers Nothing's sizing methods with AOSP's vertical-bar layo
 - the 1080×2392 reference transposed, so icons keep their size;
 - the Smart drawer gets 3–6 tile columns (4 on most phones) instead of two giant tiles.
 
+Around the home screen:
+
+- **Recents** rotates for real. Nothing emptied `RecentsOrientedState.updateHomeRotationSetting`,
+  so recents drew its portrait layout turned sideways (thin cards, sideways menus); the module
+  restores AOSP's flag and tells SystemUI.
+- **Folders** open centred between the system bars. Nothing places them at a fixed portrait top
+  margin, which pushed them off the bottom of a landscape screen.
+- **The launcher's own screens** (search, home and drawer settings, icon packs, layout,
+  wallpaper) are locked to portrait in Nothing's manifest; with rotation on they follow the
+  device too.
+- **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
+
 ### Landscape grid
 
 A portrait page of C columns × R rows is shown in landscape as **2C × ⌈R/2⌉**: the top half
