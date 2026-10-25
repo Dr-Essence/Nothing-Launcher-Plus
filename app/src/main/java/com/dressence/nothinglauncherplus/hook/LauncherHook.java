@@ -30,7 +30,15 @@ public class LauncherHook implements IXposedHookLoadPackage {
                     "isModuleActive", XC_MethodReplacement.returnConstant(true));
             return;
         }
-        if (!Config.LAUNCHER_PKG.equals(lpparam.packageName) || !lpparam.isFirstApplication) {
+        if (!lpparam.isFirstApplication) {
+            return;
+        }
+        if (WidgetApps.WIDGETS_PKG.equals(lpparam.packageName)
+                || WidgetApps.CARD_SERVICE_PKG.equals(lpparam.packageName)) {
+            Hooks.install("widget app landscape", () -> WidgetApps.install(new ConfigStore()));
+            return;
+        }
+        if (!Config.LAUNCHER_PKG.equals(lpparam.packageName)) {
             return;
         }
         ClassLoader cl = lpparam.classLoader;

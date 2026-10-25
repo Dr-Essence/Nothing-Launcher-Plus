@@ -86,6 +86,10 @@ Around the home screen:
 - **The launcher's own screens** (search, home and drawer settings, icon packs, layout,
   wallpaper) are locked to portrait in Nothing's manifest; with rotation on they follow the
   device too.
+- **Nothing's widget cards** (Calm / breathing, battery, photos, …) and their settings open in
+  landscape. Nothing Widgets (`com.nothing.hearthstone`) and NothingCardService lock every screen
+  to portrait, so cards opened from a landscape home screen were drawn on their side. Tick both
+  apps in the module's LSPosed scope for this.
 - **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
 
 ### Landscape grid
@@ -139,7 +143,8 @@ the screen is touched.
 
 1. Build the APK (`./gradlew assembleRelease`) or download it from the *Build module* GitHub
    Actions run.
-2. Install it, enable it in LSPosed and select **Nothing Launcher** as the scope.
+2. Install it, enable it in LSPosed and select **Nothing Launcher** as the scope (plus
+   **Nothing Widgets** and **NothingCardService** for widget cards in landscape).
 3. Force-stop Nothing Launcher, or use the "Restart Nothing Launcher (root)" button in the app.
 4. In Nothing Launcher settings, set *Drawer layout* to **Smart (Beta)** and tap **Custom folders**.
 
