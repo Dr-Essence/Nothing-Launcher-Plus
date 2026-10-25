@@ -1309,8 +1309,8 @@
 🖍️	6	WRITE	SHINE	crayon
 📝	6	PAGE	SHINE	memo
 💼	6	HOP	SHINE	briefcase
-📁	6	HOP	SHINE	file folder
-📂	6	HOP	SHINE	open file folder
+📁	6	HOP	FOLDER	file folder
+📂	6	HOP	FOLDER	open file folder
 🗂️	6	PAGE	SHINE	card index dividers
 📅	6	PAGE	SHINE	calendar
 📆	6	PAGE	SHINE	tear-off calendar

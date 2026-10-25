@@ -20,6 +20,8 @@ final class Scene {
     float boost;
     /** Seconds since the last reaction began (huge when there was none). */
     float since = Float.MAX_VALUE;
+    /** Another emoji's resting dots on the same grid, for effects that turn into it, or null. */
+    int[] alt;
     /** Points the emoji table gives an effect (fractions of the emoji's bounds), or null. */
     float[] anchor;
     /** Per-emoji seed: every emoji runs its effect its own way. */

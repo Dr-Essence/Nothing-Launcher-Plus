@@ -67,6 +67,10 @@ final class DotMatrix {
     private final Paint unlitPaint = new Paint();
     private final Rect square = new Rect();
     private Bitmap glyph;
+    private String text;
+    private int textColor;
+    /** The partner emoji whose dots are in {@link Scene#alt}, if any. */
+    private String altFor;
 
     /** The emoji at rest, the regions effects work on, and the frame they paint. */
     private final int[] restDots = new int[GRID * GRID];
@@ -101,6 +105,10 @@ final class DotMatrix {
 
     /** {@code color} is used for plain text; emoji keep their own colours. */
     void setText(CharSequence text, int color) {
+        this.text = text == null ? null : text.toString();
+        textColor = color;
+        scene.alt = null;
+        altFor = null;
         glyph = text == null || text.length() == 0 ? null : glyph(text.toString(), color);
         // The resting frame, once: what effects find their regions in and paint over.
         rasterize(null);
@@ -129,6 +137,7 @@ final class DotMatrix {
             rasterize(p);
         }
         if (effect != DotEffect.NONE && scene.regions != null) {
+            prepareAlt(effect);
             System.arraycopy(dots, 0, scene.dots, 0, dots.length);
             if (still) {
                 scene.map(IDENTITY, IDENTITY);
@@ -149,6 +158,23 @@ final class DotMatrix {
         System.arraycopy(dots, 0, shown, 0, dots.length);
         frame.setPixels(dots, 0, GRID, 1, 1, GRID, GRID);
         return true;
+    }
+
+    /**
+     * For effects that turn one emoji into its partner (📁 opening into 📂), the partner's
+     * resting dots, rendered once on the same grid.
+     */
+    private void prepareAlt(DotEffect effect) {
+        String partner = effect.partner(text);
+        if (partner == null || partner.equals(altFor)) {
+            return;
+        }
+        altFor = partner;
+        Bitmap own = glyph;
+        glyph = glyph(partner, textColor);
+        rasterize(null);
+        glyph = own;
+        scene.alt = dots.clone();
     }
 
     /** Draws the glyph posed by {@code p} (null: at rest) and samples it into the dots. */

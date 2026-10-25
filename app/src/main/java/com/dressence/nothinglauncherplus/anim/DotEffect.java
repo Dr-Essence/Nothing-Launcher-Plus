@@ -830,6 +830,43 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * Folders: 📁 swings open into 📂 and shut again. The flap's edge sweeps across as a bright
+     * line, the folder stays open a moment, then closes; a touch opens it at once.
+     */
+    FOLDER {
+        @Override
+        void apply(Scene s) {
+            Regions r = s.regions;
+            if (s.alt == null) {
+                SHINE.apply(s);
+                return;
+            }
+            float open = folderOpen(s);
+            if (open <= 0) {
+                return;
+            }
+            // The flap edge runs top to bottom as it opens, bottom to top as it closes.
+            float edge = r.minY - 1 + open * (r.maxY - r.minY + 2);
+            for (int i = 0; i < s.dots.length; i++) {
+                int ri = s.restIndex(i);
+                if (ri < 0) {
+                    continue;
+                }
+                int y = ri / r.size;
+                if (y < edge - 0.5f) {
+                    s.dots[i] = s.alt[ri];
+                }
+                if (open < 1 && Math.abs(y - edge) < 0.75f) {
+                    int c = s.dots[i] != 0 ? s.dots[i] : s.alt[ri];
+                    if (c != 0) {
+                        s.dots[i] = Scene.alpha(Scene.mix(c, 0xFFFFFFFF, 0.55f), c >>> 24);
+                    }
+                }
+            }
+        }
+    },
+
     /** Symbols and anything else: a soft shine, and a sparkle now and then. */
     SPARKLE {
         @Override
@@ -845,6 +882,52 @@ public enum DotEffect {
     public String title() {
         String s = name().replace('_', ' ').toLowerCase(java.util.Locale.ROOT);
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    /** For effects that turn the emoji into a partner (📁 into 📂 and back), the partner. */
+    String partner(String text) {
+        if (this != FOLDER || text == null) {
+            return null;
+        }
+        String bare = text.replace("\uFE0F", "");
+        if (bare.equals("\uD83D\uDCC1")) {
+            return "\uD83D\uDCC2"; // 📁 opens into 📂
+        }
+        if (bare.equals("\uD83D\uDCC2")) {
+            return "\uD83D\uDCC1"; // 📂 closes into 📁
+        }
+        return null;
+    }
+
+    /**
+     * How far a folder has swung into its partner (0..1): rest, a quick swing, a hold, and back,
+     * on a slow cycle; a reaction swings it at once and holds.
+     */
+    static float folderOpen(Scene s) {
+        float swing = 0.3f;
+        if (s.since < 1.6f) {
+            return Math.min(1, s.since / swing);
+        }
+        float cycle = 4.6f + 1.4f * Scene.hash(s.seed, 8, 8);
+        float t = (s.t + Scene.hash(s.seed, 9, 9) * cycle) % cycle;
+        float rest = cycle - 2 * swing - 1.5f;
+        if (t < rest) {
+            return 0;
+        }
+        t -= rest;
+        if (t < swing) {
+            return ease(t / swing);
+        }
+        t -= swing;
+        if (t < 1.5f) {
+            return 1;
+        }
+        return 1 - ease(Math.min(1, (t - 1.5f) / swing));
+    }
+
+    /** Ease in and out, like a flap with a little weight. */
+    private static float ease(float x) {
+        return x * x * (3 - 2 * x);
     }
 
     /** True for effects that belong on a face, so reactions can be expressive. */

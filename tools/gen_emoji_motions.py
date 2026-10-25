@@ -435,7 +435,9 @@ EFFECT_FIXES = {
     "mage": "MAGIC", "man mage": "MAGIC", "woman mage": "MAGIC", "fairy": "MAGIC",
     "man fairy": "MAGIC", "woman fairy": "MAGIC", "genie": "MAGIC", "man genie": "MAGIC",
     "woman genie": "MAGIC", "merperson": "BUBBLES", "merman": "BUBBLES",
-    "mermaid": "BUBBLES", "grinning cat with smiling eyes": "BLINK",
+    "mermaid": "BUBBLES",
+    # Folders swing open and shut.
+    "file folder": "FOLDER", "open file folder": "FOLDER", "grinning cat with smiling eyes": "BLINK",
 }
 EFFECT_EXACT.update(EFFECT_FIXES)
 
