@@ -1,6 +1,9 @@
 package com.dressence.nothinglauncherplus.hook;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -31,6 +34,7 @@ final class Landscape {
     private static final String CLS_UTILITIES = "com.android.launcher3.Utilities";
     private static final String CLS_ROTATION_HELPER = "com.android.launcher3.states.RotationHelper";
     private static final String CLS_LAUNCHER = "com.android.launcher3.Launcher";
+    private static final String CLS_NT_LAUNCHER = "com.nothing.launcher.NTLauncher";
     private static final String CLS_IDP = "com.android.launcher3.InvariantDeviceProfile";
 
     /** Nothing's portrait reference size, transposed for landscape. */
@@ -54,6 +58,7 @@ final class Landscape {
     void install() {
         Hooks.install("home rotation", this::hookRotation);
         Hooks.install("landscape profiles", this::hookProfileChoice);
+        Hooks.install("landscape config change", this::hookConfigChange);
         Hooks.install("landscape layout", this::hookDeviceProfile);
         Hooks.install("landscape smart drawer", this::hookSmartProfile);
         Hooks.install("landscape icon fit", this::hookIconFit);
@@ -129,6 +134,43 @@ final class Landscape {
                         XposedHelpers.callMethod(launcher, "getDeviceProfile"), "inv"));
             }
         });
+    }
+
+    /**
+     * NTLauncher.handleConfigurationChanged drops every change to landscape on purpose ("Skip to
+     * handle the config change for the landscape orientation"), so a rotated launcher never
+     * picked a new profile or relaid out. With rotation on, run what the base class
+     * (StatefulActivity) does instead: relayout when the config or rotation changed.
+     */
+    private void hookConfigChange() {
+        XposedHelpers.findAndHookMethod(CLS_NT_LAUNCHER, cl, "handleConfigurationChanged",
+                Configuration.class, new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        Configuration config = (Configuration) param.args[0];
+                        if (config.orientation != Configuration.ORIENTATION_LANDSCAPE
+                                || !store.get().allowRotation) {
+                            return;
+                        }
+                        Activity launcher = (Activity) param.thisObject;
+                        Configuration old = (Configuration) XposedHelpers.getObjectField(
+                                launcher, "mOldConfig");
+                        int rotation = launcher.getDisplay().getRotation();
+                        if ((config.diff(old) & (ActivityInfo.CONFIG_ORIENTATION
+                                | ActivityInfo.CONFIG_SCREEN_SIZE)) != 0
+                                || rotation != XposedHelpers.getIntField(launcher, "mOldRotation")) {
+                            XposedHelpers.callMethod(launcher, "onHandleConfigurationChanged");
+                            Object dp = XposedHelpers.callMethod(launcher, "getDeviceProfile");
+                            Hooks.log("rotated: launcher profile "
+                                    + XposedHelpers.getIntField(dp, "widthPx") + "x"
+                                    + XposedHelpers.getIntField(dp, "heightPx")
+                                    + " landscape=" + isPhoneLandscape(dp));
+                        }
+                        old.setTo(config);
+                        XposedHelpers.setIntField(launcher, "mOldRotation", rotation);
+                        param.setResult(null);
+                    }
+                });
     }
 
     private void applyProfileChoice(Object idp) {

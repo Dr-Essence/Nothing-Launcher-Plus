@@ -92,8 +92,10 @@ almost exactly their portrait shape, so icons, folders and widgets look as they 
   dropped across the middle, for example) is moved to the nearest free portrait spot and the page
   refreshes.
 
-Nothing drops landscape profiles from the list the launcher picks from, so a rotated launcher
-kept its portrait profile; with rotation on, the module lets it pick from the full list.
+Nothing also blocks landscape outright: `NTLauncher.handleConfigurationChanged` ignores every
+change to landscape ("Skip to handle the config change for the landscape orientation"), and the
+landscape profiles are filtered out of the list the launcher picks from. With rotation on, the
+module handles the change the way AOSP does and lets the launcher pick from the full list.
 
 Each landscape profile is logged (`NothingLauncher+: landscape profile …`) with its geometry, so
 LSPosed logs show exactly what was laid out. Portrait is untouched.
