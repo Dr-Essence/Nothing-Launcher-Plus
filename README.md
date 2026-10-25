@@ -55,7 +55,8 @@ plus your folders.
   twinkle, clocks tick, sirens flash, fish blow bubbles, and so on, mapped to every keyboard
   emoji by the same generator as the motions.
 - **Folders open and shut**: 📁 swings open into 📂 and closes again (and 📂 the other way
-  round), the flap's edge sweeping across as a bright line; tap it and it opens at once.
+  round), drawn at one shared size so nothing jumps, the change travelling across the
+  folder as a soft band of blending dots; tap it and it opens at once.
 - **Music plays by its own logic**, all to one shared 96 BPM beat, so the music folders in the
   drawer groove together: 🔊 lights its own drawn sound waves inner to outer like a volume
   meter, 🎵 🎶 light each note head as it sounds, 🎼 runs a playhead along the staff, 🎹 plays a

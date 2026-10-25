@@ -170,11 +170,53 @@ final class DotMatrix {
             return;
         }
         altFor = partner;
-        Bitmap own = glyph;
-        glyph = glyph(partner, textColor);
+        // Both drawn with one shared fit, so turning into the partner never changes size:
+        // only what differs between the two drawings moves.
+        Rect fit = inkBounds(text);
+        fit.union(inkBounds(partner));
+        glyph = glyph(partner, textColor, fit);
         rasterize(null);
-        glyph = own;
         scene.alt = dots.clone();
+        glyph = glyph(text, textColor, fit);
+        rasterize(null);
+        System.arraycopy(dots, 0, restDots, 0, dots.length);
+        scene.regions = new Regions(restDots, GRID);
+        Arrays.fill(shown, 1);
+    }
+
+    /** Where {@code text} actually puts ink, in text coordinates at GLYPH size. */
+    private static Rect inkBounds(String text) {
+        TextPaint paint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        paint.setTextSize(GLYPH);
+        Rect box = new Rect();
+        paint.getTextBounds(text, 0, text.length(), box);
+        int pad = GLYPH / 4;
+        int w = box.width() + 2 * pad;
+        int h = box.height() + 2 * pad;
+        if (w <= 2 * pad || h <= 2 * pad) {
+            return box;
+        }
+        Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        new Canvas(b).drawText(text, pad - box.left, pad - box.top, paint);
+        int[] px = new int[w * h];
+        b.getPixels(px, 0, w, 0, 0, w, h);
+        b.recycle();
+        int x0 = w, y0 = h, x1 = -1, y1 = -1;
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                if ((px[y * w + x] >>> 24) > 16) {
+                    x0 = Math.min(x0, x);
+                    x1 = Math.max(x1, x);
+                    y0 = Math.min(y0, y);
+                    y1 = Math.max(y1, y);
+                }
+            }
+        }
+        if (x1 < 0) {
+            return box;
+        }
+        return new Rect(x0 + box.left - pad, y0 + box.top - pad, x1 + 1 + box.left - pad,
+                y1 + 1 + box.top - pad);
     }
 
     /** Draws the glyph posed by {@code p} (null: at rest) and samples it into the dots. */
@@ -385,7 +427,15 @@ final class DotMatrix {
 
     /** The emoji (or text) drawn once, fitted to a GLYPH x GLYPH square by its ink bounds. */
     private static Bitmap glyph(String text, int color) {
-        String key = color + "|" + text;
+        return glyph(text, color, null);
+    }
+
+    /**
+     * The emoji (or text) drawn once, fitted to a GLYPH x GLYPH square by {@code fit} (text
+     * coordinates at GLYPH size; null: its own bounds), so two emojis can share one fit.
+     */
+    private static Bitmap glyph(String text, int color, Rect fit) {
+        String key = color + "|" + text + (fit != null ? "|" + fit.toShortString() : "");
         Bitmap cached = GLYPHS.get(key);
         if (cached != null) {
             return cached;
@@ -394,7 +444,11 @@ final class DotMatrix {
         paint.setTextSize(GLYPH);
         paint.setColor(color);
         Rect bounds = new Rect();
-        paint.getTextBounds(text, 0, text.length(), bounds);
+        if (fit != null) {
+            bounds.set(fit);
+        } else {
+            paint.getTextBounds(text, 0, text.length(), bounds);
+        }
         Bitmap bitmap = Bitmap.createBitmap(GLYPH, GLYPH, Bitmap.Config.ARGB_8888);
         if (!bounds.isEmpty()) {
             Canvas canvas = new Canvas(bitmap);

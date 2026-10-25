@@ -831,8 +831,8 @@ public enum DotEffect {
     },
 
     /**
-     * Folders: 📁 swings open into 📂 and shut again. The flap's edge sweeps across as a bright
-     * line, the folder stays open a moment, then closes; a touch opens it at once.
+     * Folders: 📁 swings open into 📂 and shut again, the change travelling across the folder
+     * as a soft band; it stays open a moment, then closes; a touch opens it at once.
      */
     FOLDER {
         @Override
@@ -846,23 +846,22 @@ public enum DotEffect {
             if (open <= 0) {
                 return;
             }
-            // The flap edge runs top to bottom as it opens, bottom to top as it closes.
-            float edge = r.minY - 1 + open * (r.maxY - r.minY + 2);
+            // The change travels down the folder as a soft band (up again as it closes): in
+            // the band each dot steps through the panel's brightness levels and its colour
+            // blends from one drawing to the other, so the flap swings rather than jumps.
+            float band = 5;
+            float span = r.maxY - r.minY + 1;
+            float front = open * (span + band);
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
                 if (ri < 0) {
                     continue;
                 }
-                int y = ri / r.size;
-                if (y < edge - 0.5f) {
-                    s.dots[i] = s.alt[ri];
+                float q = (front - (ri / r.size - r.minY)) / band;
+                if (q <= 0) {
+                    continue;
                 }
-                if (open < 1 && Math.abs(y - edge) < 0.75f) {
-                    int c = s.dots[i] != 0 ? s.dots[i] : s.alt[ri];
-                    if (c != 0) {
-                        s.dots[i] = Scene.alpha(Scene.mix(c, 0xFFFFFFFF, 0.55f), c >>> 24);
-                    }
-                }
+                s.dots[i] = blend(s.dots[i], s.alt[ri], Math.min(1, q));
             }
         }
     },
@@ -904,25 +903,52 @@ public enum DotEffect {
      * on a slow cycle; a reaction swings it at once and holds.
      */
     static float folderOpen(Scene s) {
-        float swing = 0.3f;
-        if (s.since < 1.6f) {
-            return Math.min(1, s.since / swing);
+        float swing = 0.55f;
+        float hold = 1.5f;
+        // A touch: open now, hold, close again; both swings eased, never a jump.
+        float touched = 0;
+        if (s.since < hold) {
+            touched = ease(Math.min(1, s.since / swing));
+        } else if (s.since < hold + swing) {
+            touched = 1 - ease((s.since - hold) / swing);
         }
         float cycle = 4.6f + 1.4f * Scene.hash(s.seed, 8, 8);
         float t = (s.t + Scene.hash(s.seed, 9, 9) * cycle) % cycle;
-        float rest = cycle - 2 * swing - 1.5f;
+        float rest = cycle - 2 * swing - hold;
+        float own;
         if (t < rest) {
+            own = 0;
+        } else if (t < rest + swing) {
+            own = ease((t - rest) / swing);
+        } else if (t < rest + swing + hold) {
+            own = 1;
+        } else {
+            own = 1 - ease(Math.min(1, (t - rest - swing - hold) / swing));
+        }
+        return Math.max(touched, own);
+    }
+
+    private static final int[] LEVELS = {0, 120, 175, 225, 255};
+
+    /** A dot part way from {@code from} to {@code to}: colour blended, brightness on a level. */
+    private static int blend(int from, int to, float q) {
+        if (q >= 1) {
+            return to;
+        }
+        int fa = from >>> 24;
+        int ta = to >>> 24;
+        float a = fa + (ta - fa) * q;
+        int level = 0;
+        for (int k = 1; k < LEVELS.length; k++) {
+            if (Math.abs(LEVELS[k] - a) < Math.abs(LEVELS[level] - a)) {
+                level = k;
+            }
+        }
+        if (LEVELS[level] == 0) {
             return 0;
         }
-        t -= rest;
-        if (t < swing) {
-            return ease(t / swing);
-        }
-        t -= swing;
-        if (t < 1.5f) {
-            return 1;
-        }
-        return 1 - ease(Math.min(1, (t - 1.5f) / swing));
+        int rgb = fa == 0 ? to : ta == 0 ? from : Scene.mix(from, to, q);
+        return Scene.alpha(rgb, LEVELS[level]);
     }
 
     /** Ease in and out, like a flap with a little weight. */
