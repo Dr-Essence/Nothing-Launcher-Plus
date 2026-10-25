@@ -70,6 +70,15 @@ plus your folders.
 - **Folders open and shut**: 📁's front panel tips open on its bottom hinge, showing the
   shadowed inside and the papers in it, then closes again (📂 closes up and reopens). It is
   drawn from the emoji's own dots, so it never changes size; tap it and it opens at once.
+- **Objects do what the real thing does**: 🎮 buttons are pressed in combos and the d-pad
+  clicks; 🕹️'s stick tilts on its base with spring physics and the fire button flashes;
+  📷 📸 close their iris across the lens and fire the flash; 📹 blinks its REC light; 🎥 📽️ turn
+  their reels; 🍳 sizzles; 🫕's burner flickers; 🚦 🚥 cycle green, amber, red; ⏳ ⌛ drain their
+  sand into a growing pile; 🔋 charges bar by bar and 🪫 blinks; 🌡️'s mercury climbs and sinks;
+  🧭's needle swings and settles; 🎲's pips flicker as it rolls; 🎰's reels spin and stop one by
+  one; cars, buses and bikes turn their wheels; 🚁's rotor blurs; 🎡's lights chase round;
+  💈's stripes climb; 🌍 🌎 🌏 🌐 turn, continents travelling round the sphere; ⌨️ is typed on,
+  🖱️ double-clicks, 🖨️ feeds out printed paper; ⚙️ 🛞 💿 📀 spin.
 - **Music plays by its own logic**, all to one shared 96 BPM beat, so the music folders in the
   drawer groove together: 🔊 lights its own drawn sound waves inner to outer like a volume
   meter, 🎵 🎶 light each note head as it sounds, 🎼 runs a playhead along the staff, 🎹 plays a

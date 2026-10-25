@@ -748,13 +748,13 @@ final class MusicEffects {
         return r.minY + f * (r.maxY - r.minY);
     }
 
-    private static void lighten(Scene s, int i, float k) {
+    static void lighten(Scene s, int i, float k) {
         if (k > 0) {
             s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], WHITE, Math.min(1, k)), s.dots[i] >>> 24);
         }
     }
 
-    private static float cx(Regions r, int[] comp) {
+    static float cx(Regions r, int[] comp) {
         float sum = 0;
         for (int i : comp) {
             sum += i % r.size;
@@ -762,7 +762,7 @@ final class MusicEffects {
         return sum / comp.length;
     }
 
-    private static float cy(Regions r, int[] comp) {
+    static float cy(Regions r, int[] comp) {
         float sum = 0;
         for (int i : comp) {
             sum += i / r.size;
@@ -771,7 +771,7 @@ final class MusicEffects {
     }
 
     /** Connected components of {@code mask} (8-connected when {@code diagonal}). */
-    private static List<int[]> components(Regions r, boolean[] mask, boolean diagonal) {
+    static List<int[]> components(Regions r, boolean[] mask, boolean diagonal) {
         int n = r.size * r.size;
         boolean[] seen = new boolean[n];
         int[] stack = new int[n];

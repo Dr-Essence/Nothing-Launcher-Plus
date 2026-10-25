@@ -223,6 +223,12 @@ RULES = [
     (r"heart", "HEARTBEAT"),
 ]
 
+# Whole-object moves that follow the object (applied over the tables above).
+EXACT.update({
+    "wheel": "SPIN", "optical disk": "SPIN", "dvd": "SPIN", "computer disk": "SETTLE",
+    "ferris wheel": "BOB", "joystick": "SETTLE",
+})
+
 SUBGROUP_DEFAULT = {
     "face-smiling": "BOB", "face-affection": "LOVE", "face-tongue": "JELLY",
     "face-hand": "PEEK", "face-neutral-skeptical": "TILT", "face-sleepy": "SLEEP",
@@ -416,8 +422,9 @@ EFFECT_FIXES = {
     "sandwich": "SHINE", "egg": "SHINE", "popcorn": "CONFETTI", "fortune cookie": "SPARKLE",
     "moon cake": "GLOW", "dango": "SHINE", "oden": "STEAM", "bento box": "SHINE",
     # Vehicles without an engine don't smoke; signs and cable cars don't either.
-    "bicycle": "SHINE", "kick scooter": "SHINE", "skateboard": "SHINE", "roller skate": "SHINE",
-    "manual wheelchair": "SHINE", "wheel": "SHINE", "bus stop": "SHINE", "motorway": "SHINE",
+    "bicycle": "WHEELS:0.21,0.72,0.2,0.79,0.72,0.2", "kick scooter": "WHEELS",
+    "skateboard": "WHEELS", "roller skate": "WHEELS", "manual wheelchair": "WHEELS",
+    "wheel": "SHINE", "bus stop": "SHINE", "motorway": "SHINE",
     "railway track": "SHINE", "fuel pump": "DRIP", "stop sign": "BEACON",
     "construction": "BEACON", "parachute": "SWAY", "seat": "SHINE",
     "suspension railway": "SWAY", "mountain cableway": "SWAY", "aerial tramway": "SWAY",
@@ -440,6 +447,28 @@ EFFECT_FIXES = {
     "file folder": "FOLDER:0.45", "open file folder": "FOLDER:-0.4", "grinning cat with smiling eyes": "BLINK",
 }
 EFFECT_EXACT.update(EFFECT_FIXES)
+
+# Objects doing what the real thing does (see anim/ObjectEffects.java); anchors are fractions of
+# the emoji's drawn bounds in Noto Color Emoji.
+EFFECT_OBJECTS = {
+    "video game": "CONTROLLER", "joystick": "JOYSTICK:0.52,0.55",
+    "camera": "CAMERA:0.5,0.63,0.27,0.88,0.12", "camera with flash": "CAMERA:0.5,0.68,0.27,0.56,0.18",
+    "video camera": "RECORD:0.27,0.35", "movie camera": "REELS:0.3,0.18,0.17,0.74,0.17,0.17",
+    "film projector": "REELS:0.2,0.2,0.19,0.78,0.18,0.19",
+    "cooking": "SIZZLE", "fondue": "BURNER", "shallow pan of food": "BURNER",
+    "pot of food": "BURNER",
+    "horizontal traffic light": "TRAFFIC", "vertical traffic light": "TRAFFIC",
+    "hourglass not done": "HOURGLASS", "hourglass done": "HOURGLASS",
+    "battery": "BATTERY", "low battery": "BATTERY", "thermometer": "THERMOMETER",
+    "compass": "COMPASS", "game die": "DICE", "slot machine": "SLOTS:0.15,0.48,0.92,0.7",
+    "helicopter": "ROTOR", "ferris wheel": "CHASE:0.49,0.45",
+    "barber pole": "POLE:0.17,0.27,0.83,0.73",
+    "globe showing europe-africa": "GLOBE", "globe showing americas": "GLOBE",
+    "globe showing asia-australia": "GLOBE", "globe with meridians": "GLOBE",
+    "keyboard": "TYPING", "computer mouse": "CLICK", "printer": "PRINT",
+    "optical disk": "SHINE", "dvd": "SHINE",
+}
+EFFECT_EXACT.update(EFFECT_OBJECTS)
 
 # Name keywords, tried in order when there is no exact entry.
 EFFECT_RULES = [
@@ -495,7 +524,7 @@ EFFECT_SUBGROUP = {
     "food-vegetable": "SHINE", "food-prepared": "STEAM", "food-asian": "STEAM",
     "food-sweet": "SPARKLE", "drink": "BUBBLES", "dishware": "SHINE", "place-map": "RIPPLE",
     "place-geographic": "TWINKLE", "place-building": "WINDOWS", "place-religious": "GLOW",
-    "place-other": "TWINKLE", "transport-ground": "SMOKE", "transport-water": "RIPPLE",
+    "place-other": "TWINKLE", "transport-ground": "WHEELS", "transport-water": "RIPPLE",
     "transport-air": "SMOKE", "hotel": "SHINE", "time": "CLOCK", "sky-weather": "GLOW",
     "event": "CONFETTI", "award-medal": "SPARKLE", "sport": "SHINE", "game": "SPARKLE",
     "arts-crafts": "SPARKLE", "clothing": "SHINE", "sound": "SOUND", "music": "NOTES",

@@ -777,10 +777,10 @@
 🥙	3	JELLY	STEAM	stuffed flatbread
 🧆	3	JELLY	STEAM	falafel
 🥚	3	JELLY	SHINE	egg
-🍳	3	JELLY	STEAM	cooking
-🥘	3	JELLY	STEAM	shallow pan of food
-🍲	3	JELLY	STEAM	pot of food
-🫕	3	JELLY	STEAM	fondue
+🍳	3	JELLY	SIZZLE	cooking
+🥘	3	JELLY	BURNER	shallow pan of food
+🍲	3	JELLY	BURNER	pot of food
+🫕	3	JELLY	BURNER	fondue
 🥣	3	FLAP	STEAM	bowl with spoon
 🥗	3	JELLY	SHINE	green salad
 🍿	3	JELLY	CONFETTI	popcorn
@@ -845,13 +845,13 @@
 🔪	3	RATTLE	SHINE	kitchen knife
 🫙	3	RATTLE	SHINE	jar
 🏺	3	RATTLE	SHINE	amphora
-🌍️	4	GLOBE	RIPPLE	globe showing Europe-Africa
-🌎️	4	GLOBE	RIPPLE	globe showing Americas
-🌏️	4	GLOBE	RIPPLE	globe showing Asia-Australia
-🌐	4	GLOBE	DIGITAL	globe with meridians
+🌍️	4	GLOBE	GLOBE	globe showing Europe-Africa
+🌎️	4	GLOBE	GLOBE	globe showing Americas
+🌏️	4	GLOBE	GLOBE	globe showing Asia-Australia
+🌐	4	GLOBE	GLOBE	globe with meridians
 🗺️	4	GLOBE	RIPPLE	world map
 🗾	4	GLOBE	RIPPLE	map of Japan
-🧭	4	GLOBE	RIPPLE	compass
+🧭	4	GLOBE	COMPASS	compass
 🏔️	4	SETTLE	SNOW	snow-capped mountain
 ⛰️	4	SETTLE	TWINKLE	mountain
 🌋	4	SETTLE	SMOKE	volcano
@@ -907,58 +907,58 @@
 ♨️	4	SETTLE	STEAM	hot springs
 🎠	4	HOP	NOTES	carousel horse
 🛝	4	SETTLE	TWINKLE	playground slide
-🎡	4	SPIN	TWINKLE	ferris wheel
+🎡	4	BOB	CHASE:0.49,0.45	ferris wheel
 🎢	4	SETTLE	TWINKLE	roller coaster
-💈	4	SETTLE	SHINE	barber pole
+💈	4	SETTLE	POLE:0.17,0.27,0.83,0.73	barber pole
 🎪	4	SETTLE	CONFETTI	circus tent
 🚂	4	DRIVE	SMOKE	locomotive
-🚃	4	DRIVE	SMOKE	railway car
-🚄	4	DRIVE	SMOKE	high-speed train
-🚅	4	DRIVE	SMOKE	bullet train
-🚆	4	DRIVE	SMOKE	train
-🚇️	4	DRIVE	SMOKE	metro
+🚃	4	DRIVE	WHEELS	railway car
+🚄	4	DRIVE	WHEELS	high-speed train
+🚅	4	DRIVE	WHEELS	bullet train
+🚆	4	DRIVE	WHEELS	train
+🚇️	4	DRIVE	WHEELS	metro
 🚈	4	DRIVE	GLOW	light rail
-🚉	4	DRIVE	SMOKE	station
-🚊	4	DRIVE	SMOKE	tram
-🚝	4	DRIVE	SMOKE	monorail
-🚞	4	SETTLE	SMOKE	mountain railway
-🚋	4	DRIVE	SMOKE	tram car
-🚌	4	DRIVE	SMOKE	bus
-🚍️	4	DRIVE	SMOKE	oncoming bus
-🚎	4	FLOAT	SMOKE	trolleybus
-🚐	4	DRIVE	SMOKE	minibus
+🚉	4	DRIVE	WHEELS	station
+🚊	4	DRIVE	WHEELS	tram
+🚝	4	DRIVE	WHEELS	monorail
+🚞	4	SETTLE	WHEELS	mountain railway
+🚋	4	DRIVE	WHEELS	tram car
+🚌	4	DRIVE	WHEELS	bus
+🚍️	4	DRIVE	WHEELS	oncoming bus
+🚎	4	FLOAT	WHEELS	trolleybus
+🚐	4	DRIVE	WHEELS	minibus
 🚑️	4	DRIVE	BEACON	ambulance
 🚒	4	DRIVE	FLAME	fire engine
 🚓	4	DRIVE	BEACON	police car
 🚔️	4	DRIVE	BEACON	oncoming police car
-🚕	4	DRIVE	SMOKE	taxi
-🚖	4	DRIVE	SMOKE	oncoming taxi
-🚗	4	DRIVE	SMOKE	automobile
-🚘️	4	DRIVE	SMOKE	oncoming automobile
-🚙	4	DRIVE	SMOKE	sport utility vehicle
-🛻	4	DRIVE	SMOKE	pickup truck
-🚚	4	DRIVE	SMOKE	delivery truck
-🚛	4	DRIVE	SMOKE	articulated lorry
-🚜	4	DRIVE	SMOKE	tractor
-🏎️	4	DRIVE	SMOKE	racing car
-🏍️	4	DRIVE	SMOKE	motorcycle
-🛵	4	DRIVE	SMOKE	motor scooter
-🦽	4	DRIVE	SHINE	manual wheelchair
-🦼	4	DRIVE	SMOKE	motorized wheelchair
-🛺	4	DRIVE	SMOKE	auto rickshaw
-🚲️	4	DRIVE	SHINE	bicycle
-🛴	4	DRIVE	SHINE	kick scooter
-🛹	4	DRIVE	SHINE	skateboard
-🛼	4	DRIVE	SHINE	roller skate
+🚕	4	DRIVE	WHEELS	taxi
+🚖	4	DRIVE	WHEELS	oncoming taxi
+🚗	4	DRIVE	WHEELS	automobile
+🚘️	4	DRIVE	WHEELS	oncoming automobile
+🚙	4	DRIVE	WHEELS	sport utility vehicle
+🛻	4	DRIVE	WHEELS	pickup truck
+🚚	4	DRIVE	WHEELS	delivery truck
+🚛	4	DRIVE	WHEELS	articulated lorry
+🚜	4	DRIVE	WHEELS	tractor
+🏎️	4	DRIVE	WHEELS	racing car
+🏍️	4	DRIVE	WHEELS	motorcycle
+🛵	4	DRIVE	WHEELS	motor scooter
+🦽	4	DRIVE	WHEELS	manual wheelchair
+🦼	4	DRIVE	WHEELS	motorized wheelchair
+🛺	4	DRIVE	WHEELS	auto rickshaw
+🚲️	4	DRIVE	WHEELS:0.21,0.72,0.2,0.79,0.72,0.2	bicycle
+🛴	4	DRIVE	WHEELS	kick scooter
+🛹	4	DRIVE	WHEELS	skateboard
+🛼	4	DRIVE	WHEELS	roller skate
 🚏	4	DRIVE	SHINE	bus stop
 🛣️	4	DRIVE	SHINE	motorway
 🛤️	4	DRIVE	SHINE	railway track
 🛢️	4	SETTLE	SHINE	oil drum
 ⛽️	4	DRIVE	DRIP	fuel pump
-🛞	4	DRIVE	SHINE	wheel
+🛞	4	SPIN	SHINE	wheel
 🚨	4	ALERT	BEACON	police car light
-🚥	4	FLASH	BEACON	horizontal traffic light
-🚦	4	FLASH	BEACON	vertical traffic light
+🚥	4	FLASH	TRAFFIC	horizontal traffic light
+🚦	4	FLASH	TRAFFIC	vertical traffic light
 🛑	4	DRIVE	BEACON	stop sign
 🚧	4	NOD	BEACON	construction
 ⚓️	4	ROCK	RIPPLE	anchor
@@ -976,7 +976,7 @@
 🛬	4	FLY	SMOKE	airplane arrival
 🪂	4	FLY	SWAY	parachute
 💺	4	FLY	SHINE	seat
-🚁	4	FLY	SMOKE	helicopter
+🚁	4	FLY	ROTOR	helicopter
 🚟	4	FLY	SWAY	suspension railway
 🚠	4	FLY	SWAY	mountain cableway
 🚡	4	FLY	SWAY	aerial tramway
@@ -985,8 +985,8 @@
 🛸	4	FLY	BEACON	flying saucer
 🛎️	4	RING	BELL:0.5,0.05	bellhop bell
 🧳	4	RATTLE	SHINE	luggage
-⌛️	4	FLIP	CLOCK	hourglass done
-⏳️	4	FLIP	CLOCK	hourglass not done
+⌛️	4	FLIP	HOURGLASS	hourglass done
+⏳️	4	FLIP	HOURGLASS	hourglass not done
 ⌚️	4	TICK	CLOCK	watch
 ⏰️	4	ALARM	CLOCK	alarm clock
 ⏱️	4	TICK	CLOCK	stopwatch
@@ -1028,7 +1028,7 @@
 🌚	4	ROCK	BLINK	new moon face
 🌛	4	ROCK	BLINK	first quarter moon face
 🌜️	4	ROCK	BLINK	last quarter moon face
-🌡️	4	FLOAT	GLOW	thermometer
+🌡️	4	FLOAT	THERMOMETER	thermometer
 ☀️	4	TURN	GLOW	sun
 🌝	4	ROCK	GLOW	full moon face
 🌞	4	TURN	GLOW	sun with face
@@ -1124,10 +1124,10 @@
 🎱	5	BOUNCE	MAGIC	pool 8 ball
 🔮	5	TWINKLE	MAGIC	crystal ball
 🪄	5	TWINKLE	MAGIC	magic wand
-🎮️	5	BUZZ	DIGITAL	video game
-🕹️	5	BUZZ	DIGITAL	joystick
-🎰	5	RATTLE	BEACON	slot machine
-🎲	5	RATTLE	SPARKLE	game die
+🎮️	5	BUZZ	CONTROLLER	video game
+🕹️	5	SETTLE	JOYSTICK:0.52,0.55	joystick
+🎰	5	RATTLE	SLOTS:0.15,0.48,0.92,0.7	slot machine
+🎲	5	RATTLE	DICE	game die
 🧩	5	RATTLE	SPARKLE	puzzle piece
 🧸	5	ROCK	SPARKLE	teddy bear
 🪅	5	ROCK	SPARKLE	piñata
@@ -1231,28 +1231,28 @@
 📞	6	BUZZ	BELL:0.5,0.5	telephone receiver
 📟️	6	BUZZ	DIGITAL	pager
 📠	6	BUZZ	DIGITAL	fax machine
-🔋	6	PULSE	ZAP	battery
-🪫	6	PULSE	ZAP	low battery
+🔋	6	PULSE	BATTERY	battery
+🪫	6	PULSE	BATTERY	low battery
 🔌	6	PULSE	ZAP	electric plug
 💻️	6	TYPE	SCREEN	laptop
 🖥️	6	TYPE	SCREEN	desktop computer
-🖨️	6	TYPE	DIGITAL	printer
-⌨️	6	TYPE	DIGITAL	keyboard
-🖱️	6	TYPE	SHINE	computer mouse
+🖨️	6	TYPE	PRINT	printer
+⌨️	6	TYPE	TYPING	keyboard
+🖱️	6	TYPE	CLICK	computer mouse
 🖲️	6	TYPE	DIGITAL	trackball
-💽	6	TYPE	SHINE	computer disk
+💽	6	SETTLE	SHINE	computer disk
 💾	6	TYPE	DIGITAL	floppy disk
-💿️	6	TYPE	DIGITAL	optical disk
-📀	6	TYPE	DIGITAL	dvd
+💿️	6	SPIN	SHINE	optical disk
+📀	6	SPIN	SHINE	dvd
 🧮	6	TYPE	DIGITAL	abacus
-🎥	6	FLASH	SCREEN	movie camera
+🎥	6	FLASH	REELS:0.3,0.18,0.17,0.74,0.17,0.17	movie camera
 🎞️	6	FLASH	GLOW	film frames
-📽️	6	FLASH	SCREEN	film projector
+📽️	6	FLASH	REELS:0.2,0.2,0.19,0.78,0.18,0.19	film projector
 🎬️	6	FLASH	GLOW	clapper board
 📺️	6	FLASH	STATIC	television
-📷️	6	FLASH	BEACON	camera
-📸	6	FLASH	BEACON	camera with flash
-📹️	6	FLASH	SCREEN	video camera
+📷️	6	FLASH	CAMERA:0.5,0.63,0.27,0.88,0.12	camera
+📸	6	FLASH	CAMERA:0.5,0.68,0.27,0.56,0.18	camera with flash
+📹️	6	FLASH	RECORD:0.27,0.35	video camera
 📼	6	FLASH	STATIC	videocassette
 🔍️	6	SEARCH	SHINE	magnifying glass tilted left
 🔎	6	SEARCH	SHINE	magnifying glass tilted right

@@ -885,6 +885,182 @@ public enum DotEffect {
         }
     },
 
+    /** Game controllers: buttons pressed in combos, the d-pad clicks. */
+    CONTROLLER {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.controller(s);
+        }
+    },
+
+    /** Joysticks: the stick tilts on its base, the fire button flashes. */
+    JOYSTICK {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.joystick(s);
+        }
+    },
+
+    /** Cameras: the iris closes and opens, the flash fires. */
+    CAMERA {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.camera(s);
+        }
+    },
+
+    /** Video cameras: the REC light blinks. */
+    RECORD {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.record(s);
+        }
+    },
+
+    /** Film cameras and projectors: the reels turn. */
+    REELS {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.reels(s);
+        }
+    },
+
+    /** Frying: oil sizzles round the egg. */
+    SIZZLE {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.sizzle(s);
+        }
+    },
+
+    /** A pot on a burner: the flame flickers, the pot steams. */
+    BURNER {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.burner(s);
+        }
+    },
+
+    /** Traffic lights: green, amber, red. */
+    TRAFFIC {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.trafficLights(s);
+        }
+    },
+
+    /** Hourglasses: the sand runs through. */
+    HOURGLASS {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.hourglass(s);
+        }
+    },
+
+    /** Batteries: charging up, or the low bar blinking. */
+    BATTERY {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.battery(s);
+        }
+    },
+
+    /** Thermometers: the mercury rises and falls. */
+    THERMOMETER {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.thermometer(s);
+        }
+    },
+
+    /** Compasses: the needle swings and settles. */
+    COMPASS {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.compass(s);
+        }
+    },
+
+    /** Dice: rolled, the pips flicker and land. */
+    DICE {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.dice(s);
+        }
+    },
+
+    /** Slot machines: the reels spin and stop one by one. */
+    SLOTS {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.slots(s);
+        }
+    },
+
+    /** Vehicles: the wheels turn. */
+    WHEELS {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.wheels(s);
+        }
+    },
+
+    /** Helicopters: the rotor blurs. */
+    ROTOR {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.rotor(s);
+        }
+    },
+
+    /** Ferris wheels: lights chase round the rim. */
+    CHASE {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.chase(s);
+        }
+    },
+
+    /** Barber poles: the stripes climb. */
+    POLE {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.pole(s);
+        }
+    },
+
+    /** Globes: the world turns. */
+    GLOBE {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.globe(s);
+        }
+    },
+
+    /** Keyboards: typing in bursts. */
+    TYPING {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.typing(s);
+        }
+    },
+
+    /** Mice: a double click, the wheel scrolls. */
+    CLICK {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.click(s);
+        }
+    },
+
+    /** Printers: paper feeds out with print on it. */
+    PRINT {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.print(s);
+        }
+    },
+
     /** Symbols and anything else: a soft shine, and a sparkle now and then. */
     SPARKLE {
         @Override
