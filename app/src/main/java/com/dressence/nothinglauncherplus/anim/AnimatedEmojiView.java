@@ -2,6 +2,8 @@ package com.dressence.nothinglauncherplus.anim;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.Configuration;
+import android.graphics.Canvas;
 import android.os.Build;
 import android.view.Gravity;
 import android.view.View;
@@ -10,9 +12,14 @@ import android.widget.TextView;
 import java.util.Random;
 
 /**
- * An emoji that plays a {@link Motion}. Only transform properties change, which the render
- * thread composites without redrawing the glyph, so a frame costs a handful of property writes.
- * Every view gets its own speed, strength, pause length and phase from a seed, so two covers
+ * An emoji that plays a {@link Motion}, drawn either as the system glyph or as a Nothing-style
+ * {@link DotMatrix}.
+ *
+ * <p>As a glyph only transform properties change, which the render thread composites without
+ * redrawing, so a frame costs a handful of property writes. As a dot matrix the pose is rendered
+ * into the 25 x 25 grid instead and the view redraws only when a dot changes.
+ *
+ * <p>Every view gets its own speed, strength, pause length and phase from a seed, so two covers
  * with the same motion never move in lockstep.
  */
 @SuppressLint("ViewConstructor")
@@ -25,6 +32,7 @@ public class AnimatedEmojiView extends TextView {
     private float restScale = 1;
     private float phase;
     private boolean atRest = true;
+    private DotMatrix dots;
 
     public AnimatedEmojiView(Context context) {
         super(context);
@@ -33,9 +41,34 @@ public class AnimatedEmojiView extends TextView {
         setMaxLines(1);
     }
 
+    /** Draws as a Nothing-style dot matrix ({@code true}) or as the system emoji. */
+    public void setDotMatrix(boolean on) {
+        if (on == (dots != null)) {
+            return;
+        }
+        pose.reset();
+        if (on) {
+            applyTransforms(pose); // The grid does the moving; the view stays put.
+            int night = getResources().getConfiguration().uiMode
+                    & Configuration.UI_MODE_NIGHT_MASK;
+            dots = new DotMatrix(night != Configuration.UI_MODE_NIGHT_NO);
+            dots.setText(getText(), getCurrentTextColor());
+            dots.render(pose);
+        } else {
+            dots = null;
+        }
+        invalidate();
+    }
+
     /** Shows {@code text} playing {@code motion}; the same seed always moves the same way. */
     public void setEmoji(CharSequence text, Motion motion, long seed) {
         setText(text);
+        if (dots != null) {
+            dots.setText(text, getCurrentTextColor());
+            pose.reset();
+            dots.render(pose);
+            invalidate();
+        }
         this.motion = motion != null ? motion : Motion.NONE;
         Random random = new Random(seed);
         tempo = 0.9f + 0.2f * random.nextFloat();
@@ -50,10 +83,13 @@ public class AnimatedEmojiView extends TextView {
         return motion;
     }
 
-    /** A single glyph never overlaps itself, so fading it needs no offscreen layer. */
+    /**
+     * A single glyph never overlaps itself, so fading it needs no offscreen layer; the dot
+     * matrix draws its unlit and lit dots on top of each other, so it does.
+     */
     @Override
     public boolean hasOverlappingRendering() {
-        return false;
+        return dots != null;
     }
 
     @Override
@@ -125,7 +161,26 @@ public class AnimatedEmojiView extends TextView {
         requestFrameRate(false);
     }
 
+    @Override
+    protected void onDraw(Canvas canvas) {
+        if (dots != null) {
+            dots.draw(canvas, getWidth(), getHeight());
+        } else {
+            super.onDraw(canvas);
+        }
+    }
+
     private void apply(Pose p) {
+        if (dots != null) {
+            if (dots.render(p)) {
+                invalidate();
+            }
+            return;
+        }
+        applyTransforms(p);
+    }
+
+    private void applyTransforms(Pose p) {
         int w = getWidth();
         int h = getHeight();
         setPivotX(p.pivotX * w);

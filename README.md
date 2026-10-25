@@ -38,6 +38,13 @@ plus your folders.
 
 ## Emoji animations
 
+- **Dot matrix** (on by default, switch in the module): every emoji cover is drawn as a coloured
+  25 x 25 Nothing-style dot matrix, the size of Nothing's Glyph Matrix, with faintly visible
+  unlit dots. Motion is rendered into the grid each frame (3 x 3 supersampled, five brightness
+  steps per dot), so an emoji moves across the dots like an image on an LED panel, with edge
+  dots dimming in between for smooth motion. Frames whose dots don't change aren't redrawn, and
+  each frame is one GPU draw. The emoji picker shows the dot versions too.
+
 - **98 hand-tuned motions** (wave, heartbeat, hop, laugh, ring, launch, coin flip, flag wave,
   swim, flicker, …) built on spring physics: anticipation, squash and stretch, overshoot and
   settle. Each starts and ends at rest; `MotionQa`-style checks during development verify there

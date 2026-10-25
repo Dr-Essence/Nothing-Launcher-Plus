@@ -623,7 +623,7 @@ final class SmartDrawer {
                         param.thisObject, "getFolderIconContainer");
                 resizeTile((View) param.thisObject, previews);
                 covers.apply((FrameLayout) param.thisObject, previews, folder,
-                        store.get().animateCovers);
+                        store.get().animateCovers, store.get().dotMatrix);
             }
         });
     }

@@ -238,7 +238,7 @@ final class Ui {
      * Rounded square showing a folder's cover: its image, its emoji, or else the icon of its
      * first app.
      */
-    View coverPreview(Config.Folder folder, int sizeDp, boolean animate) {
+    View coverPreview(Config.Folder folder, int sizeDp, boolean animate, boolean dotMatrix) {
         int size = dp(sizeDp);
         FrameLayout badge = new FrameLayout(activity);
         GradientDrawable bg = new GradientDrawable();
@@ -256,6 +256,7 @@ final class Ui {
             badge.addView(image, new FrameLayout.LayoutParams(size, size));
         } else if (!folder.coverText.isEmpty()) {
             AnimatedEmojiView text = new AnimatedEmojiView(activity);
+            text.setDotMatrix(dotMatrix);
             text.setEmoji(folder.coverText,
                     animate ? Motion.parse(folder.coverMotion) : Motion.NONE, folder.id.hashCode());
             text.setTextSize(TypedValue.COMPLEX_UNIT_PX, size * 0.6f);

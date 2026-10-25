@@ -45,9 +45,10 @@ final class FolderCovers {
 
     /**
      * Shows {@code folder}'s cover on the tile, or restores the stock previews. Emoji covers play
-     * their motion when {@code animate} is set.
+     * their motion when {@code animate} is set and are drawn as dots when {@code dotMatrix} is.
      */
-    void apply(FrameLayout tile, View previews, Config.Folder folder, boolean animate) {
+    void apply(FrameLayout tile, View previews, Config.Folder folder, boolean animate,
+            boolean dotMatrix) {
         CoverView cover = tile.findViewWithTag(COVER_TAG);
         if (folder == null || !folder.hasCover()) {
             if (cover != null) {
@@ -69,7 +70,8 @@ final class FolderCovers {
             showImage(cover, folder.coverImageUri());
         } else {
             cover.showText(folder.coverText,
-                    animate ? Motion.parse(folder.coverMotion) : Motion.NONE, folder.id.hashCode());
+                    animate ? Motion.parse(folder.coverMotion) : Motion.NONE, folder.id.hashCode(),
+                    dotMatrix);
         }
     }
 
@@ -139,8 +141,9 @@ final class FolderCovers {
             text.setVisibility(GONE);
         }
 
-        void showText(String value, Motion motion, long seed) {
+        void showText(String value, Motion motion, long seed, boolean dotMatrix) {
             pendingKey = null;
+            text.setDotMatrix(dotMatrix);
             text.setEmoji(value, motion, seed);
             text.setVisibility(VISIBLE);
             image.setVisibility(GONE);

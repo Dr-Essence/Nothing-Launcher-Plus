@@ -24,6 +24,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.dressence.nothinglauncherplus.anim.AnimatedEmojiView;
+import com.dressence.nothinglauncherplus.anim.Motion;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +56,7 @@ public class EmojiPickerActivity extends Activity {
     private int group;
     private String query = "";
     private long seed;
+    private boolean dotMatrix;
     private int accent;
 
     @Override
@@ -62,6 +64,7 @@ public class EmojiPickerActivity extends Activity {
         super.onCreate(savedInstanceState);
         catalog = EmojiCatalog.get(this);
         seed = getIntent().getLongExtra(EXTRA_SEED, 0);
+        dotMatrix = new SettingsStore(this).config.dotMatrix;
         TypedArray a = obtainStyledAttributes(new int[]{android.R.attr.colorAccent});
         accent = a.getColor(0, 0xFFD71921);
         a.recycle();
@@ -103,6 +106,7 @@ public class EmojiPickerActivity extends Activity {
         card.setBackground(rounded(Ui.SURFACE, Ui.dp(this, 24)));
         preview = new AnimatedEmojiView(this);
         preview.setTextSize(TypedValue.COMPLEX_UNIT_SP, 52);
+        preview.setDotMatrix(dotMatrix);
         card.addView(preview, new LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)));
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
@@ -183,15 +187,26 @@ public class EmojiPickerActivity extends Activity {
 
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
+                EmojiCatalog.Entry entry = shown.get(position);
                 TextView cell = (TextView) convertView;
                 if (cell == null) {
-                    cell = text("", 28, Ui.TEXT);
-                    cell.setGravity(Gravity.CENTER);
+                    // As dots, the cells show exactly what the cover will look like.
+                    if (dotMatrix) {
+                        AnimatedEmojiView dots = new AnimatedEmojiView(parent.getContext());
+                        dots.setDotMatrix(true);
+                        cell = dots;
+                    } else {
+                        cell = text("", 28, Ui.TEXT);
+                        cell.setGravity(Gravity.CENTER);
+                    }
                     cell.setLayoutParams(new AbsListView.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(parent.getContext(), 56)));
                 }
-                EmojiCatalog.Entry entry = shown.get(position);
-                cell.setText(entry.emoji);
+                if (cell instanceof AnimatedEmojiView) {
+                    ((AnimatedEmojiView) cell).setEmoji(entry.emoji, Motion.NONE, 0);
+                } else {
+                    cell.setText(entry.emoji);
+                }
                 cell.setContentDescription(entry.name);
                 return cell;
             }

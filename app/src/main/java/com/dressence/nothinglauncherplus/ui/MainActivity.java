@@ -71,6 +71,12 @@ public class MainActivity extends Activity {
             store.save(this);
             render();
         });
+        ui.switchRow("Dot-matrix emoji", "Covers drawn as a coloured Nothing dot matrix",
+                config.dotMatrix, checked -> {
+                    config.dotMatrix = checked;
+                    store.save(this);
+                    render();
+                });
 
         ui.section("Landscape & controllers");
         ui.switchRow("Home screen rotation", "Home and app drawer follow auto-rotate (beta)",
@@ -92,7 +98,7 @@ public class MainActivity extends Activity {
         for (Config.Folder folder : config.folders) {
             int n = folder.apps.size();
             ui.row(folder.name, n == 1 ? "1 app" : n + " apps",
-                    ui.coverPreview(folder, 40, config.animateCovers),
+                    ui.coverPreview(folder, 40, config.animateCovers, config.dotMatrix),
                     ui.chevron(), v -> FolderActivity.open(this, folder.id, false));
         }
         ui.pill("New folder", true, v -> Dialogs.promptText(this, "New folder", "", "Name",
