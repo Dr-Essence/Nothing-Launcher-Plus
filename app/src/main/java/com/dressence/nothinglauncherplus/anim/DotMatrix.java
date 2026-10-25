@@ -287,8 +287,8 @@ final class DotMatrix {
             float h = rows * dot;
             float top = Math.max(panel.top + bezel, label.centerY() - h / 2);
             RectF pill = new RectF(panel.left + bezel, top, panel.right - bezel, top + h);
-            float pad = h / 2 - dot; // Keep dots clear of the pill's round ends.
-            int cols = (int) ((pill.width() - 2 * pad) / dot);
+            // Dots run right out to the pill's round ends (the mask follows the curve).
+            int cols = (int) (pill.width() / dot);
             name = new Grid(dot, cols, rows, pill.left + (pill.width() - cols * dot) / 2,
                     top, pill, h / 2);
         }
@@ -324,10 +324,12 @@ final class DotMatrix {
         canvas.drawBitmap(mask, 0, 0, unlitPaint);
         drawLit(canvas, mask, 0, 0, pitch, emojiLeft, emojiTop);
         if (name != null) {
-            label.draw(canvas, mask, labelPaint, name.pitch, name.left, name.top, name.columns);
-            // A red status dot at the end of the name screen, Nothing's one accent.
+            // Text stays clear of the round ends; the status dot sits just inside the right one.
+            int margin = (int) Math.ceil(name.rows / 2f);
+            label.draw(canvas, mask, labelPaint, name.pitch, name.left, name.top, name.columns,
+                    margin, name.bounds);
             ledPaint.setColor(NOTHING_RED);
-            canvas.drawCircle(name.left + (name.columns - 1.5f) * name.pitch,
+            canvas.drawCircle(name.left + (name.columns - margin + 0.5f) * name.pitch,
                     name.top + name.rows * name.pitch / 2f, name.pitch * 0.6f, ledPaint);
         }
     }

@@ -76,7 +76,9 @@ plus your folders.
   one after another.
 - **Each folder is a little device**: the tile is the bezel, and inside sit two screens of
   black glass with a hairline rim. The emoji has the main screen; the name has its own
-  pill-shaped display of finer dots with a red status dot, lit in Nothing's own NDot 57 letters
+  pill-shaped display of finer dots (right out to its round ends) with a red status dot, lit
+  as a green LED panel, each letter dot glowing softly into the glass, in Nothing's own NDot 57
+  letters
   at the launcher's own name size (NDot puts its dots on an exact grid, one every tenth of the
   font size, so every letter dot is one of the display's dots). The font is
   not shipped with the module: it is loaded from the phone (the system fonts, or Nothing's

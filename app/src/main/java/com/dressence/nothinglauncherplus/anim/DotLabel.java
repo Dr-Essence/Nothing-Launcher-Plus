@@ -6,7 +6,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.RadialGradient;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.os.Build;
@@ -45,7 +47,14 @@ final class DotLabel {
     /** Supersampling for characters the font lacks. */
     private static final int FALLBACK_SS = 4;
 
+    /** Glow: dots of halo beyond the text, and pixels per dot it is rendered at. */
+    private static final int GLOW_PAD = 2;
+    private static final int GLOW_CELL = 8;
+
     private final Matrix matrix = new Matrix();
+    private final RectF glowRect = new RectF();
+    private final Paint glowPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private Bitmap glow;
     private final Rect area = new Rect();
     /** The lit dots, one pixel each, inside a transparent one-dot border. */
     private Bitmap bitmap;
@@ -126,6 +135,7 @@ final class DotLabel {
                 bitmap.setPixel(x + 1, y + 1, columns.get(x)[y]);
             }
         }
+        glow = glow(bitmap);
     }
 
     /**
@@ -279,31 +289,69 @@ final class DotLabel {
      * left and room for the status dot on the right; centred, or scrolling when too long.
      */
     void draw(Canvas canvas, Bitmap mask, Paint paint, float dot, float left, float top,
-            int columns) {
+            int columns, int margin, RectF screen) {
         if (bitmap == null) {
             return;
         }
-        int first = 1;
-        int last = columns - 4; // Last column for text: the status dot and a gap follow.
+        int first = margin;
+        int last = columns - margin - 3; // The status dot and a gap follow the text.
         window = last - first + 1;
         if (paint.getShader() == null || ((Holder) paint.getShader()).bitmap != bitmap) {
             paint.setShader(new Holder(bitmap));
         }
         float y = top + dot; // One row of margin.
+        int[] cols = scrolls()
+                ? new int[] {first - offset, first - offset + width + LOOP_GAP}
+                : new int[] {first + (window - width) / 2};
+        // The glow first: soft light around each lit dot, spilling onto its neighbours.
         canvas.save();
-        canvas.clipRect(left + first * dot, y, left + (last + 1) * dot, y + rows * dot);
-        if (!scrolls()) {
-            int col = first + (window - width) / 2;
-            place(paint, dot, left + col * dot, y);
-            canvas.drawBitmap(mask, 0, 0, paint);
-        } else {
-            for (int copy = 0; copy < 2; copy++) {
-                int col = first - offset + copy * (width + LOOP_GAP);
-                place(paint, dot, left + col * dot, y);
-                canvas.drawBitmap(mask, 0, 0, paint);
-            }
+        canvas.clipRect(screen);
+        canvas.clipRect(left + first * dot - GLOW_PAD * dot, screen.top,
+                left + (last + 1) * dot + GLOW_PAD * dot, screen.bottom);
+        for (int col : cols) {
+            float gx = left + (col - 1 - GLOW_PAD) * dot;
+            float gy = y - (1 + GLOW_PAD) * dot;
+            glowRect.set(gx, gy, gx + glow.getWidth() / (float) GLOW_CELL * dot,
+                    gy + glow.getHeight() / (float) GLOW_CELL * dot);
+            canvas.drawBitmap(glow, null, glowRect, glowPaint);
         }
         canvas.restore();
+        canvas.save();
+        canvas.clipRect(left + first * dot, y, left + (last + 1) * dot, y + rows * dot);
+        for (int col : cols) {
+            place(paint, dot, left + col * dot, y);
+            canvas.drawBitmap(mask, 0, 0, paint);
+        }
+        canvas.restore();
+    }
+
+    /**
+     * A soft halo for every lit dot, like light from an LED bleeding into the glass around it:
+     * rendered once per label at {@link #GLOW_CELL} pixels per dot, then scaled onto the screen.
+     */
+    private static Bitmap glow(Bitmap dots) {
+        int w = dots.getWidth() + 2 * GLOW_PAD;
+        int h = dots.getHeight() + 2 * GLOW_PAD;
+        Bitmap out = Bitmap.createBitmap(w * GLOW_CELL, h * GLOW_CELL, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(out);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        float radius = GLOW_CELL * 2.2f;
+        for (int y = 0; y < dots.getHeight(); y++) {
+            for (int x = 0; x < dots.getWidth(); x++) {
+                int c = dots.getPixel(x, y);
+                if ((c >>> 24) == 0) {
+                    continue;
+                }
+                float cx = (x + GLOW_PAD + 0.5f) * GLOW_CELL;
+                float cy = (y + GLOW_PAD + 0.5f) * GLOW_CELL;
+                paint.setShader(new RadialGradient(cx, cy, radius,
+                        new int[] {(c & 0xFFFFFF) | 0x5C000000, (c & 0xFFFFFF) | 0x1E000000,
+                                c & 0xFFFFFF},
+                        new float[] {0, 0.45f, 1}, Shader.TileMode.CLAMP));
+                canvas.drawCircle(cx, cy, radius, paint);
+            }
+        }
+        return out;
     }
 
     /** Bitmap pixel (1, 1), the first label dot, onto the panel dot at (x, y). */

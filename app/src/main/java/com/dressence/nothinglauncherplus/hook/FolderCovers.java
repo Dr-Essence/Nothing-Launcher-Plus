@@ -43,6 +43,9 @@ final class FolderCovers {
     private static final float CORNER_RATIO = 0.22f;
     private static final float EMOJI_RATIO = 0.62f;
 
+    /** The name display's LED colour. */
+    private static final int LED_GREEN = 0xFF4CFF7A;
+
     /** The real colour of folder names hidden behind a dot panel (to restore and to light). */
     private static final Map<TextView, Integer> NAME_COLORS = new WeakHashMap<>();
 
@@ -252,8 +255,8 @@ final class FolderCovers {
             }
             label.offset(-getLeft(), -getTop());
             String text = String.valueOf(name.getText());
-            Integer color = NAME_COLORS.get(name);
-            int ink = (color != null ? color : name.getCurrentTextColor()) | 0xFF000000;
+            // The name display is a green LED panel, whatever the launcher's text colour.
+            int ink = LED_GREEN;
             String key = text + label.toShortString() + ink;
             if (key.equals(shownLabel)) {
                 return; // Unchanged: keep a scrolling name where it is.
