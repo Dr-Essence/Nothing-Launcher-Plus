@@ -57,6 +57,13 @@ plus your folders.
   coffee steams, buildings light their windows one by one, speakers pulse, notes rise, stars
   twinkle, clocks tick, sirens flash, fish blow bubbles, and so on, mapped to every keyboard
   emoji by the same generator as the motions.
+- **Glowing screens**: the lit dots on the emoji screen throw a soft halo of their own colour
+  into the glass (the frame stretched with smooth filtering, plus a half-resolution copy for
+  the wider falloff), redone every frame so the glow moves with the animation.
+- **Dot-matrix app icons** (option): every app icon the launcher draws, on the home screen, in
+  the drawer, in folders and in search, is redrawn as a 22 x 22 panel of round dots in the
+  icon's own colours, each lit dot glowing softly. One hook on the launcher's icon drawable
+  covers every surface; each icon is converted once and cached.
 - **Folders open and shut**: 📁's front panel tips open on its bottom hinge, showing the
   shadowed inside and the papers in it, then closes again (📂 closes up and reopens). It is
   drawn from the emoji's own dots, so it never changes size; tap it and it opens at once.

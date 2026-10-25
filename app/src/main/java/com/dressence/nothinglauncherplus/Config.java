@@ -35,6 +35,7 @@ public final class Config {
     public static final String KEY_DRAWER_OPACITY = "drawer_opacity";
     public static final String KEY_ANIMATE_COVERS = "animate_covers";
     public static final String KEY_DOT_MATRIX = "dot_matrix";
+    public static final String KEY_DOT_ICONS = "dot_icons";
     public static final String KEY_UI_SOUNDS = "ui_sounds";
     public static final String KEY_MUSIC = "music";
     public static final String KEY_MUSIC_STYLE = "music_style";
@@ -100,6 +101,8 @@ public final class Config {
     public boolean animateCovers = true;
     /** Emoji covers drawn as a Nothing-style dot matrix. */
     public boolean dotMatrix = true;
+    /** Every app icon drawn as a glowing Nothing dot matrix. */
+    public boolean dotIcons = false;
     public boolean uiSounds = false;
     public boolean music = false;
     /** A {@code sound.Style} name. */
@@ -122,6 +125,7 @@ public final class Config {
         config.drawerOpacity = Math.max(0, Math.min(100, prefs.getInt(KEY_DRAWER_OPACITY, 100)));
         config.animateCovers = prefs.getBoolean(KEY_ANIMATE_COVERS, true);
         config.dotMatrix = prefs.getBoolean(KEY_DOT_MATRIX, true);
+        config.dotIcons = prefs.getBoolean(KEY_DOT_ICONS, false);
         config.uiSounds = prefs.getBoolean(KEY_UI_SOUNDS, false);
         config.music = prefs.getBoolean(KEY_MUSIC, false);
         config.musicStyle = prefs.getString(KEY_MUSIC_STYLE, "HOME_MENU");
@@ -145,6 +149,7 @@ public final class Config {
                 .putInt(KEY_DRAWER_OPACITY, drawerOpacity)
                 .putBoolean(KEY_ANIMATE_COVERS, animateCovers)
                 .putBoolean(KEY_DOT_MATRIX, dotMatrix)
+                .putBoolean(KEY_DOT_ICONS, dotIcons)
                 .putBoolean(KEY_UI_SOUNDS, uiSounds)
                 .putBoolean(KEY_MUSIC, music)
                 .putString(KEY_MUSIC_STYLE, musicStyle)
@@ -164,6 +169,7 @@ public final class Config {
                 .put(KEY_DRAWER_OPACITY, drawerOpacity)
                 .put(KEY_ANIMATE_COVERS, animateCovers)
                 .put(KEY_DOT_MATRIX, dotMatrix)
+                .put(KEY_DOT_ICONS, dotIcons)
                 .put(KEY_UI_SOUNDS, uiSounds)
                 .put(KEY_MUSIC, music)
                 .put(KEY_MUSIC_STYLE, musicStyle)
@@ -180,6 +186,7 @@ public final class Config {
         config.drawerOpacity = Math.max(0, Math.min(100, json.optInt(KEY_DRAWER_OPACITY, 100)));
         config.animateCovers = json.optBoolean(KEY_ANIMATE_COVERS, true);
         config.dotMatrix = json.optBoolean(KEY_DOT_MATRIX, true);
+        config.dotIcons = json.optBoolean(KEY_DOT_ICONS, false);
         config.uiSounds = json.optBoolean(KEY_UI_SOUNDS, false);
         config.music = json.optBoolean(KEY_MUSIC, false);
         config.musicStyle = json.optString(KEY_MUSIC_STYLE, "HOME_MENU");

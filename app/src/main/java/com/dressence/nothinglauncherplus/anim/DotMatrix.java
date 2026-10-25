@@ -53,6 +53,14 @@ final class DotMatrix {
     private static final LruCache<String, Bitmap> MASKS = new LruCache<>(8);
 
     /** The 32 x 32 frame inside a 1-dot transparent border (see class comment). */
+    /** The wide glow: the frame at half resolution, inside a transparent border. */
+    private static final int GLOW = GRID / 2;
+    private static final int GLOW_NEAR = 70;
+    private static final int GLOW_FAR = 120;
+    private final Bitmap glow = Bitmap.createBitmap(GLOW + 2, GLOW + 2, Bitmap.Config.ARGB_8888);
+    private final int[] glowPixels = new int[GLOW * GLOW];
+    private final RectF glowRect = new RectF();
+    private final Paint glowPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Bitmap frame =
             Bitmap.createBitmap(GRID + 2, GRID + 2, Bitmap.Config.ARGB_8888);
     private final Bitmap render = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
@@ -156,6 +164,7 @@ final class DotMatrix {
         }
         System.arraycopy(dots, 0, shown, 0, dots.length);
         frame.setPixels(dots, 0, GRID, 1, 1, GRID, GRID);
+        updateGlow();
         return true;
     }
 
@@ -324,6 +333,7 @@ final class DotMatrix {
         }
         Bitmap mask = name != null ? mask(width, height, screen, name) : mask(width, height, screen);
         canvas.drawBitmap(mask, 0, 0, unlitPaint);
+        drawGlow(canvas, screen, pitch, emojiLeft, emojiTop);
         drawLit(canvas, mask, 0, 0, pitch, emojiLeft, emojiTop);
         if (name != null) {
             // Text stays clear of the round ends; the status dot sits just inside the right one.
@@ -334,6 +344,49 @@ final class DotMatrix {
             canvas.drawCircle(name.left + (name.columns - margin + 0.5f) * name.pitch,
                     name.top + name.rows * name.pitch / 2f, name.pitch * 0.6f, ledPaint);
         }
+    }
+
+    /**
+     * The light the lit dots throw into the glass: the frame itself and a half-resolution copy,
+     * both stretched with smooth filtering under the dots, so each dot sits in a soft halo of
+     * its own colour that falls off over a dot or two, like LEDs behind smoked glass.
+     */
+    private void drawGlow(Canvas canvas, Grid screen, float pitch, float emojiLeft,
+            float emojiTop) {
+        canvas.save();
+        canvas.clipRect(screen.bounds);
+        glowRect.set(emojiLeft - pitch, emojiTop - pitch, emojiLeft + (GRID + 1) * pitch,
+                emojiTop + (GRID + 1) * pitch);
+        glowPaint.setAlpha(GLOW_NEAR);
+        canvas.drawBitmap(frame, null, glowRect, glowPaint);
+        float wide = pitch * 2;
+        glowRect.set(emojiLeft - wide, emojiTop - wide, emojiLeft + (GLOW + 1) * wide,
+                emojiTop + (GLOW + 1) * wide);
+        glowPaint.setAlpha(GLOW_FAR);
+        canvas.drawBitmap(glow, null, glowRect, glowPaint);
+        canvas.restore();
+    }
+
+    /** Averages the frame's dots 2 x 2 (weighted by brightness) into the wide glow. */
+    private void updateGlow() {
+        for (int gy = 0; gy < GLOW; gy++) {
+            for (int gx = 0; gx < GLOW; gx++) {
+                int a = 0, r = 0, g = 0, b = 0;
+                for (int dy = 0; dy < 2; dy++) {
+                    for (int dx = 0; dx < 2; dx++) {
+                        int c = dots[(gy * 2 + dy) * GRID + gx * 2 + dx];
+                        int ca = c >>> 24;
+                        a += ca;
+                        r += ((c >> 16) & 0xFF) * ca;
+                        g += ((c >> 8) & 0xFF) * ca;
+                        b += (c & 0xFF) * ca;
+                    }
+                }
+                glowPixels[gy * GLOW + gx] = a == 0 ? 0
+                        : Color.argb(a / 4, r / a, g / a, b / a);
+            }
+        }
+        glow.setPixels(glowPixels, 0, GLOW, 1, 1, GLOW, GLOW);
     }
 
     /** Black glass with a hairline rim: what makes a dot grid read as a screen. */

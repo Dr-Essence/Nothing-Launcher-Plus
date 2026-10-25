@@ -82,6 +82,12 @@ public class MainActivity extends Activity {
                     store.save(this);
                     render();
                 });
+        ui.switchRow("Dot-matrix app icons",
+                "Every app icon redrawn as glowing Nothing dots, colours kept",
+                config.dotIcons, checked -> {
+                    config.dotIcons = checked;
+                    store.save(this);
+                });
 
         addSoundSection(ui, config);
 
