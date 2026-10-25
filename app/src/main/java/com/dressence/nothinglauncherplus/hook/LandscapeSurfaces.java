@@ -159,6 +159,11 @@ final class LandscapeSurfaces {
         if (name.endsWith(".FallbackHome")) {
             return false; // Shown before unlock, while the real home is not ready.
         }
+        if (name.contains(".setting.")) {
+            // Nothing's settings pages crash when recreated by a rotation (their fragment
+            // host is gone); they keep their portrait lock.
+            return false;
+        }
         for (String prefix : OWN_PACKAGES) {
             if (name.startsWith(prefix)) {
                 return true;

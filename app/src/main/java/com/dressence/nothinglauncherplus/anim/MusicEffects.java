@@ -222,13 +222,10 @@ final class MusicEffects {
         int head = b % heads.size();
         float k = kick(s);
         int color = Scene.hsv(Scene.hash(s.seed, 4, 4) * 360 + b * 47, 0.55f, 1);
-        boolean[] lit = new boolean[r.size * r.size];
-        for (int i : heads.get(head)) {
-            lit[i] = true;
-        }
+        int[] headOf = headOf(r, heads);
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
-            if (ri >= 0 && lit[ri]) {
+            if (ri >= 0 && headOf[ri] == head) {
                 s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], color, 0.85f * k), s.dots[i] >>> 24);
             } else if (ri >= 0 && r.ink[ri]) {
                 lighten(s, i, 0.08f * k);
@@ -245,6 +242,23 @@ final class MusicEffects {
             double ang = a * Math.PI / 4 + 0.39;
             s.plotRest(x + (float) Math.cos(ang) * rad, y + (float) Math.sin(ang) * rad, c);
         }
+    }
+
+    /** For each dot, which note head it belongs to (-1 for none); computed once. */
+    private static int[] headOf(Regions r, List<int[]> heads) {
+        int[] cached = (int[]) r.memo.get("headOf");
+        if (cached != null) {
+            return cached;
+        }
+        int[] out = new int[r.size * r.size];
+        Arrays.fill(out, -1);
+        for (int h = 0; h < heads.size(); h++) {
+            for (int i : heads.get(h)) {
+                out[i] = h;
+            }
+        }
+        r.memo.put("headOf", out);
+        return out;
     }
 
     /** Note heads: the round, wider parts in the lower two thirds (not stems, not beams). */
@@ -507,16 +521,17 @@ final class MusicEffects {
         int step = (int) (s.t / eighth);
         float env = (float) Math.exp(-((s.t % eighth) / eighth) * 2.5f);
         // A walking melody: steps of a scale, up and down, from the seed.
-        int[] pressed = s.boost > 0.3f
-                ? new int[] {0, 2, 4} // A chord when touched.
-                : new int[] {melody(step, keys.length, s.seed)};
+        int note = melody(step, keys.length, s.seed);
+        boolean chord = s.boost > 0.3f; // A chord when touched.
+        int presses = chord ? CHORD.length : 1;
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
             if (ri < 0 || !r.ink[ri] || r.luma[ri] < 0.6f) {
                 continue;
             }
             int x = ri % r.size;
-            for (int p : pressed) {
+            for (int n = 0; n < presses; n++) {
+                int p = chord ? CHORD[n] : note;
                 int[] key = keys[Math.min(keys.length - 1, p % keys.length)];
                 if (x >= key[0] && x <= key[1]) {
                     int color = Scene.hsv(200 + p * 40, 0.55f, 1);
@@ -526,6 +541,8 @@ final class MusicEffects {
             }
         }
     }
+
+    private static final int[] CHORD = {0, 2, 4};
 
     private static int melody(int step, int keys, int seed) {
         int len = 8;
@@ -601,9 +618,13 @@ final class MusicEffects {
         if (head == null) {
             return;
         }
-        boolean[] on = new boolean[r.size * r.size];
-        for (int i : head) {
-            on[i] = true;
+        boolean[] on = (boolean[]) r.memo.get("headMask");
+        if (on == null) {
+            on = new boolean[r.size * r.size];
+            for (int i : head) {
+                on[i] = true;
+            }
+            r.memo.put("headMask", on);
         }
         float hx = cx(r, head);
         float hy = cy(r, head);

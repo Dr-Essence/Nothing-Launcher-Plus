@@ -52,11 +52,32 @@ final class DotIcons {
     private static final long ASLEEP_MS = 800;
     private static final float POWER_ON_MS = 560;
     private static final long MAX_STAGGER_MS = 110;
+    private static final int GLOW_SCALE = 4;
 
+    /** Marks an icon that could not be converted. */
+    private static final Dots FAILED = new Dots();
     private static final Map<Bitmap, Dots> CACHE =
             Collections.synchronizedMap(new WeakHashMap<>());
     /** Per drawable: {last drawn, power-on start} in uptime millis. */
     private static final Map<Object, long[]> SEEN = new WeakHashMap<>();
+    /** Icons being converted, and the drawables to redraw when each is ready (main thread). */
+    private static final Map<Bitmap, java.util.List<WeakReference<Drawable>>> PENDING =
+            new WeakHashMap<>();
+    private static final java.util.concurrent.ExecutorService CONVERTER =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "nlplus-dot-icons");
+                t.setPriority(Thread.MIN_PRIORITY);
+                return t;
+            });
+    private static final android.os.Handler MAIN =
+            new android.os.Handler(android.os.Looper.getMainLooper());
+    /** FastBitmapDrawable and BitmapInfo fields, looked up once. */
+    private static java.lang.reflect.Field fBitmapInfo;
+    private static java.lang.reflect.Field fIcon;
+    private static java.lang.reflect.Field fPaint;
+    private static java.lang.reflect.Field fBadge;
+    private static java.lang.reflect.Field fScale;
+    private static Bitmap lowRes;
     private static final Paint DOT_PAINT = new Paint(Paint.ANTI_ALIAS_FLAG);
     private static final Paint GLOW_PAINT = new Paint(Paint.FILTER_BITMAP_FLAG);
     private static WeakReference<Activity> launcher = new WeakReference<>(null);
@@ -77,6 +98,13 @@ final class DotIcons {
 
     static void install(ClassLoader cl, ConfigStore store) {
         Class<?> fast = XposedHelpers.findClass(CLS_FAST_BITMAP, cl);
+        Class<?> bitmapInfo = XposedHelpers.findClass("com.android.launcher3.icons.BitmapInfo", cl);
+        fBitmapInfo = field(fast, "mBitmapInfo");
+        fPaint = field(fast, "mPaint");
+        fBadge = field(fast, "mBadge");
+        fScale = field(fast, "mScale");
+        fIcon = field(bitmapInfo, "icon");
+        lowRes = (Bitmap) XposedHelpers.getStaticObjectField(bitmapInfo, "LOW_RES_ICON");
         // Keep draw and drawInternal un-inlined so every caller goes through the hook.
         Hooks.deoptimizeAll(fast, "draw");
         Hooks.deoptimizeAll(fast, "drawInternal");
@@ -117,16 +145,22 @@ final class DotIcons {
         if (cls.contains("Clock") || cls.contains("Preload") || cls.contains("PlaceHolder")) {
             return false;
         }
-        Object info = XposedHelpers.getObjectField(d, "mBitmapInfo");
-        Bitmap icon = (Bitmap) XposedHelpers.getObjectField(info, "icon");
-        if (icon == null || icon.getWidth() < GRID * 2
-                || (Boolean) XposedHelpers.callMethod(info, "isLowRes")) {
+        Paint paint;
+        Drawable badge;
+        float scale;
+        Bitmap icon;
+        try {
+            Object info = fBitmapInfo.get(d);
+            icon = (Bitmap) fIcon.get(info);
+            if (icon == null || icon.getWidth() < GRID * 2 || icon == lowRes) {
+                return false;
+            }
+            paint = (Paint) fPaint.get(d);
+            badge = (Drawable) fBadge.get(d);
+            scale = fScale.getFloat(d);
+        } catch (IllegalAccessException e) {
             return false;
         }
-        Dots dots = dots(icon);
-        Paint paint = (Paint) XposedHelpers.getObjectField(d, "mPaint");
-        Drawable badge = (Drawable) XposedHelpers.getObjectField(d, "mBadge");
-        float scale = XposedHelpers.getFloatField(d, "mScale");
         Rect bounds = d.getBounds();
 
         long now = SystemClock.uptimeMillis();
@@ -135,7 +169,17 @@ final class DotIcons {
             seen = new long[2];
             SEEN.put(d, seen);
         }
-        if (now - seen[0] > ASLEEP_MS) {
+        Dots dots = dots(icon, d);
+        if (dots == FAILED) {
+            return false;
+        }
+        if (dots == null) {
+            // Still being converted: stay dark, and power on as soon as it is ready.
+            seen[0] = now;
+            seen[1] = Long.MAX_VALUE;
+            return true;
+        }
+        if (seen[1] == Long.MAX_VALUE || now - seen[0] > ASLEEP_MS) {
             seen[1] = now + (System.identityHashCode(d) & 0x7FFFFFFF) % MAX_STAGGER_MS;
         }
         seen[0] = now;
@@ -186,6 +230,29 @@ final class DotIcons {
         }
     }
 
+    /** A declared field of {@code cls} or a superclass, made accessible. */
+    private static java.lang.reflect.Field field(Class<?> cls, String name) {
+        for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
+            try {
+                java.lang.reflect.Field f = c.getDeclaredField(name);
+                f.setAccessible(true);
+                return f;
+            } catch (NoSuchFieldException e) {
+                // Try the superclass.
+            }
+        }
+        throw new IllegalStateException("no field " + name + " in " + cls.getName());
+    }
+
+    private static Bitmap toHardware(Bitmap bitmap) {
+        Bitmap hw = bitmap.copy(Bitmap.Config.HARDWARE, false);
+        if (hw == null) {
+            return bitmap;
+        }
+        bitmap.recycle();
+        return hw;
+    }
+
     /** A critically damped spring from 0 to 1, with a whisper of overshoot. */
     private static float spring(float x) {
         double w = 9;
@@ -214,15 +281,52 @@ final class DotIcons {
         }
     }
 
-    /** {@code icon} as dots, made once per bitmap. */
-    private static Dots dots(Bitmap icon) {
+    /**
+     * {@code icon} as dots, or null while it is being made: converted once per bitmap, off the
+     * main thread, after which every drawable that asked for it is redrawn.
+     */
+    private static Dots dots(Bitmap icon, Drawable asking) {
         Dots cached = CACHE.get(icon);
         if (cached != null) {
             return cached;
         }
-        Dots out = convert(icon);
-        CACHE.put(icon, out);
-        return out;
+        java.util.List<WeakReference<Drawable>> waiting = PENDING.get(icon);
+        if (waiting != null) {
+            waiting.add(new WeakReference<>(asking));
+            return null;
+        }
+        waiting = new java.util.ArrayList<>();
+        waiting.add(new WeakReference<>(asking));
+        PENDING.put(icon, waiting);
+        WeakReference<Bitmap> source = new WeakReference<>(icon);
+        CONVERTER.execute(() -> {
+            Bitmap bitmap = source.get();
+            Dots made;
+            try {
+                made = bitmap != null && !bitmap.isRecycled() ? convert(bitmap) : FAILED;
+            } catch (RuntimeException e) {
+                Hooks.log("dot icon failed: " + e);
+                made = FAILED; // Drawn as the normal icon from now on.
+            }
+            Dots result = made;
+            MAIN.post(() -> {
+                Bitmap key = source.get();
+                if (key == null) {
+                    return;
+                }
+                java.util.List<WeakReference<Drawable>> asked = PENDING.remove(key);
+                CACHE.put(key, result);
+                if (asked != null) {
+                    for (WeakReference<Drawable> ref : asked) {
+                        Drawable drawable = ref.get();
+                        if (drawable != null) {
+                            drawable.invalidateSelf();
+                        }
+                    }
+                }
+            });
+        });
+        return null;
     }
 
     /**
@@ -230,6 +334,9 @@ final class DotIcons {
      * snapped to a few LED levels) and draws each lit cell as a round dot over a soft halo.
      */
     private static Dots convert(Bitmap icon) {
+        if (icon.getConfig() == Bitmap.Config.HARDWARE) {
+            icon = icon.copy(Bitmap.Config.ARGB_8888, false); // Pixels can't be read on the GPU.
+        }
         int w = icon.getWidth();
         int h = icon.getHeight();
         int[] px = new int[w * h];
@@ -277,8 +384,11 @@ final class DotIcons {
         dots.x = new float[lit];
         dots.y = new float[lit];
         dots.color = new int[lit];
-        dots.glow = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas glow = new Canvas(dots.glow);
+        // The glow is a blur anyway: a quarter of the size, stretched smoothly when drawn.
+        Bitmap glowBitmap = Bitmap.createBitmap(Math.max(1, w / GLOW_SCALE),
+                Math.max(1, h / GLOW_SCALE), Bitmap.Config.ARGB_8888);
+        Canvas glow = new Canvas(glowBitmap);
+        glow.scale(glowBitmap.getWidth() / (float) w, glowBitmap.getHeight() / (float) h);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         float halo = pitch * 1.5f;
         int k = 0;
@@ -299,13 +409,18 @@ final class DotIcons {
                     new float[] {0, 0.5f, 1}, Shader.TileMode.CLAMP));
             glow.drawCircle(cx, cy, halo, paint);
         }
-        dots.full = dots.glow.copy(Bitmap.Config.ARGB_8888, true);
-        Canvas full = new Canvas(dots.full);
+        Bitmap fullBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas full = new Canvas(fullBitmap);
+        full.drawBitmap(glowBitmap, null, new Rect(0, 0, w, h),
+                new Paint(Paint.FILTER_BITMAP_FLAG));
         paint.setShader(null);
         for (int i = 0; i < dots.x.length; i++) {
             paint.setColor(dots.color[i]);
             full.drawCircle(dots.x[i], dots.y[i], dots.radius, paint);
         }
+        // Kept on the GPU: no upload when drawn, and off the app's Java heap.
+        dots.full = toHardware(fullBitmap);
+        dots.glow = toHardware(glowBitmap);
         return dots;
     }
 }

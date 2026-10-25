@@ -1060,6 +1060,7 @@ public enum DotEffect {
 
     private static final String[] HEART = {"x.x", "xxx", ".x."};
     private static final String[] ZED = {"xxx", ".x.", "xxx"};
+    private static final String[] SPECK = {"x"};
     static final String[] NOTE = {"..xx", "..x.", "..x.", "xxx.", "xx.."};
     private static final String[] CROSS = {".x.", "xxx", ".x."};
 
@@ -1299,12 +1300,21 @@ public enum DotEffect {
             float x = (r.minX + r.maxX) / 2f + (float) Math.cos(angle) * rx;
             float y = (r.minY + r.maxY) / 2f + (float) Math.sin(angle) * ry;
             int a = Math.round(255 * (float) Math.sin(life * Math.PI));
-            sprite(s, life > 0.3f && life < 0.7f ? CROSS : new String[] {"x"}, x, y, Scene.alpha(color, a));
+            sprite(s, life > 0.3f && life < 0.7f ? CROSS : SPECK, x, y, Scene.alpha(color, a));
         }
     }
 
     /** Centres of the eye blobs, left to right (falls back to two guesses on a face). */
     static float[][] eyeCentres(Regions r) {
+        float[][] cached = (float[][]) r.memo.get("eyeCentres");
+        if (cached == null) {
+            cached = findEyeCentres(r);
+            r.memo.put("eyeCentres", cached);
+        }
+        return cached;
+    }
+
+    private static float[][] findEyeCentres(Regions r) {
         float lx = 0, ly = 0, rx = 0, ry = 0;
         int ln = 0, rn = 0;
         float mid = (r.minX + r.maxX) / 2f;

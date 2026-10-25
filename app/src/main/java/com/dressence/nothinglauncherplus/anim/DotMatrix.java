@@ -98,6 +98,23 @@ final class DotMatrix {
     private final Paint rimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ledPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
+    /** The last layout (see {@link #layout}) and what it was made for. */
+    private int labelVersion;
+    private int layoutLabel = -1;
+    private int layoutWidth;
+    private int layoutHeight;
+    private final Rect layoutContent = new Rect();
+    private final Rect layoutPanel = new Rect();
+    private boolean layoutHasPanel;
+    private float layoutCorner;
+    private Bitmap layoutMask;
+    private Grid layoutScreen;
+    private Grid layoutName;
+    private float layoutPitch;
+    private float layoutEmojiLeft;
+    private float layoutEmojiTop;
+    private int layoutMargin;
+
     DotMatrix(boolean darkBackground) {
         BitmapShader shader = new BitmapShader(frame, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -229,6 +246,7 @@ final class DotMatrix {
      */
     void setLabel(CharSequence text, int color, Rect area, Typeface typeface, float size) {
         label.set(text, color, area, typeface, size);
+        labelVersion++;
     }
 
     /** Advances a label too long for the panel by one dot when due; true if it moved. */
@@ -288,14 +306,65 @@ final class DotMatrix {
         if (content.width() <= 0 || width <= 0 || height <= 0) {
             return;
         }
+        // The geometry only changes with the view, the cover's place or the label: work it
+        // out then, not on every animation frame.
+        if (width != layoutWidth || height != layoutHeight || !content.equals(layoutContent)
+                || !samePanel(panel) || corner != layoutCorner
+                || labelVersion != layoutLabel) {
+            layout(width, height, content, panel, corner);
+        }
+        if (layoutMask == null) {
+            return;
+        }
+        if (layoutScreen == null) {
+            canvas.drawBitmap(layoutMask, 0, 0, unlitPaint);
+            drawLit(canvas, layoutMask, layoutPitch, layoutEmojiLeft, layoutEmojiTop);
+            return;
+        }
+        drawGlass(canvas, layoutScreen);
+        if (layoutName != null) {
+            drawGlass(canvas, layoutName);
+        }
+        canvas.drawBitmap(layoutMask, 0, 0, unlitPaint);
+        drawGlow(canvas, layoutScreen, layoutPitch, layoutEmojiLeft, layoutEmojiTop);
+        drawLit(canvas, layoutMask, layoutPitch, layoutEmojiLeft, layoutEmojiTop);
+        Grid name = layoutName;
+        if (name != null) {
+            // Text stays clear of the round ends; the status dot sits just inside the right one.
+            label.draw(canvas, layoutMask, labelPaint, name.pitch, name.left, name.top,
+                    name.columns, layoutMargin, name.bounds);
+            ledPaint.setColor(NOTHING_RED);
+            canvas.drawCircle(name.left + (name.columns - layoutMargin + 0.5f) * name.pitch,
+                    name.top + name.rows * name.pitch / 2f, name.pitch * 0.6f, ledPaint);
+        }
+    }
+
+    private boolean samePanel(Rect panel) {
+        return panel == null || panel.isEmpty() ? !layoutHasPanel
+                : layoutHasPanel && panel.equals(layoutPanel);
+    }
+
+    /** Works out the screens, the emoji's place on its dots and the dot mask. */
+    private void layout(int width, int height, Rect content, Rect panel, float corner) {
+        layoutWidth = width;
+        layoutHeight = height;
+        layoutContent.set(content);
+        layoutHasPanel = panel != null && !panel.isEmpty();
+        if (layoutHasPanel) {
+            layoutPanel.set(panel);
+        }
+        layoutCorner = corner;
+        layoutLabel = labelVersion;
+        layoutMask = null;
+        layoutScreen = null;
+        layoutName = null;
         float pitch = content.width() / (float) GRID;
-        if (panel == null || panel.isEmpty()) {
-            int side = Math.round(GRID * pitch);
-            square.set(0, 0, side, side);
-            Bitmap mask = mask(width, height, new Grid(pitch, GRID, GRID, content.left,
+        if (!layoutHasPanel) {
+            layoutPitch = pitch;
+            layoutEmojiLeft = content.left;
+            layoutEmojiTop = content.top;
+            layoutMask = mask(width, height, new Grid(pitch, GRID, GRID, content.left,
                     content.top, new RectF(content), 0));
-            canvas.drawBitmap(mask, 0, 0, unlitPaint);
-            drawLit(canvas, mask, 0, 0, pitch, content.left, content.top);
             return;
         }
         float bezel = Math.max(pitch * 1.2f, Math.min(panel.width(), panel.height()) * 0.045f);
@@ -336,26 +405,13 @@ final class DotMatrix {
                 content.exactCenterX()));
         float cy = Math.max(glass.top + side / 2, Math.min(glass.bottom - side / 2,
                 content.exactCenterY()));
-        float emojiLeft = left + Math.round((cx - side / 2 - left) / pitch) * pitch;
-        float emojiTop = top + Math.round((cy - side / 2 - top) / pitch) * pitch;
-
-        drawGlass(canvas, screen);
-        if (name != null) {
-            drawGlass(canvas, name);
-        }
-        Bitmap mask = name != null ? mask(width, height, screen, name) : mask(width, height, screen);
-        canvas.drawBitmap(mask, 0, 0, unlitPaint);
-        drawGlow(canvas, screen, pitch, emojiLeft, emojiTop);
-        drawLit(canvas, mask, 0, 0, pitch, emojiLeft, emojiTop);
-        if (name != null) {
-            // Text stays clear of the round ends; the status dot sits just inside the right one.
-            int margin = (int) Math.ceil(name.rows / 2f);
-            label.draw(canvas, mask, labelPaint, name.pitch, name.left, name.top, name.columns,
-                    margin, name.bounds);
-            ledPaint.setColor(NOTHING_RED);
-            canvas.drawCircle(name.left + (name.columns - margin + 0.5f) * name.pitch,
-                    name.top + name.rows * name.pitch / 2f, name.pitch * 0.6f, ledPaint);
-        }
+        layoutPitch = pitch;
+        layoutEmojiLeft = left + Math.round((cx - side / 2 - left) / pitch) * pitch;
+        layoutEmojiTop = top + Math.round((cy - side / 2 - top) / pitch) * pitch;
+        layoutScreen = screen;
+        layoutName = name;
+        layoutMargin = name != null ? (int) Math.ceil(name.rows / 2f) : 0;
+        layoutMask = name != null ? mask(width, height, screen, name) : mask(width, height, screen);
     }
 
     /**
@@ -435,13 +491,19 @@ final class DotMatrix {
         }
     }
 
-    /** Frame pixel (1, 1) is the emoji square's first dot; the border around it is empty. */
-    private void drawLit(Canvas canvas, Bitmap mask, float maskLeft, float maskTop, float pitch,
-            float emojiLeft, float emojiTop) {
+    /**
+     * Frame pixel (1, 1) is the emoji square's first dot; the border around it is empty, so
+     * only the square can light up: the pass is clipped to it, not shaded over the whole view.
+     */
+    private void drawLit(Canvas canvas, Bitmap mask, float pitch, float emojiLeft,
+            float emojiTop) {
         shaderMatrix.setScale(pitch, pitch);
         shaderMatrix.postTranslate(emojiLeft - pitch, emojiTop - pitch);
         litPaint.getShader().setLocalMatrix(shaderMatrix);
-        canvas.drawBitmap(mask, maskLeft, maskTop, litPaint);
+        canvas.save();
+        canvas.clipRect(emojiLeft, emojiTop, emojiLeft + GRID * pitch, emojiTop + GRID * pitch);
+        canvas.drawBitmap(mask, 0, 0, litPaint);
+        canvas.restore();
     }
 
     /**

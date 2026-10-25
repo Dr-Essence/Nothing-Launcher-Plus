@@ -300,15 +300,16 @@ final class DotLabel {
             paint.setShader(new Holder(bitmap));
         }
         float y = top + dot; // One row of margin.
-        int[] cols = scrolls()
-                ? new int[] {first - offset, first - offset + width + LOOP_GAP}
-                : new int[] {first + (window - width) / 2};
+        // Where the text starts; a scrolling name shows a second copy following it.
+        int col0 = scrolls() ? first - offset : first + (window - width) / 2;
+        int copies = scrolls() ? 2 : 1;
         // The glow first: soft light around each lit dot, spilling onto its neighbours.
         canvas.save();
         canvas.clipRect(screen);
         canvas.clipRect(left + first * dot - GLOW_PAD * dot, screen.top,
                 left + (last + 1) * dot + GLOW_PAD * dot, screen.bottom);
-        for (int col : cols) {
+        for (int k = 0; k < copies; k++) {
+            int col = col0 + k * (width + LOOP_GAP);
             float gx = left + (col - 1 - GLOW_PAD) * dot;
             float gy = y - (1 + GLOW_PAD) * dot;
             glowRect.set(gx, gy, gx + glow.getWidth() / (float) GLOW_CELL * dot,
@@ -318,7 +319,8 @@ final class DotLabel {
         canvas.restore();
         canvas.save();
         canvas.clipRect(left + first * dot, y, left + (last + 1) * dot, y + rows * dot);
-        for (int col : cols) {
+        for (int k = 0; k < copies; k++) {
+            int col = col0 + k * (width + LOOP_GAP);
             place(paint, dot, left + col * dot, y);
             canvas.drawBitmap(mask, 0, 0, paint);
         }
