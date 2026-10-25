@@ -17,6 +17,8 @@ plus your folders.
 - **Folder covers**: give a folder an image (centre-cropped to a square, stored at 1024 px) or an
   emoji. The cover replaces the app previews on the drawer tile. It stays square and never
   stretches.
+- **Animated emoji covers**: every emoji (1,906, Unicode 16) can be a cover, picked from a
+  searchable picker, and plays a motion that suits it — see *Emoji animations* below.
 - **Apps without a folder as icons**: instead of an "Others" folder, the remaining apps are listed
   as normal app icons below the folders.
 - **Drawer background opacity** slider, so the wallpaper shows through behind the folders.
@@ -28,6 +30,29 @@ plus your folders.
 - **Export / Import** saves folders, options and cover images to one file, so the setup survives
   a reinstall.
 - Changes apply right away through a reload broadcast. You don't need to restart the launcher.
+
+## Emoji animations
+
+- **98 hand-tuned motions** (wave, heartbeat, hop, laugh, ring, launch, coin flip, flag wave,
+  swim, flicker, …) built on spring physics: anticipation, squash and stretch, overshoot and
+  settle. Each starts and ends at rest; `MotionQa`-style checks during development verify there
+  are no jumps at 240 fps and no out-of-range poses.
+- **Every emoji is mapped** by `tools/gen_emoji_motions.py`: exact CLDR-name overrides, then name
+  keywords, then its Unicode subgroup. The folder editor shows the chosen motion and lets you pick
+  any other, or none.
+- **Unique per folder**: speed, strength, pause length and phase come from the folder id, so two
+  folders with the same motion never move in sync.
+- **Cheap**: one shared vsync callback drives all covers, and only GPU-composited transform
+  properties change (no redraw, no layout). Nothing runs while a cover is off-screen, the drawer
+  is closed or the launcher is in the background, and plays are separated by pauses during which
+  no frames are requested.
+- **Frame rate**: while moving, a cover asks the panel for its highest refresh rate at the current
+  resolution, capped at 120 Hz (Android 15+), and releases the request when it comes to rest.
+  Motions are time-based, so they look the same at 60, 90 or 120 Hz. The system animation-scale
+  setting is honoured (0 turns animations off).
+
+Emoji names and groups come from [emojibase-data](https://github.com/milesj/emojibase) (MIT),
+based on Unicode CLDR.
 
 ## Requirements
 

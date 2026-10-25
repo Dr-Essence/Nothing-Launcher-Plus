@@ -4,12 +4,14 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.Display;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.anim.FrameRates;
 
 /** Module settings: drawer options and the list of custom folders. */
 public class MainActivity extends Activity {
@@ -34,6 +36,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         store.reload();
+        assignMissingMotions();
         render();
     }
 
@@ -62,6 +65,11 @@ public class MainActivity extends Activity {
                     store.save(this);
                 });
         addOpacityRow(ui, config);
+        ui.switchRow("Animate emoji covers", frameRateSummary(), config.animateCovers, checked -> {
+            config.animateCovers = checked;
+            store.save(this);
+            render();
+        });
 
         ui.section("Folders · " + config.folders.size());
         if (config.folders.isEmpty()) {
@@ -69,7 +77,8 @@ public class MainActivity extends Activity {
         }
         for (Config.Folder folder : config.folders) {
             int n = folder.apps.size();
-            ui.row(folder.name, n == 1 ? "1 app" : n + " apps", ui.coverPreview(folder, 40),
+            ui.row(folder.name, n == 1 ? "1 app" : n + " apps",
+                    ui.coverPreview(folder, 40, config.animateCovers),
                     ui.chevron(), v -> FolderActivity.open(this, folder.id, false));
         }
         ui.pill("New folder", true, v -> Dialogs.promptText(this, "New folder", "", "Name",
@@ -123,6 +132,29 @@ public class MainActivity extends Activity {
             }
         });
         ui.content.addView(slider);
+    }
+
+    /** Reports what the panel offers, so it is clear what the animations will run at. */
+    private String frameRateSummary() {
+        Display display = getDisplay();
+        int target = Math.round(FrameRates.target(display));
+        int now = Math.round(FrameRates.current(display));
+        return "Up to " + target + " fps on this " + target + " Hz panel"
+                + (now != target ? " (idling at " + now + " Hz)" : "");
+    }
+
+    /** Emoji covers set before animations existed get their automatic motion once. */
+    private void assignMissingMotions() {
+        boolean changed = false;
+        for (Config.Folder folder : store.config.folders) {
+            if (!folder.coverText.isEmpty() && folder.coverMotion.isEmpty()) {
+                folder.coverMotion = EmojiCatalog.get(this).motionFor(folder.coverText).name();
+                changed = true;
+            }
+        }
+        if (changed) {
+            store.save(this);
+        }
     }
 
     private static String opacityLabel(int opacity) {

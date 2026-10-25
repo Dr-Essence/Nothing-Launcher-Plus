@@ -13,9 +13,10 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.TextView;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.anim.AnimatedEmojiView;
+import com.dressence.nothinglauncherplus.anim.Motion;
 
 import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
@@ -42,8 +43,11 @@ final class FolderCovers {
         }
     };
 
-    /** Shows {@code folder}'s cover on the tile, or restores the stock previews. */
-    void apply(FrameLayout tile, View previews, Config.Folder folder) {
+    /**
+     * Shows {@code folder}'s cover on the tile, or restores the stock previews. Emoji covers play
+     * their motion when {@code animate} is set.
+     */
+    void apply(FrameLayout tile, View previews, Config.Folder folder, boolean animate) {
         CoverView cover = tile.findViewWithTag(COVER_TAG);
         if (folder == null || !folder.hasCover()) {
             if (cover != null) {
@@ -64,7 +68,8 @@ final class FolderCovers {
         if (folder.coverImageVersion != 0) {
             showImage(cover, folder.coverImageUri());
         } else {
-            cover.showText(folder.coverText);
+            cover.showText(folder.coverText,
+                    animate ? Motion.parse(folder.coverMotion) : Motion.NONE, folder.id.hashCode());
         }
     }
 
@@ -105,7 +110,7 @@ final class FolderCovers {
     /** Lays out its single visible child as a centred square. */
     private static final class CoverView extends FrameLayout {
         private final ImageView image;
-        private final TextView text;
+        private final AnimatedEmojiView text;
         String pendingKey;
 
         CoverView(Context context) {
@@ -120,23 +125,23 @@ final class FolderCovers {
                             view.getWidth() * CORNER_RATIO);
                 }
             });
-            text = new TextView(context);
-            text.setGravity(Gravity.CENTER);
-            text.setIncludeFontPadding(false);
-            text.setMaxLines(1);
+            text = new AnimatedEmojiView(context);
+            // Let a hopping emoji leave the square; the tile itself still clips it.
+            setClipChildren(false);
             addView(image, new LayoutParams(0, 0, Gravity.CENTER));
             addView(text, new LayoutParams(0, 0, Gravity.CENTER));
         }
 
         void showImage(Bitmap bitmap) {
+            text.setEmoji("", Motion.NONE, 0);
             image.setImageBitmap(bitmap);
             image.setVisibility(VISIBLE);
             text.setVisibility(GONE);
         }
 
-        void showText(String value) {
+        void showText(String value, Motion motion, long seed) {
             pendingKey = null;
-            text.setText(value);
+            text.setEmoji(value, motion, seed);
             text.setVisibility(VISIBLE);
             image.setVisibility(GONE);
             image.setImageBitmap(null);

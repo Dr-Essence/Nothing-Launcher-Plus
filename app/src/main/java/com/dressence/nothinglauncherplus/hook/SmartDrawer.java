@@ -594,7 +594,8 @@ final class SmartDrawer {
                 }
                 View previews = (View) XposedHelpers.callMethod(
                         param.thisObject, "getFolderIconContainer");
-                covers.apply((FrameLayout) param.thisObject, previews, folder);
+                covers.apply((FrameLayout) param.thisObject, previews, folder,
+                        store.get().animateCovers);
             }
         });
     }

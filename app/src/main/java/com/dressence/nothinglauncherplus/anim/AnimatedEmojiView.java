@@ -1,0 +1,153 @@
+package com.dressence.nothinglauncherplus.anim;
+
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.os.Build;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.TextView;
+
+import java.util.Random;
+
+/**
+ * An emoji that plays a {@link Motion}. Only transform properties change, which the render
+ * thread composites without redrawing the glyph, so a frame costs a handful of property writes.
+ * Every view gets its own speed, strength, pause length and phase from a seed, so two covers
+ * with the same motion never move in lockstep.
+ */
+@SuppressLint("ViewConstructor")
+public class AnimatedEmojiView extends TextView {
+
+    private final Pose pose = new Pose();
+    private Motion motion = Motion.NONE;
+    private float tempo = 1;
+    private float amount = 1;
+    private float restScale = 1;
+    private float phase;
+    private boolean atRest = true;
+
+    public AnimatedEmojiView(Context context) {
+        super(context);
+        setGravity(Gravity.CENTER);
+        setIncludeFontPadding(false);
+        setMaxLines(1);
+    }
+
+    /** Shows {@code text} playing {@code motion}; the same seed always moves the same way. */
+    public void setEmoji(CharSequence text, Motion motion, long seed) {
+        setText(text);
+        this.motion = motion != null ? motion : Motion.NONE;
+        Random random = new Random(seed);
+        tempo = 0.9f + 0.2f * random.nextFloat();
+        amount = 0.88f + 0.24f * random.nextFloat();
+        restScale = 0.8f + 0.7f * random.nextFloat();
+        phase = random.nextFloat();
+        rest();
+        MotionDriver.get().wake();
+    }
+
+    public Motion motion() {
+        return motion;
+    }
+
+    /** A single glyph never overlaps itself, so fading it needs no offscreen layer. */
+    @Override
+    public boolean hasOverlappingRendering() {
+        return false;
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        MotionDriver.get().add(this);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        MotionDriver.get().remove(this);
+        rest();
+        super.onDetachedFromWindow();
+    }
+
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if (visibility == VISIBLE) {
+            MotionDriver.get().wake();
+        }
+    }
+
+    @Override
+    public void onVisibilityAggregated(boolean isVisible) {
+        super.onVisibilityAggregated(isVisible);
+        if (isVisible) {
+            MotionDriver.get().wake();
+        }
+    }
+
+    /**
+     * Advances to {@code nowNanos}. Returns 0 if the emoji moved this frame, otherwise the
+     * nanoseconds until its next play ({@link Long#MAX_VALUE} for a static emoji).
+     */
+    long step(long nowNanos, float durationScale) {
+        if (motion == Motion.NONE) {
+            rest();
+            return Long.MAX_VALUE;
+        }
+        float active = motion.duration / tempo * durationScale;
+        float pause = motion.rest * restScale * durationScale;
+        long cycle = (long) ((active + pause) * 1e9f);
+        long local = (nowNanos + (long) (phase * cycle)) % cycle;
+        long activeNanos = (long) (active * 1e9f);
+        if (local >= activeNanos) {
+            rest();
+            return cycle - local;
+        }
+        pose.reset();
+        motion.pose(local / 1e9f * tempo / durationScale, pose);
+        pose.amplify(amount);
+        apply(pose);
+        if (atRest) {
+            atRest = false;
+            requestFrameRate(true);
+        }
+        return 0;
+    }
+
+    /** Snaps back to the resting pose and stops asking for a high frame rate. */
+    void rest() {
+        if (atRest) {
+            return;
+        }
+        atRest = true;
+        pose.reset();
+        apply(pose);
+        requestFrameRate(false);
+    }
+
+    private void apply(Pose p) {
+        int w = getWidth();
+        int h = getHeight();
+        setPivotX(p.pivotX * w);
+        setPivotY(p.pivotY * h);
+        setTranslationX(p.tx * w);
+        setTranslationY(p.ty * h);
+        setScaleX(p.scaleX);
+        setScaleY(p.scaleY);
+        setRotation(p.rotation + p.spin);
+        setRotationY(p.rotationY + p.spinY);
+        setAlpha(p.alpha);
+    }
+
+    /**
+     * While moving, ask for the panel's top refresh rate (up to 120 Hz) so motion is as smooth
+     * as the display allows; at rest, drop the request so adaptive panels can slow down again.
+     */
+    private void requestFrameRate(boolean moving) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            return;
+        }
+        setRequestedFrameRate(moving ? FrameRates.target(getDisplay())
+                : View.REQUESTED_FRAME_RATE_CATEGORY_DEFAULT);
+    }
+}

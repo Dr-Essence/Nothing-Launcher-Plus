@@ -38,6 +38,8 @@
             android:name=".ui.FolderActivity"
             android:exported="true" />
 
+        <activity android:name=".ui.EmojiPickerActivity" />
+
         <!-- Read-only cover images for the launcher, which cannot read this app's files. -->
         <provider
             android:name=".CoverProvider"

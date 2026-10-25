@@ -33,6 +33,7 @@ public final class Config {
     public static final String KEY_HIDE_BUILTIN = "hide_builtin";
     public static final String KEY_LOOSE_APPS = "loose_apps";
     public static final String KEY_DRAWER_OPACITY = "drawer_opacity";
+    public static final String KEY_ANIMATE_COVERS = "animate_covers";
 
     /** Broadcast sent to the launcher after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
@@ -50,6 +51,8 @@ public final class Config {
         public final LinkedHashSet<String> apps = new LinkedHashSet<>();
         /** Emoji or short text shown as the tile cover; empty for none. */
         public String coverText = "";
+        /** {@code anim.Motion} name played by the emoji cover; empty means not chosen yet. */
+        public String coverMotion = "";
         /** Last-modified time of the cover image; 0 when the folder has no cover image. */
         public long coverImageVersion;
 
@@ -81,6 +84,8 @@ public final class Config {
     public boolean looseApps = false;
     /** App drawer background opacity in percent (100 = stock). */
     public int drawerOpacity = 100;
+    /** Play emoji cover animations. */
+    public boolean animateCovers = true;
 
     private final Map<String, Folder> byComponent = new HashMap<>();
     private final Map<String, Folder> byKey = new HashMap<>();
@@ -91,6 +96,7 @@ public final class Config {
         config.hideBuiltin = prefs.getBoolean(KEY_HIDE_BUILTIN, false);
         config.looseApps = prefs.getBoolean(KEY_LOOSE_APPS, false);
         config.drawerOpacity = Math.max(0, Math.min(100, prefs.getInt(KEY_DRAWER_OPACITY, 100)));
+        config.animateCovers = prefs.getBoolean(KEY_ANIMATE_COVERS, true);
         try {
             config.readFolders(new JSONArray(prefs.getString(KEY_FOLDERS, "[]")));
         } catch (JSONException ignored) {
@@ -105,7 +111,8 @@ public final class Config {
                 .putBoolean(KEY_CUSTOM_FIRST, customFirst)
                 .putBoolean(KEY_HIDE_BUILTIN, hideBuiltin)
                 .putBoolean(KEY_LOOSE_APPS, looseApps)
-                .putInt(KEY_DRAWER_OPACITY, drawerOpacity);
+                .putInt(KEY_DRAWER_OPACITY, drawerOpacity)
+                .putBoolean(KEY_ANIMATE_COVERS, animateCovers);
         reindex();
     }
 
@@ -116,7 +123,8 @@ public final class Config {
                 .put(KEY_CUSTOM_FIRST, customFirst)
                 .put(KEY_HIDE_BUILTIN, hideBuiltin)
                 .put(KEY_LOOSE_APPS, looseApps)
-                .put(KEY_DRAWER_OPACITY, drawerOpacity);
+                .put(KEY_DRAWER_OPACITY, drawerOpacity)
+                .put(KEY_ANIMATE_COVERS, animateCovers);
     }
 
     public static Config fromJson(JSONObject json) throws JSONException {
@@ -125,6 +133,7 @@ public final class Config {
         config.hideBuiltin = json.optBoolean(KEY_HIDE_BUILTIN, false);
         config.looseApps = json.optBoolean(KEY_LOOSE_APPS, false);
         config.drawerOpacity = Math.max(0, Math.min(100, json.optInt(KEY_DRAWER_OPACITY, 100)));
+        config.animateCovers = json.optBoolean(KEY_ANIMATE_COVERS, true);
         config.readFolders(json.getJSONArray(KEY_FOLDERS));
         config.reindex();
         return config;
@@ -135,6 +144,7 @@ public final class Config {
             JSONObject obj = array.getJSONObject(i);
             Folder folder = new Folder(obj.getString("id"), obj.optString("name", "Folder"));
             folder.coverText = obj.optString("coverText", "");
+            folder.coverMotion = obj.optString("coverMotion", "");
             folder.coverImageVersion = obj.optLong("coverImage", 0);
             JSONArray apps = obj.optJSONArray("apps");
             if (apps != null) {
@@ -156,6 +166,9 @@ public final class Config {
                 obj.put("apps", new JSONArray(folder.apps));
                 if (!folder.coverText.isEmpty()) {
                     obj.put("coverText", folder.coverText);
+                }
+                if (!folder.coverMotion.isEmpty()) {
+                    obj.put("coverMotion", folder.coverMotion);
                 }
                 if (folder.coverImageVersion != 0) {
                     obj.put("coverImage", folder.coverImageVersion);

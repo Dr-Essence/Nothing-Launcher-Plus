@@ -10,6 +10,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.anim.Motion;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -21,6 +22,7 @@ public class FolderActivity extends Activity {
 
     private static final String EXTRA_PICK_APPS = "pick_apps";
     private static final int REQUEST_IMAGE = 1;
+    private static final int REQUEST_EMOJI = 2;
 
     static void open(Context context, String folderId, boolean pickApps) {
         context.startActivity(new Intent(context, FolderActivity.class)
@@ -67,16 +69,24 @@ public class FolderActivity extends Activity {
                 }));
 
         ui.section("Cover");
-        ui.row("Cover", coverSummary(folder), ui.coverPreview(folder, 40), null, null);
+        ui.row("Cover", coverSummary(folder), ui.coverPreview(folder, 56, true), null, null);
+        if (!folder.coverText.isEmpty()) {
+            Motion motion = Motion.parse(folder.coverMotion);
+            boolean automatic = motion == EmojiCatalog.get(this).motionFor(folder.coverText);
+            ui.row("Animation", motion.title + (automatic ? " · automatic" : ""), null,
+                    ui.chevron(), v -> chooseMotion(folder));
+        }
+        ui.pill("Choose emoji", false, v -> startActivityForResult(EmojiPickerActivity.intent(
+                this, folder.coverText, folder.id.hashCode()), REQUEST_EMOJI));
+        ui.pill("Type emoji or text", false, v -> Dialogs.promptText(this, "Cover emoji",
+                folder.coverText, "Any emoji, including skin tones", text -> {
+                    useText(folder, text);
+                    saveAndRender();
+                }));
         ui.pill("Choose image", false, v -> startActivityForResult(
                 new Intent(Intent.ACTION_OPEN_DOCUMENT)
                         .addCategory(Intent.CATEGORY_OPENABLE)
                         .setType("image/*"), REQUEST_IMAGE));
-        ui.pill("Use emoji", false, v -> Dialogs.promptText(this, "Cover emoji",
-                folder.coverText, "e.g. 🎮", text -> {
-                    Covers.setText(this, folder, text);
-                    saveAndRender();
-                }));
         if (folder.hasCover()) {
             ui.pill("Remove cover", false, v -> {
                 Covers.clear(this, folder);
@@ -109,6 +119,44 @@ public class FolderActivity extends Activity {
                 .setNegativeButton("Cancel", null)
                 .show());
         delete.setTextColor(Color.rgb(0xFF, 0x5A, 0x4F));
+    }
+
+    /** An emoji cover starts with the motion that suits it; the user can change it later. */
+    private void useText(Config.Folder folder, String text) {
+        Covers.setText(this, folder, text, EmojiCatalog.get(this).motionFor(text).name());
+    }
+
+    /** Automatic first, then every motion by name, then no animation. */
+    private void chooseMotion(Config.Folder folder) {
+        Motion automatic = EmojiCatalog.get(this).motionFor(folder.coverText);
+        List<Motion> options = new ArrayList<>();
+        options.add(automatic);
+        for (Motion m : Motion.values()) {
+            if (m != Motion.NONE && m != automatic) {
+                options.add(m);
+            }
+        }
+        options.subList(1, options.size()).sort((a, b) -> a.title.compareTo(b.title));
+        options.add(Motion.NONE);
+        String[] labels = new String[options.size()];
+        int checked = 0;
+        for (int i = 0; i < options.size(); i++) {
+            Motion m = options.get(i);
+            labels[i] = i == 0 ? m.title + " (automatic)"
+                    : m == Motion.NONE ? "No animation" : m.title;
+            if (m.name().equals(folder.coverMotion)) {
+                checked = i;
+            }
+        }
+        Dialogs.builder(this)
+                .setTitle("Animation")
+                .setSingleChoiceItems(labels, checked, (d, which) -> {
+                    folder.coverMotion = options.get(which).name();
+                    d.dismiss();
+                    saveAndRender();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private static String coverSummary(Config.Folder folder) {
@@ -158,6 +206,15 @@ public class FolderActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_EMOJI && resultCode == RESULT_OK && data != null) {
+            String emoji = data.getStringExtra(EmojiPickerActivity.EXTRA_EMOJI);
+            Config.Folder folder = store.config.folderForId(folderId);
+            if (emoji != null && folder != null) {
+                useText(folder, emoji);
+                saveAndRender();
+            }
+            return;
+        }
         Uri image = data != null ? data.getData() : null;
         if (requestCode != REQUEST_IMAGE || resultCode != RESULT_OK || image == null) {
             return;

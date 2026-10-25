@@ -23,6 +23,8 @@ import android.widget.TextView;
 
 import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.CoverProvider;
+import com.dressence.nothinglauncherplus.anim.AnimatedEmojiView;
+import com.dressence.nothinglauncherplus.anim.Motion;
 
 /**
  * Builds screens in the style of Nothing Launcher's own settings: black page, large serif title,
@@ -236,7 +238,7 @@ final class Ui {
      * Rounded square showing a folder's cover: its image, its emoji, or else the icon of its
      * first app.
      */
-    View coverPreview(Config.Folder folder, int sizeDp) {
+    View coverPreview(Config.Folder folder, int sizeDp, boolean animate) {
         int size = dp(sizeDp);
         FrameLayout badge = new FrameLayout(activity);
         GradientDrawable bg = new GradientDrawable();
@@ -253,12 +255,12 @@ final class Ui {
                     CoverProvider.coverFile(activity, folder.id).getPath(), options));
             badge.addView(image, new FrameLayout.LayoutParams(size, size));
         } else if (!folder.coverText.isEmpty()) {
-            TextView text = new TextView(activity);
-            text.setText(folder.coverText);
-            text.setGravity(Gravity.CENTER);
-            text.setIncludeFontPadding(false);
-            text.setMaxLines(1);
+            AnimatedEmojiView text = new AnimatedEmojiView(activity);
+            text.setEmoji(folder.coverText,
+                    animate ? Motion.parse(folder.coverMotion) : Motion.NONE, folder.id.hashCode());
             text.setTextSize(TypedValue.COMPLEX_UNIT_PX, size * 0.6f);
+            // The emoji may hop past the badge edge mid-animation.
+            badge.setClipToOutline(false);
             badge.addView(text, new FrameLayout.LayoutParams(size, size));
         } else if (!folder.apps.isEmpty()) {
             Apps.App first = Apps.find(activity, folder.apps.iterator().next());

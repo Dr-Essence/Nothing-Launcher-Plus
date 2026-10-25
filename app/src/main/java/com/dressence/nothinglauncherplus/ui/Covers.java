@@ -53,17 +53,20 @@ final class Covers {
 
     static void useImage(Config.Folder folder) {
         folder.coverText = "";
+        folder.coverMotion = "";
         folder.coverImageVersion = System.currentTimeMillis();
     }
 
-    static void setText(Context context, Config.Folder folder, String text) {
+    static void setText(Context context, Config.Folder folder, String text, String motion) {
         deleteImage(context, folder);
         folder.coverText = text;
+        folder.coverMotion = motion;
     }
 
     static void clear(Context context, Config.Folder folder) {
         deleteImage(context, folder);
         folder.coverText = "";
+        folder.coverMotion = "";
     }
 
     static void deleteImage(Context context, Config.Folder folder) {
