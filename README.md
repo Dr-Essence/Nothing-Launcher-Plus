@@ -57,9 +57,9 @@ plus your folders.
   coffee steams, buildings light their windows one by one, speakers pulse, notes rise, stars
   twinkle, clocks tick, sirens flash, fish blow bubbles, and so on, mapped to every keyboard
   emoji by the same generator as the motions.
-- **Folders open and shut**: 📁 swings open into 📂 and closes again (and 📂 the other way
-  round), drawn at one shared size so nothing jumps, the change travelling across the
-  folder as a soft band of blending dots; tap it and it opens at once.
+- **Folders open and shut**: 📁's front panel tips open on its bottom hinge, showing the
+  shadowed inside and the papers in it, then closes again (📂 closes up and reopens). It is
+  drawn from the emoji's own dots, so it never changes size; tap it and it opens at once.
 - **Music plays by its own logic**, all to one shared 96 BPM beat, so the music folders in the
   drawer groove together: 🔊 lights its own drawn sound waves inner to outer like a volume
   meter, 🎵 🎶 light each note head as it sounds, 🎼 runs a playhead along the staff, 🎹 plays a
@@ -74,10 +74,11 @@ plus your folders.
 - **Reactions**: touch a folder and its emoji reacts at once (its motion plus a flare of its
   effect, a double blink for faces); opening the drawer makes the covers on screen greet you,
   one after another.
-- **The name is on the screen too**, lit in Nothing's own NDot 57 letters at the launcher's own
-  name size. NDot puts its dots on an exact grid (one every tenth of the font size), so the
-  panel switches to finer dots (a whole fraction of its pitch) in a strip under the name and
-  every letter dot lands on one of them: the name is made of the screen's own dots. The font is
+- **Each folder is a little device**: the tile is the bezel, and inside sit two screens of
+  black glass with a hairline rim. The emoji has the main screen; the name has its own
+  pill-shaped display of finer dots with a red status dot, lit in Nothing's own NDot 57 letters
+  at the launcher's own name size (NDot puts its dots on an exact grid, one every tenth of the
+  font size, so every letter dot is one of the display's dots). The font is
   not shipped with the module: it is loaded from the phone (the system fonts, or Nothing's
   widgets app, which bundles it). Without it, the name is lit on the panel's dots in a compact
   3 x 5 dot font. A name too long for the tile scrolls through it a dot at a time.

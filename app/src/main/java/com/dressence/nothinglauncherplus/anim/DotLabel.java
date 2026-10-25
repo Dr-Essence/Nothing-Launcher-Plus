@@ -19,12 +19,11 @@ import java.util.List;
 /**
  * A folder name lit on the dot panel, made of the screen's own dots.
  *
- * <p>With Nothing's NDot 57 typeface (found on the device) the letters are NDot's own 5 x 7 dot
- * shapes at the launcher's name size. That is smaller than the panel's dots allow, so the
- * panel switches to finer dots (a whole fraction of its pitch) in a strip under the name, and
- * every NDot dot lands on one of them: NDot 57 puts its dots on an exact grid, one every tenth of
- * the font size. Without the typeface the name is lit on the panel's own dots in the compact
- * {@link DotFont}.
+ * <p>The name has its own small screen (see DotMatrix#draw) with finer dots than the emoji's.
+ * With Nothing's NDot 57 typeface (found on the device) the letters are NDot's own 5 x 7 dot
+ * shapes at the launcher's name size, every NDot dot on one screen dot: NDot 57 puts its dots
+ * on an exact grid, one every tenth of the font size. Without the typeface the name is lit in
+ * the compact {@link DotFont}.
  *
  * <p>Anything the font lacks (emoji, accents) is rasterized from the system font onto the same
  * dots, in its own colours. A name wider than the panel scrolls through it one dot at a time,
@@ -59,10 +58,6 @@ final class DotLabel {
     /** Dots the panel had room for when last drawn (for deciding to scroll). */
     private int window = Integer.MAX_VALUE;
 
-    // Layout on the panel, from the last draw.
-    private int fine = 1;
-    private int bandTop;
-    private int bandRows;
 
     /**
      * Shows {@code value} centred on {@code where}: in {@code typeface} (NDot) sized
@@ -232,21 +227,23 @@ final class DotLabel {
     // Layout and drawing
     // -------------------------------------------------------------------------------------
 
-    /**
-     * Works out where the label sits on a panel of {@code pitch}-sized dots starting at
-     * {@code top}: how many finer dots fit in one panel dot (1 when the label uses the panel's
-     * own dots) and which panel rows it takes. Returns {first row, row count, fineness} when the
-     * panel should switch to finer dots in those rows, else null.
-     */
-    int[] layout(float pitch, float top) {
-        if (bitmap == null) {
-            return null;
-        }
-        fine = size > 0 ? Math.max(1, Math.round(pitch / (size * NDOT_PITCH))) : 1;
-        // The text plus a fine dot of margin above and below, in whole panel rows.
-        bandRows = (rows + 2 + fine - 1) / fine;
-        bandTop = Math.round((area.exactCenterY() - top) / pitch - bandRows / 2f);
-        return fine > 1 ? new int[] {bandTop, bandRows, fine} : null;
+    boolean present() {
+        return bitmap != null;
+    }
+
+    /** Rows of lit dots (without margins). */
+    int rows() {
+        return rows;
+    }
+
+    /** The label's dot size: NDot's own dot pitch at the name size, or a fine fraction. */
+    float dot(float panelPitch) {
+        return size > 0 ? size * NDOT_PITCH : panelPitch * 0.6f;
+    }
+
+    /** Where the name sits vertically (view coordinates). */
+    float centerY() {
+        return area.exactCenterY();
     }
 
     private boolean scrolls() {
@@ -277,33 +274,32 @@ final class DotLabel {
     }
 
     /**
-     * Lights the label on the panel's dots ({@code columns} wide from ({@code left},
-     * {@code top}) at {@code pitch}; finer dots in its strip when {@link #layout} asked for
-     * them), centred on its area, inside a one-dot margin.
+     * Lights the label on its screen: a grid of {@code columns} dots of size {@code dot} from
+     * ({@code left}, {@code top}), one row of margin above and below, a dot of margin on the
+     * left and room for the status dot on the right; centred, or scrolling when too long.
      */
-    void draw(Canvas canvas, Bitmap mask, Paint paint, float pitch, int columns, float left,
-            float top) {
+    void draw(Canvas canvas, Bitmap mask, Paint paint, float dot, float left, float top,
+            int columns) {
         if (bitmap == null) {
             return;
         }
-        float dot = pitch / fine;
-        window = (columns - 2) * fine;
-        int row = bandTop * fine + (bandRows * fine - rows) / 2;
+        int first = 1;
+        int last = columns - 4; // Last column for text: the status dot and a gap follow.
+        window = last - first + 1;
         if (paint.getShader() == null || ((Holder) paint.getShader()).bitmap != bitmap) {
             paint.setShader(new Holder(bitmap));
         }
+        float y = top + dot; // One row of margin.
         canvas.save();
-        canvas.clipRect(left + pitch, top + row * dot, left + (columns - 1) * pitch,
-                top + (row + rows) * dot);
+        canvas.clipRect(left + first * dot, y, left + (last + 1) * dot, y + rows * dot);
         if (!scrolls()) {
-            int col = Math.round((area.exactCenterX() - left) / dot - width / 2f);
-            col = Math.max(fine, Math.min(columns * fine - fine - width, col));
-            place(paint, dot, left + col * dot, top + row * dot);
+            int col = first + (window - width) / 2;
+            place(paint, dot, left + col * dot, y);
             canvas.drawBitmap(mask, 0, 0, paint);
         } else {
             for (int copy = 0; copy < 2; copy++) {
-                int col = fine - offset + copy * (width + LOOP_GAP);
-                place(paint, dot, left + col * dot, top + row * dot);
+                int col = first - offset + copy * (width + LOOP_GAP);
+                place(paint, dot, left + col * dot, y);
                 canvas.drawBitmap(mask, 0, 0, paint);
             }
         }

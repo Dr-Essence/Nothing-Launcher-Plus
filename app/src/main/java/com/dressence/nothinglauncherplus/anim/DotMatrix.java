@@ -67,10 +67,6 @@ final class DotMatrix {
     private final Paint unlitPaint = new Paint();
     private final Rect square = new Rect();
     private Bitmap glyph;
-    private String text;
-    private int textColor;
-    /** The partner emoji whose dots are in {@link Scene#alt}, if any. */
-    private String altFor;
 
     /** The emoji at rest, the regions effects work on, and the frame they paint. */
     private final int[] restDots = new int[GRID * GRID];
@@ -84,9 +80,13 @@ final class DotMatrix {
     private final float[] inverseMap = new float[6];
     private static final float[] IDENTITY = {1, 0, 0, 0, 1, 0};
 
-    /** The label, lit on the panel's own dots (see {@link #setLabel}). */
+    /** The label, lit on its own screen of finer dots (see {@link #setLabel}). */
     private final DotLabel label = new DotLabel();
     private final Paint labelPaint = new Paint();
+    private static final int NOTHING_RED = 0xFFD71921;
+    private final Paint glassPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint rimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint ledPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     DotMatrix(boolean darkBackground) {
         BitmapShader shader = new BitmapShader(frame, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
@@ -97,6 +97,10 @@ final class DotMatrix {
         litPaint.setFilterBitmap(false);
         unlitPaint.setColor(darkBackground ? UNLIT_DARK : UNLIT_LIGHT);
         labelPaint.setFilterBitmap(false);
+        // Dark glass on the tile in dark mode; a faint smoked glass in light mode.
+        glassPaint.setColor(darkBackground ? 0xF0000000 : 0x1A000000);
+        rimPaint.setStyle(Paint.Style.STROKE);
+        rimPaint.setColor(darkBackground ? 0x2EFFFFFF : 0x24000000);
         float base = RENDER * FILL / GLYPH;
         restPose.setScale(base, base);
         restPose.postTranslate((RENDER - GLYPH * base) / 2f, (RENDER - GLYPH * base) / 2f);
@@ -105,10 +109,6 @@ final class DotMatrix {
 
     /** {@code color} is used for plain text; emoji keep their own colours. */
     void setText(CharSequence text, int color) {
-        this.text = text == null ? null : text.toString();
-        textColor = color;
-        scene.alt = null;
-        altFor = null;
         glyph = text == null || text.length() == 0 ? null : glyph(text.toString(), color);
         // The resting frame, once: what effects find their regions in and paint over.
         rasterize(null);
@@ -137,7 +137,6 @@ final class DotMatrix {
             rasterize(p);
         }
         if (effect != DotEffect.NONE && scene.regions != null) {
-            prepareAlt(effect);
             System.arraycopy(dots, 0, scene.dots, 0, dots.length);
             if (still) {
                 scene.map(IDENTITY, IDENTITY);
@@ -158,65 +157,6 @@ final class DotMatrix {
         System.arraycopy(dots, 0, shown, 0, dots.length);
         frame.setPixels(dots, 0, GRID, 1, 1, GRID, GRID);
         return true;
-    }
-
-    /**
-     * For effects that turn one emoji into its partner (📁 opening into 📂), the partner's
-     * resting dots, rendered once on the same grid.
-     */
-    private void prepareAlt(DotEffect effect) {
-        String partner = effect.partner(text);
-        if (partner == null || partner.equals(altFor)) {
-            return;
-        }
-        altFor = partner;
-        // Both drawn with one shared fit, so turning into the partner never changes size:
-        // only what differs between the two drawings moves.
-        Rect fit = inkBounds(text);
-        fit.union(inkBounds(partner));
-        glyph = glyph(partner, textColor, fit);
-        rasterize(null);
-        scene.alt = dots.clone();
-        glyph = glyph(text, textColor, fit);
-        rasterize(null);
-        System.arraycopy(dots, 0, restDots, 0, dots.length);
-        scene.regions = new Regions(restDots, GRID);
-        Arrays.fill(shown, 1);
-    }
-
-    /** Where {@code text} actually puts ink, in text coordinates at GLYPH size. */
-    private static Rect inkBounds(String text) {
-        TextPaint paint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-        paint.setTextSize(GLYPH);
-        Rect box = new Rect();
-        paint.getTextBounds(text, 0, text.length(), box);
-        int pad = GLYPH / 4;
-        int w = box.width() + 2 * pad;
-        int h = box.height() + 2 * pad;
-        if (w <= 2 * pad || h <= 2 * pad) {
-            return box;
-        }
-        Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        new Canvas(b).drawText(text, pad - box.left, pad - box.top, paint);
-        int[] px = new int[w * h];
-        b.getPixels(px, 0, w, 0, 0, w, h);
-        b.recycle();
-        int x0 = w, y0 = h, x1 = -1, y1 = -1;
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
-                if ((px[y * w + x] >>> 24) > 16) {
-                    x0 = Math.min(x0, x);
-                    x1 = Math.max(x1, x);
-                    y0 = Math.min(y0, y);
-                    y1 = Math.max(y1, y);
-                }
-            }
-        }
-        if (x1 < 0) {
-            return box;
-        }
-        return new Rect(x0 + box.left - pad, y0 + box.top - pad, x1 + 1 + box.left - pad,
-                y1 + 1 + box.top - pad);
     }
 
     /** Draws the glyph posed by {@code p} (null: at rest) and samples it into the dots. */
@@ -312,9 +252,10 @@ final class DotMatrix {
 
     /**
      * Draws the emoji square at {@code content} (null: the largest centred square). With a
-     * {@code panel} rectangle, that whole area becomes the screen: as many whole dots as fit,
-     * centred so the margins are equal on every side, kept inside rounded corners of radius
-     * {@code corner}, with the emoji square snapped onto the same grid.
+     * {@code panel} rectangle (rounded by {@code corner}), that area becomes a small device: its
+     * edge is the bezel, and inside sit screens of black glass with a hairline rim. The emoji
+     * gets the main screen (as many whole dots as fit, the emoji snapped onto them); a label
+     * gets its own pill-shaped screen of finer dots where the name sits, with a red status dot.
      */
     void draw(Canvas canvas, int width, int height, Rect content, Rect panel, float corner) {
         if (content == null) {
@@ -327,29 +268,101 @@ final class DotMatrix {
             return;
         }
         float pitch = content.width() / (float) GRID;
-        Bitmap mask;
-        float emojiLeft = content.left;
-        float emojiTop = content.top;
-        if (panel != null && !panel.isEmpty()) {
-            int columns = (int) (panel.width() / pitch);
-            int rows = (int) (panel.height() / pitch);
-            float left = panel.left + (panel.width() - columns * pitch) / 2f;
-            float top = panel.top + (panel.height() - rows * pitch) / 2f;
-            // Snap the emoji onto the panel's dots.
-            emojiLeft = left + Math.round((content.left - left) / pitch) * pitch;
-            emojiTop = top + Math.round((content.top - top) / pitch) * pitch;
-            // The name's strip may switch to finer dots (see DotLabel#layout).
-            int[] band = label.layout(pitch, top);
-            mask = mask(pitch, columns, rows, left, top, width, height, panel, corner, band);
-            canvas.drawBitmap(mask, 0, 0, unlitPaint);
-            drawLit(canvas, mask, 0, 0, pitch, emojiLeft, emojiTop);
-            label.draw(canvas, mask, labelPaint, pitch, columns, left, top);
-        } else {
+        if (panel == null || panel.isEmpty()) {
             int side = Math.round(GRID * pitch);
             square.set(0, 0, side, side);
-            mask = mask(pitch, GRID, GRID, 0, 0, side, side, square, 0, null);
-            canvas.drawBitmap(mask, emojiLeft, emojiTop, unlitPaint);
-            drawLit(canvas, mask, emojiLeft, emojiTop, pitch, emojiLeft, emojiTop);
+            Bitmap mask = mask(width, height, new Grid(pitch, GRID, GRID, content.left,
+                    content.top, new RectF(content), 0));
+            canvas.drawBitmap(mask, 0, 0, unlitPaint);
+            drawLit(canvas, mask, 0, 0, pitch, content.left, content.top);
+            return;
+        }
+        float bezel = Math.max(pitch * 1.2f, Math.min(panel.width(), panel.height()) * 0.045f);
+        float inner = Math.max(pitch, corner - bezel);
+        // The name's screen: a pill just tall enough for the label, centred on the name.
+        Grid name = null;
+        if (label.present()) {
+            float dot = label.dot(pitch);
+            int rows = label.rows() + 2;
+            float h = rows * dot;
+            float top = Math.max(panel.top + bezel, label.centerY() - h / 2);
+            RectF pill = new RectF(panel.left + bezel, top, panel.right - bezel, top + h);
+            float pad = h / 2 - dot; // Keep dots clear of the pill's round ends.
+            int cols = (int) ((pill.width() - 2 * pad) / dot);
+            name = new Grid(dot, cols, rows, pill.left + (pill.width() - cols * dot) / 2,
+                    top, pill, h / 2);
+        }
+        // The emoji's screen fills the rest of the face.
+        RectF glass = new RectF(panel.left + bezel,
+                name != null ? name.bounds.bottom + bezel * 0.6f : panel.top + bezel,
+                panel.right - bezel, panel.bottom - bezel);
+        // The emoji fits inside the glass with a dot to spare all round.
+        float side = Math.min(content.width(),
+                Math.min(glass.width(), glass.height()) - 2 * pitch);
+        if (side <= 0) {
+            return;
+        }
+        pitch = side / GRID;
+        int columns = (int) (glass.width() / pitch);
+        int rows = (int) (glass.height() / pitch);
+        float left = glass.left + (glass.width() - columns * pitch) / 2f;
+        float top = glass.top + (glass.height() - rows * pitch) / 2f;
+        Grid screen = new Grid(pitch, columns, rows, left, top, glass, inner);
+        // The emoji square, centred where the cover would be, kept on the glass and on its dots.
+        float cx = Math.max(glass.left + side / 2, Math.min(glass.right - side / 2,
+                content.exactCenterX()));
+        float cy = Math.max(glass.top + side / 2, Math.min(glass.bottom - side / 2,
+                content.exactCenterY()));
+        float emojiLeft = left + Math.round((cx - side / 2 - left) / pitch) * pitch;
+        float emojiTop = top + Math.round((cy - side / 2 - top) / pitch) * pitch;
+
+        drawGlass(canvas, screen);
+        if (name != null) {
+            drawGlass(canvas, name);
+        }
+        Bitmap mask = name != null ? mask(width, height, screen, name) : mask(width, height, screen);
+        canvas.drawBitmap(mask, 0, 0, unlitPaint);
+        drawLit(canvas, mask, 0, 0, pitch, emojiLeft, emojiTop);
+        if (name != null) {
+            label.draw(canvas, mask, labelPaint, name.pitch, name.left, name.top, name.columns);
+            // A red status dot at the end of the name screen, Nothing's one accent.
+            ledPaint.setColor(NOTHING_RED);
+            canvas.drawCircle(name.left + (name.columns - 1.5f) * name.pitch,
+                    name.top + name.rows * name.pitch / 2f, name.pitch * 0.6f, ledPaint);
+        }
+    }
+
+    /** Black glass with a hairline rim: what makes a dot grid read as a screen. */
+    private void drawGlass(Canvas canvas, Grid grid) {
+        canvas.drawRoundRect(grid.bounds, grid.corner, grid.corner, glassPaint);
+        rimPaint.setStrokeWidth(Math.max(1, grid.pitch * 0.12f));
+        canvas.drawRoundRect(grid.bounds, grid.corner, grid.corner, rimPaint);
+    }
+
+    /** A grid of dots inside a rounded rectangle. */
+    static final class Grid {
+        final float pitch;
+        final int columns;
+        final int rows;
+        final float left;
+        final float top;
+        final RectF bounds;
+        final float corner;
+
+        Grid(float pitch, int columns, int rows, float left, float top, RectF bounds,
+                float corner) {
+            this.pitch = pitch;
+            this.columns = columns;
+            this.rows = rows;
+            this.left = left;
+            this.top = top;
+            this.bounds = bounds;
+            this.corner = corner;
+        }
+
+        String key() {
+            return pitch + ":" + columns + "x" + rows + "@" + left + "," + top + "/"
+                    + bounds.toShortString() + "r" + corner;
         }
     }
 
@@ -363,17 +376,15 @@ final class DotMatrix {
     }
 
     /**
-     * A {@code width} x {@code height} alpha mask of {@code columns} x {@code rows} round dots
-     * starting at ({@code left}, {@code top}), skipping dots that would leave {@code bounds}'
-     * rounded corners of radius {@code corner}. A {@code band} {first row, row count, fineness}
-     * has finer dots in those rows, for a label. Shared by every view with the same geometry.
+     * A {@code width} x {@code height} alpha mask of round dots on each grid, skipping dots
+     * that would leave its rounded rectangle. Shared by every view with the same geometry.
      */
-    private static Bitmap mask(float pitch, int columns, int rows, float left, float top,
-            int width, int height, Rect bounds, float corner, int[] band) {
-        String key = width + "x" + height + "@" + pitch + "+" + left + "," + top + "/"
-                + bounds.toShortString() + "r" + corner
-                + (band != null ? "b" + band[0] + "," + band[1] + "," + band[2] : "");
-        Bitmap mask = MASKS.get(key);
+    private static Bitmap mask(int width, int height, Grid... grids) {
+        StringBuilder key = new StringBuilder().append(width).append('x').append(height);
+        for (Grid g : grids) {
+            key.append('|').append(g.key());
+        }
+        Bitmap mask = MASKS.get(key.toString());
         if (mask != null) {
             return mask;
         }
@@ -381,38 +392,23 @@ final class DotMatrix {
                 Bitmap.Config.ALPHA_8);
         Canvas canvas = new Canvas(mask);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        float radius = pitch * DOT / 2f;
-        RectF inner = new RectF(bounds.left + corner, bounds.top + corner,
-                bounds.right - corner, bounds.bottom - corner);
-        for (int y = 0; y < rows; y++) {
-            if (band != null && y >= band[0] && y < band[0] + band[1]) {
-                continue; // Finer dots here, below.
-            }
-            for (int x = 0; x < columns; x++) {
-                float cx = left + (x + 0.5f) * pitch;
-                float cy = top + (y + 0.5f) * pitch;
-                if (corner > 0 && outsideRoundRect(cx, cy, radius, inner, corner)) {
-                    continue;
-                }
-                canvas.drawCircle(cx, cy, radius, paint);
-            }
-        }
-        if (band != null) {
-            int fine = band[2];
-            float dot = pitch / fine;
-            float small = dot * DOT / 2f;
-            for (int y = band[0] * fine; y < (band[0] + band[1]) * fine; y++) {
-                for (int x = 0; x < columns * fine; x++) {
-                    float cx = left + (x + 0.5f) * dot;
-                    float cy = top + (y + 0.5f) * dot;
-                    if (corner > 0 && outsideRoundRect(cx, cy, small, inner, corner)) {
+        for (Grid g : grids) {
+            float radius = g.pitch * DOT / 2f;
+            float corner = Math.min(g.corner, Math.min(g.bounds.width(), g.bounds.height()) / 2);
+            RectF inner = new RectF(g.bounds.left + corner, g.bounds.top + corner,
+                    g.bounds.right - corner, g.bounds.bottom - corner);
+            for (int y = 0; y < g.rows; y++) {
+                for (int x = 0; x < g.columns; x++) {
+                    float cx = g.left + (x + 0.5f) * g.pitch;
+                    float cy = g.top + (y + 0.5f) * g.pitch;
+                    if (corner > 0 && outsideRoundRect(cx, cy, radius, inner, corner)) {
                         continue;
                     }
-                    canvas.drawCircle(cx, cy, small, paint);
+                    canvas.drawCircle(cx, cy, radius, paint);
                 }
             }
         }
-        MASKS.put(key, mask);
+        MASKS.put(key.toString(), mask);
         return mask;
     }
 
@@ -427,15 +423,7 @@ final class DotMatrix {
 
     /** The emoji (or text) drawn once, fitted to a GLYPH x GLYPH square by its ink bounds. */
     private static Bitmap glyph(String text, int color) {
-        return glyph(text, color, null);
-    }
-
-    /**
-     * The emoji (or text) drawn once, fitted to a GLYPH x GLYPH square by {@code fit} (text
-     * coordinates at GLYPH size; null: its own bounds), so two emojis can share one fit.
-     */
-    private static Bitmap glyph(String text, int color, Rect fit) {
-        String key = color + "|" + text + (fit != null ? "|" + fit.toShortString() : "");
+        String key = color + "|" + text;
         Bitmap cached = GLYPHS.get(key);
         if (cached != null) {
             return cached;
@@ -444,11 +432,7 @@ final class DotMatrix {
         paint.setTextSize(GLYPH);
         paint.setColor(color);
         Rect bounds = new Rect();
-        if (fit != null) {
-            bounds.set(fit);
-        } else {
-            paint.getTextBounds(text, 0, text.length(), bounds);
-        }
+        paint.getTextBounds(text, 0, text.length(), bounds);
         Bitmap bitmap = Bitmap.createBitmap(GLYPH, GLYPH, Bitmap.Config.ARGB_8888);
         if (!bounds.isEmpty()) {
             Canvas canvas = new Canvas(bitmap);

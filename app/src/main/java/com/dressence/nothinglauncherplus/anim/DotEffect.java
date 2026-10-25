@@ -831,37 +831,56 @@ public enum DotEffect {
     },
 
     /**
-     * Folders: 📁 swings open into 📂 and shut again, the change travelling across the folder
-     * as a soft band; it stays open a moment, then closes; a touch opens it at once.
+     * Folders: the front panel swings on its bottom hinge. 📁 tips open (the front leans out
+     * and shortens, the inside and the papers in it come into view) and shuts again; 📂 (anchor
+     * negative) closes up and opens again. Drawn from the emoji's own dots, so its size never
+     * changes; a touch opens it at once.
      */
     FOLDER {
         @Override
         void apply(Scene s) {
             Regions r = s.regions;
-            if (s.alt == null) {
-                SHINE.apply(s);
-                return;
-            }
+            Flap flap = flap(r);
             float open = folderOpen(s);
-            if (open <= 0) {
+            if (flap == null || open <= 0) {
+                if (flap == null) {
+                    SHINE.apply(s);
+                }
                 return;
             }
-            // The change travels down the folder as a soft band (up again as it closes): in
-            // the band each dot steps through the panel's brightness levels and its colour
-            // blends from one drawing to the other, so the flap swings rather than jumps.
-            float band = 5;
-            float span = r.maxY - r.minY + 1;
-            float front = open * (span + band);
+            float swing = s.anchor != null && s.anchor.length > 0 ? s.anchor[0] : 0.45f;
+            // How tall the front looks: shorter as it tips towards us, taller as it rises.
+            float k = 1 - swing * open;
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
                 if (ri < 0) {
                     continue;
                 }
-                float q = (front - (ri / r.size - r.minY)) / band;
-                if (q <= 0) {
+                int x = ri % r.size;
+                int y = ri / r.size;
+                int top = flap.top[x];
+                int bottom = flap.bottom[x];
+                if (bottom < 0) {
                     continue;
                 }
-                s.dots[i] = blend(s.dots[i], s.alt[ri], Math.min(1, q));
+                float height = bottom - top + 1;
+                // Rising, the front never goes above the folder's own outline.
+                float newTop = Math.max(flap.outline[x], bottom + 1 - height * k);
+                if (y > bottom || y < Math.floor(Math.min(top, newTop))) {
+                    continue;
+                }
+                if (y >= newTop - 0.5f) {
+                    // On the front: the part of the panel that now shows here.
+                    int src = Math.round(bottom - (bottom - y) / k);
+                    src = Math.max(top, Math.min(bottom, src));
+                    int c = r.rest[src * r.size + x];
+                    s.dots[i] = Scene.alpha(Scene.scale(c, 1 + 0.06f * open), c >>> 24);
+                } else if (y >= top) {
+                    // Behind the lowered front: papers near its old top edge, then shadow.
+                    boolean paper = y < top + (newTop - top) * 0.4f
+                            && x > flap.left + 2 && x < flap.right - 2;
+                    s.dots[i] = paper ? 0xFFF4F1E8 : Scene.alpha(flap.inside, 255);
+                }
             }
         }
     },
@@ -883,23 +902,78 @@ public enum DotEffect {
         return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
-    /** For effects that turn the emoji into a partner (📁 into 📂 and back), the partner. */
-    String partner(String text) {
-        if (this != FOLDER || text == null) {
-            return null;
+    /** A folder's front panel: per column its top and bottom row, and the inside colour. */
+    static final class Flap {
+        final int[] top;
+        final int[] bottom;
+        /** The first inked row in each column. */
+        final int[] outline;
+        int left;
+        int right;
+        int inside;
+
+        Flap(int size) {
+            top = new int[size];
+            bottom = new int[size];
+            outline = new int[size];
+            java.util.Arrays.fill(outline, size);
+            java.util.Arrays.fill(top, -1);
+            java.util.Arrays.fill(bottom, -1);
         }
-        String bare = text.replace("\uFE0F", "");
-        if (bare.equals("\uD83D\uDCC1")) {
-            return "\uD83D\uDCC2"; // 📁 opens into 📂
+    }
+
+    /** The front panel: the large light area of the folder (the back is a shade darker). */
+    static Flap flap(Regions r) {
+        if (r.memo.containsKey("flap")) {
+            return (Flap) r.memo.get("flap");
         }
-        if (bare.equals("\uD83D\uDCC2")) {
-            return "\uD83D\uDCC1"; // 📂 closes into 📁
+        float brightest = 0;
+        for (int i = 0; i < r.size * r.size; i++) {
+            if (r.ink[i]) {
+                brightest = Math.max(brightest, r.luma[i]);
+            }
         }
-        return null;
+        Flap flap = new Flap(r.size);
+        long sr = 0, sg = 0, sb = 0;
+        int back = 0, front = 0;
+        flap.left = r.size;
+        flap.right = -1;
+        for (int y = 0; y < r.size; y++) {
+            for (int x = 0; x < r.size; x++) {
+                int i = y * r.size + x;
+                if (!r.ink[i] || r.rest[i] >>> 24 < 175) {
+                    continue;
+                }
+                flap.outline[x] = Math.min(flap.outline[x], y);
+                if (r.luma[i] >= brightest - 0.12f) {
+                    if (flap.top[x] < 0) {
+                        flap.top[x] = y;
+                    }
+                    flap.bottom[x] = y;
+                    flap.left = Math.min(flap.left, x);
+                    flap.right = Math.max(flap.right, x);
+                    front++;
+                } else if (r.luma[i] > 0.35f) {
+                    sr += (r.rest[i] >> 16) & 0xFF;
+                    sg += (r.rest[i] >> 8) & 0xFF;
+                    sb += r.rest[i] & 0xFF;
+                    back++;
+                }
+            }
+        }
+        if (front < 40 || back < 10) {
+            flap = null;
+        } else {
+            // The inside of the folder: the back panel in shadow.
+            flap.inside = Scene.scale(0xFF000000 | (int) (sr / back) << 16
+                    | (int) (sg / back) << 8 | (int) (sb / back), 0.72f);
+        }
+        r.memo.put("flap", flap);
+        return flap;
     }
 
     /**
-     * How far a folder has swung into its partner (0..1): rest, a quick swing, a hold, and back,
+     * How far a folder has swung (0..1): rest, a quick swing, a hold, and back,
      * on a slow cycle; a reaction swings it at once and holds.
      */
     static float folderOpen(Scene s) {
@@ -926,29 +1000,6 @@ public enum DotEffect {
             own = 1 - ease(Math.min(1, (t - rest - swing - hold) / swing));
         }
         return Math.max(touched, own);
-    }
-
-    private static final int[] LEVELS = {0, 120, 175, 225, 255};
-
-    /** A dot part way from {@code from} to {@code to}: colour blended, brightness on a level. */
-    private static int blend(int from, int to, float q) {
-        if (q >= 1) {
-            return to;
-        }
-        int fa = from >>> 24;
-        int ta = to >>> 24;
-        float a = fa + (ta - fa) * q;
-        int level = 0;
-        for (int k = 1; k < LEVELS.length; k++) {
-            if (Math.abs(LEVELS[k] - a) < Math.abs(LEVELS[level] - a)) {
-                level = k;
-            }
-        }
-        if (LEVELS[level] == 0) {
-            return 0;
-        }
-        int rgb = fa == 0 ? to : ta == 0 ? from : Scene.mix(from, to, q);
-        return Scene.alpha(rgb, LEVELS[level]);
     }
 
     /** Ease in and out, like a flap with a little weight. */
