@@ -211,6 +211,11 @@ final class Scene {
      * units, and the turn in radians; NaN when there is none this frame.
      */
     float sphereTurn = Float.NaN;
+    /**
+     * For a keyboard globe turned as the whole Earth (see {@link Earth}): the longitude now
+     * facing the viewer, degrees east; NaN to turn the drawing itself.
+     */
+    float earthCentre = Float.NaN;
     /** How far the emoji's motion has rolled it, in radians (see {@link Pose#roll}). */
     float poseRoll;
     float sphereX;

@@ -1532,6 +1532,11 @@ final class ObjectEffects {
             s.busy = true;
         }
         s.turnSphere(cx, cy, radius, turn, ball);
+        if (s.anchor != null && s.anchor.length > 1 && s.anchor[0] == 3) {
+            // The whole Earth, turning eastward from the side this globe shows.
+            s.earthCentre = s.anchor[1] - (float) Math.toDegrees(s.t * 0.3f
+                    + full * easeOut(Math.min(1, s.since / 1.6f)));
+        }
     }
 
     /** One bounce of the tennis ball, 0 (resting spot) to 1 (on the strings) and back. */

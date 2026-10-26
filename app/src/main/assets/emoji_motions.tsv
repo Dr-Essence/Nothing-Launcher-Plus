@@ -845,9 +845,9 @@
 🔪	3	RATTLE	SHINE	kitchen knife
 🫙	3	RATTLE	SHINE	jar
 🏺	3	RATTLE	SHINE	amphora
-🌍️	4	NONE	GLOBE	globe showing Europe-Africa
-🌎️	4	NONE	GLOBE	globe showing Americas
-🌏️	4	NONE	GLOBE	globe showing Asia-Australia
+🌍️	4	NONE	GLOBE:3,20	globe showing Europe-Africa
+🌎️	4	NONE	GLOBE:3,-80	globe showing Americas
+🌏️	4	NONE	GLOBE:3,110	globe showing Asia-Australia
 🌐	4	NONE	GLOBE:2	globe with meridians
 🗺️	4	GLOBE	RIPPLE	world map
 🗾	4	GLOBE	RIPPLE	map of Japan

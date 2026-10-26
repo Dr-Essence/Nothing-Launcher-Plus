@@ -617,6 +617,8 @@ EFFECT_REVIEW = {
     "counterclockwise arrows button": "SPIN:0.5,0.5,0.4,120", "nazar amulet": "GLOW",
     "pool 8 ball": "GLOBE", "american football": "SHINE", "rugby football": "SHINE",
     "optical disk": "DISC", "dvd": "DISC",
+    "globe showing europe-africa": "GLOBE:3,20", "globe showing americas": "GLOBE:3,-80",
+    "globe showing asia-australia": "GLOBE:3,110",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 

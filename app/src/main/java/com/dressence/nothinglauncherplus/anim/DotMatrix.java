@@ -197,6 +197,7 @@ final class DotMatrix {
         scene.detached = false;
         scene.boardDy = 0;
         scene.sphereTurn = Float.NaN;
+        scene.earthCentre = Float.NaN;
         scene.busy = false;
         if (effects) {
             scene.t = time;
@@ -579,6 +580,10 @@ final class DotMatrix {
      * sphere turned in it, under the emoji's own pose.
      */
     private void drawSphere() {
+        if (scene.earthCentre == scene.earthCentre) {
+            drawEarth();
+            return;
+        }
         float cx = scene.sphereX * SUPERSAMPLE;
         float cy = scene.sphereY * SUPERSAMPLE;
         float radius = scene.sphereRadius * SUPERSAMPLE;
@@ -600,6 +605,40 @@ final class DotMatrix {
         sphere.render(scene.sphereTurn, spherePixels);
         sphereFrame.setPixels(spherePixels, 0, RENDER, 0, 0, RENDER, RENDER);
         // Resting supersampled coordinates to posed ones.
+        partMatrix.set(restInverse);
+        partMatrix.postConcat(pose);
+        renderCanvas.save();
+        renderCanvas.concat(partMatrix);
+        renderCanvas.drawBitmap(sphereFrame, 0, 0, glyphPaint);
+        renderCanvas.restore();
+    }
+
+    private static Earth earth;
+    private int[] earthRest;
+    private int[] earthPixels;
+
+    /** A keyboard globe drawn as the whole Earth turning (see {@link Earth}). */
+    private void drawEarth() {
+        if (earth == null) {
+            int[][] views = new int[Earth.GLOBES.length][];
+            for (int k = 0; k < views.length; k++) {
+                Bitmap g = glyph(Earth.GLOBES[k], Color.WHITE);
+                views[k] = new int[GLYPH * GLYPH];
+                g.getPixels(views[k], 0, GLYPH, 0, 0, GLYPH, GLYPH);
+            }
+            earth = new Earth(views, GLYPH);
+        }
+        if (earthRest == null || sphereFrame == null) {
+            earthRest = new int[RENDER * RENDER];
+            render.eraseColor(Color.TRANSPARENT);
+            renderCanvas.drawBitmap(glyph, restPose, glyphPaint);
+            render.getPixels(earthRest, 0, RENDER, 0, 0, RENDER, RENDER);
+            render.eraseColor(Color.TRANSPARENT);
+            earthPixels = new int[RENDER * RENDER];
+            sphereFrame = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
+        }
+        earth.render(earthRest, RENDER, scene.earthCentre, earthPixels);
+        sphereFrame.setPixels(earthPixels, 0, RENDER, 0, 0, RENDER, RENDER);
         partMatrix.set(restInverse);
         partMatrix.postConcat(pose);
         renderCanvas.save();
