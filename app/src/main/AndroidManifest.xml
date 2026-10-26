@@ -6,6 +6,8 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Nothing's widgets app, which carries Nothing's fonts (see SystemFont). -->
+        <package android:name="com.nothing.hearthstone" />
     </queries>
 
     <application

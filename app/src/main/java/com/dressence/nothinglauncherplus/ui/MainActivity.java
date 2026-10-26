@@ -99,6 +99,8 @@ public class MainActivity extends Activity {
                     config.statusBarDate = checked;
                     store.save(this);
                 });
+        ui.row("System font", "Use one of Nothing's fonts on this phone everywhere · needs"
+                + " root and a reboot", null, ui.chevron(), v -> chooseSystemFont());
         ui.row("Animation test", "Play any emoji's animation on a big dot screen", null,
                 ui.chevron(), v -> startActivity(EmojiPickerActivity.testIntent(this)));
 
@@ -368,6 +370,36 @@ public class MainActivity extends Activity {
                 }
                 Toast.makeText(this, failure == null ? successMessage : "Failed: " + failure,
                         Toast.LENGTH_LONG).show();
+            });
+        }).start();
+    }
+
+    /** Lists Nothing's fonts on the phone and installs the chosen one as the system font. */
+    private void chooseSystemFont() {
+        new Thread(() -> {
+            java.util.List<SystemFont.Choice> fonts = SystemFont.find(this);
+            runOnUiThread(() -> {
+                String[] names = new String[fonts.size() + 1];
+                names[0] = "Phone default";
+                for (int i = 0; i < fonts.size(); i++) {
+                    names[i + 1] = fonts.get(i).title;
+                }
+                Dialogs.builder(this)
+                        .setTitle("System font")
+                        .setItems(names, (dialog, which) -> {
+                            SystemFont.Choice choice = which == 0 ? null : fonts.get(which - 1);
+                            new Thread(() -> {
+                                String error = SystemFont.apply(this, choice);
+                                runOnUiThread(() -> Toast.makeText(this, error != null
+                                        ? "Could not set the font: " + error
+                                        : (choice == null ? "System font removed"
+                                                : choice.title + " set")
+                                        + ". Reboot to apply. Turn off any other font module"
+                                        + " first.", Toast.LENGTH_LONG).show());
+                            }).start();
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
             });
         }).start();
     }
