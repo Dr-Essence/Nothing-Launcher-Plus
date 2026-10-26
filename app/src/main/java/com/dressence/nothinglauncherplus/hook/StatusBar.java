@@ -50,16 +50,6 @@ final class StatusBar {
                         }
                     }
                 });
-        // Network speed and the like set their own face as they update: it stays the plain one.
-        XposedBridge.hookAllMethods(TextView.class, "setTypeface", new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
-                if (plain != null && param.args.length > 0 && SMALL.containsKey(param.thisObject)
-                        && param.args[0] != plain) {
-                    param.args[0] = plain;
-                }
-            }
-        });
         Hooks.install("status bar clock", () -> hookClock(cl, store));
         Hooks.install("green status icons", () -> GlowIcons.install(cl, store));
         Hooks.install("status bar battery", () -> hookBattery(cl, store));
@@ -221,44 +211,26 @@ final class StatusBar {
     }
 
     /**
-     * A text too small for NDot's dots (network speed's two stacked lines): green and glowing,
-     * in a plain face. Roboto, read straight from its file, as the system's own sans-serif may
-     * itself be NDot (the System font option).
+     * The network speed's two stacked lines and other tiny texts: green and glowing, their own
+     * face left as it is. NDot57 there (its dots bigger, its lines taller than the face they
+     * are laid out for) runs the dots together and cuts the second line off.
      */
     static void styleSmallText(TextView view) {
-        if (plain == null) {
-            try {
-                plain = Typeface.create(Typeface.createFromFile("/system/fonts/Roboto-Regular.ttf"),
-                        500, false);
-            } catch (RuntimeException e) {
-                plain = Typeface.DEFAULT;
-            }
+        if (SMALL.put(view, true) == null) {
+            Hooks.log("small status text, face kept: " + view.getClass().getName());
         }
-        SMALL.put(view, true);
-        styleText(view, true, plain);
-        Hooks.log("small status text in a plain face: " + view.getClass().getName());
+        styleText(view, true, null);
     }
 
-    private static Typeface plain;
     private static final java.util.Set<String> LOGGED =
             Collections.synchronizedSet(new java.util.HashSet<>());
-    /** The small texts: kept in the plain face whatever face they set themselves. */
+    /** The small texts: coloured only. */
     private static final Map<TextView, Boolean> SMALL =
             Collections.synchronizedMap(new WeakHashMap<>());
 
-    /**
-     * For a small text already styled: its plain face put back if anything (a text appearance,
-     * the shade opening) has changed it since. True if {@code view} is one.
-     */
+    /** True for a small text already styled: nothing more to do for it. */
     static boolean keepSmall(TextView view) {
-        if (!SMALL.containsKey(view)) {
-            return false;
-        }
-        if (view.getTypeface() != plain || view.getPaint().getTypeface() != plain) {
-            styleText(view, true, plain);
-            view.getPaint().setTypeface(plain);
-        }
-        return true;
+        return SMALL.containsKey(view);
     }
 
     private static void styleText(TextView view, boolean green, Typeface face) {

@@ -85,8 +85,8 @@ final class GlowIcons {
                     }
                 });
         // The status bar's other texts (the date over quick settings, network speed) in glowing
-        // green too: in NDot, but the tiny ones (network speed's two stacked lines) in a plain
-        // face, as NDot's dots at that size run together.
+        // green too: in NDot, but the tiny ones (network speed's two stacked lines) keep their
+        // own face, as NDot's dots at that size run together.
         XposedHelpers.findAndHookMethod(TextView.class, "onDraw", Canvas.class,
                 new XC_MethodHook() {
                     @Override
@@ -516,10 +516,19 @@ final class GlowIcons {
 
     // ---- Icons drawn with views: the status bar, and tiles on older releases ----
 
-    /** The network speed indicator, whatever the release calls it. */
+    /**
+     * Part of the network speed indicator, whatever the release calls it: on Nothing OS its
+     * texts are plain TextViews inside a {@code NetworkSpeedView} frame.
+     */
     private static boolean speedView(View view) {
-        String name = view.getClass().getName();
-        return name.contains("Speed") || name.contains("Traffic");
+        Object v = view;
+        for (int i = 0; i < 4 && v instanceof View; i++, v = ((View) v).getParent()) {
+            String name = v.getClass().getName();
+            if (name.contains("Speed") || name.contains("Traffic")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** What {@code view} is: a status bar icon, a quick settings tile icon, or neither. */
