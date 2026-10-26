@@ -890,11 +890,11 @@ public enum Motion {
     FLAG("Wave flag", 2.2f, 0.8f) {
         @Override
         void pose(float t, Pose p) {
+            // The cloth itself waves (see DotEffect#FLAG); the flag only leans into the gust.
             float u = t / duration;
-            float s = sin(PI * u);
             p.pivotX = 0.1f;
-            p.rotationY = 24 * sin(3 * PI * u) * s;
-            p.rotation = 2 * sin(3 * PI * u + 1) * s;
+            p.pivotY = 1;
+            p.rotation = 1.5f * sin(PI * u) * sin(PI * u);
         }
     },
     BLINK("Blink", 1.0f, 2.0f) {

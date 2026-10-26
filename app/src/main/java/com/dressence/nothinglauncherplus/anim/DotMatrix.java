@@ -201,6 +201,7 @@ final class DotMatrix {
         scene.flameT = Float.NaN;
         scene.burstMode = -1;
         scene.bendAmount = Float.NaN;
+        scene.wavePhase = Float.NaN;
         scene.busy = false;
         if (effects) {
             scene.t = time;
@@ -213,7 +214,8 @@ final class DotMatrix {
         }
         boolean still = p.isRest() && scene.partCount == 0 && !scene.detached
                 && scene.sphereTurn != scene.sphereTurn && scene.flameT != scene.flameT
-                && scene.burstMode < 0 && scene.bendAmount != scene.bendAmount;
+                && scene.burstMode < 0 && scene.bendAmount != scene.bendAmount
+                && scene.wavePhase != scene.wavePhase;
         if (still) {
             System.arraycopy(restDots, 0, dots, 0, dots.length);
         } else {
@@ -332,7 +334,8 @@ final class DotMatrix {
             }
             glyphPaint.setAlpha(p == null ? 255 : Math.round(Math.min(1, p.alpha) * 255));
             if (p != null && (scene.sphereTurn == scene.sphereTurn || scene.flameT == scene.flameT
-                    || scene.burstMode >= 0 || scene.bendAmount == scene.bendAmount)) {
+                    || scene.burstMode >= 0 || scene.bendAmount == scene.bendAmount
+                    || scene.wavePhase == scene.wavePhase)) {
                 drawSphere();
             } else if (p == null || scene.partCount == 0 && !scene.detached) {
                 renderCanvas.drawBitmap(glyph, pose, glyphPaint);
@@ -653,7 +656,7 @@ final class DotMatrix {
             drawBurst();
             return;
         }
-        if (scene.bendAmount == scene.bendAmount) {
+        if (scene.bendAmount == scene.bendAmount || scene.wavePhase == scene.wavePhase) {
             drawBend();
             return;
         }
@@ -758,8 +761,15 @@ final class DotMatrix {
             earthPixels = new int[RENDER * RENDER];
             sphereFrame = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
         }
-        Bend.render(bendRest, RENDER, scene.bendTop * SUPERSAMPLE,
-                scene.bendRoot * SUPERSAMPLE, scene.bendAmount * SUPERSAMPLE, earthPixels);
+        if (scene.wavePhase == scene.wavePhase) {
+            float[] w = scene.waveSpec;
+            Bend.wave(bendRest, RENDER, w[0] * SUPERSAMPLE, w[1] * SUPERSAMPLE,
+                    w[2] * SUPERSAMPLE, scene.wavePhase, w[3] * SUPERSAMPLE,
+                    w[4] * SUPERSAMPLE, earthPixels);
+        } else {
+            Bend.render(bendRest, RENDER, scene.bendTop * SUPERSAMPLE,
+                    scene.bendRoot * SUPERSAMPLE, scene.bendAmount * SUPERSAMPLE, earthPixels);
+        }
         drawSurface();
     }
 

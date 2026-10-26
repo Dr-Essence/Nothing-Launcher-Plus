@@ -423,12 +423,12 @@
 🧎‍➡️	1	RUN	SHINE	person kneeling facing right
 🧎‍♀️‍➡️	1	RUN	SHINE	woman kneeling facing right
 🧎‍♂️‍➡️	1	RUN	SHINE	man kneeling facing right
-🧑‍🦯	1	RUN	SHINE	person with white cane
-🧑‍🦯‍➡️	1	RUN	SHINE	person with white cane facing right
-👨‍🦯	1	RUN	SHINE	man with white cane
-👨‍🦯‍➡️	1	RUN	SHINE	man with white cane facing right
-👩‍🦯	1	RUN	SHINE	woman with white cane
-👩‍🦯‍➡️	1	RUN	SHINE	woman with white cane facing right
+🧑‍🦯	1	NONE	STRIDE:0.5,0.6,40,1.1	person with white cane
+🧑‍🦯‍➡️	1	NONE	STRIDE:0.5,0.6,40,1.1	person with white cane facing right
+👨‍🦯	1	NONE	STRIDE:0.5,0.6,40,1.1	man with white cane
+👨‍🦯‍➡️	1	NONE	STRIDE:0.5,0.6,40,1.1	man with white cane facing right
+👩‍🦯	1	NONE	STRIDE:0.5,0.6,40,1.1	woman with white cane
+👩‍🦯‍➡️	1	NONE	STRIDE:0.5,0.6,40,1.1	woman with white cane facing right
 🧑‍🦼	1	DRIVE	SHINE	person in motorized wheelchair
 🧑‍🦼‍➡️	1	DRIVE	SHINE	person in motorized wheelchair facing right
 👨‍🦼	1	DRIVE	SHINE	man in motorized wheelchair
@@ -709,7 +709,7 @@
 🍀	2	NONE	SWAY	four leaf clover
 🍁	2	DRIFT	SWAY	maple leaf
 🍂	2	DRIFT	SWAY	fallen leaf
-🍃	2	DRIFT	SMOKE	leaf fluttering in wind
+🍃	2	DRIFT	SWAY	leaf fluttering in wind
 🪹	2	SWAY	SHINE	empty nest
 🪺	2	SWAY	SHINE	nest with eggs
 🍄	2	NONE	SWAY	mushroom
@@ -739,7 +739,7 @@
 🥔	3	JELLY	SHINE	potato
 🥕	3	JELLY	SHINE	carrot
 🌽	3	JELLY	SHINE	ear of corn
-🌶️	3	JELLY	FLAME	hot pepper
+🌶️	3	JELLY	SHINE	hot pepper
 🫑	3	JELLY	SHINE	bell pepper
 🥒	3	JELLY	SHINE	cucumber
 🥬	3	JELLY	SHINE	leafy green
@@ -1278,7 +1278,7 @@
 📑	6	PAGE	SHINE	bookmark tabs
 🔖	6	PAGE	SHINE	bookmark
 🏷️	6	PAGE	SHINE	label
-💰️	6	COIN	SHINE	money bag
+💰️	6	RATTLE	SHINE	money bag
 🪙	6	COIN	SHINE	coin
 💴	6	COIN	SHINE	yen banknote
 💵	6	COIN	SHINE	dollar banknote
@@ -1287,7 +1287,7 @@
 💸	6	COIN	SHINE	money with wings
 💳️	6	COIN	SHINE	credit card
 🧾	6	COIN	SHINE	receipt
-💹	6	GROW	CHART_LINE	chart increasing with yen
+💹	6	GROW	SHINE	chart increasing with yen
 ✉️	6	SEND	SHINE	envelope
 📧	6	SEND	SHINE	e-mail
 📨	6	SEND	SHINE	incoming envelope

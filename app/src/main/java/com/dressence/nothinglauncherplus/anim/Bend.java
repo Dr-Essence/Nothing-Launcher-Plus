@@ -32,6 +32,55 @@ final class Bend {
         }
     }
 
+    /**
+     * Writes {@code rest} ({@code size} square) with its cloth waving into {@code out}: the
+     * part right of {@code pole} between {@code top} and {@code bottom} (pixels) ripples up
+     * and down in waves running away from the pole, more the further from it, and is lit
+     * and shaded along the folds. {@code wavelength} and {@code amount} are in pixels.
+     */
+    static void wave(int[] rest, int size, float pole, float top, float bottom, float phase,
+            float wavelength, float amount, int[] out) {
+        float k = (float) (Math.PI * 2 / wavelength);
+        float ramp = wavelength * 0.6f;
+        for (int x = 0; x < size; x++) {
+            float d = x + 0.5f - pole;
+            if (d <= 0) {
+                for (int y = 0; y < size; y++) {
+                    out[y * size + x] = rest[y * size + x];
+                }
+                continue;
+            }
+            float a = Math.min(1, d / ramp) * amount;
+            float dy = a * (float) Math.sin(d * k - phase);
+            // The fold facing up catches the light; facing away, it falls into shade.
+            float light = 1 + 0.16f * Math.min(1, d / ramp) * (float) Math.cos(d * k - phase);
+            for (int y = 0; y < size; y++) {
+                float yy = y + 0.5f;
+                int c;
+                if (yy < top - Math.abs(a) - 1 || yy > bottom + Math.abs(a) + 1) {
+                    c = rest[y * size + x];
+                } else {
+                    c = sample(rest, size, x + 0.5f, yy - dy);
+                    float sy = yy - dy;
+                    if (sy < top || sy > bottom) {
+                        // Only the cloth moves: beyond it is what is there at rest.
+                        c = sy < top - 0.5f || sy > bottom + 0.5f ? 0 : c;
+                    }
+                    c = shade(c, light);
+                }
+                out[y * size + x] = c;
+            }
+        }
+    }
+
+    private static int shade(int c, float k) {
+        int out = c & 0xFF000000;
+        for (int sh = 16; sh >= 0; sh -= 8) {
+            out |= Math.max(0, Math.min(255, Math.round(((c >> sh) & 0xFF) * k))) << sh;
+        }
+        return out;
+    }
+
     private static int sample(int[] px, int size, float x, float y) {
         int x0 = (int) Math.floor(x - 0.5f);
         int y0 = (int) Math.floor(y - 0.5f);

@@ -1212,41 +1212,32 @@ public enum DotEffect {
      */
     FLAG {
         @Override
-        void apply(Scene s) {
+        void pose(Scene s) {
             Regions r = s.regions;
-            float speed = 3.5f + 3 * s.boost;
             float pole = r.minX;
-            float top = -1;
-            float bottom = r.size;
+            float top = r.minY;
+            float bottom = r.maxY + 1;
             if (s.anchor != null && s.anchor.length >= 3) {
                 pole = ObjectEffects.edgeX(r, s.anchor[0]);
                 top = ObjectEffects.edgeY(r, s.anchor[1]);
                 bottom = ObjectEffects.edgeY(r, s.anchor[2]);
             }
-            int[] out = s.dots.clone();
-            for (int i = 0; i < s.dots.length; i++) {
-                if (Float.isNaN(s.srcX[i])) {
-                    continue;
-                }
-                float x = s.srcX[i];
-                float y = s.srcY[i];
-                if (x < pole + 0.5f || y < top - 1.5f || y > bottom + 1.5f) {
-                    continue;
-                }
-                float wave = (float) Math.sin((x - pole) * 0.45f - s.t * speed);
-                float amp = Math.min(1, (x - pole) / 6f) * 1.3f;
-                int sx = Math.round(x);
-                int sy = Math.round(y + wave * amp);
-                if (sx < 0 || sy < 0 || sx >= r.size || sy >= r.size || !r.ink[sy * r.size + sx]
-                        || sy < top - 1.5f || sy > bottom + 1.5f) {
-                    out[i] = 0;
-                    continue;
-                }
-                int c = r.rest[sy * r.size + sx];
-                out[i] = Scene.scale(c, 0.82f + 0.18f
-                        * (float) Math.cos((x - pole) * 0.45f - s.t * speed));
-            }
-            System.arraycopy(out, 0, s.dots, 0, out.length);
+            float width = Math.max(4, r.maxX + 1 - pole);
+            // Waves run along the cloth from the pole, a little over one across it; the
+            // breeze rises and falls, so the ripples grow and calm.
+            float t = s.t + (s.seed & 0xFF) * 0.05f;
+            float breeze = 0.7f + 0.3f * (float) Math.sin(t * 0.6f);
+            s.wavePhase = t * (3.2f + 3 * s.boost);
+            s.waveSpec[0] = pole;
+            s.waveSpec[1] = top;
+            s.waveSpec[2] = bottom;
+            s.waveSpec[3] = width * 0.85f;
+            s.waveSpec[4] = Math.min(1.4f, (bottom - top) * 0.07f) * breeze * (1 + 0.5f * s.boost);
+            s.busy = true;
+        }
+
+        @Override
+        void apply(Scene s) {
         }
     },
 

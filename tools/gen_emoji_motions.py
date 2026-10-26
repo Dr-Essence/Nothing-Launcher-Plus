@@ -614,7 +614,7 @@ EFFECT_REVIEW = {
     "ribbon": "SHINE", "reminder ribbon": "SHINE", "admission tickets": "SHINE",
     "ticket": "SHINE", "mirror ball": "TWINKLE", "yo-yo": "SHINE", "kite": "SHINE",
     "recycling symbol": "SHINE", "empty nest": "SHINE", "nest with eggs": "SHINE",
-    "wind chime": "SWAY:1", "carp streamer": "FLAG:0.1,0,0.62",
+    "chart increasing with yen": "SHINE", "leaf fluttering in wind": "SWAY", "hot pepper": "SHINE", "wind chime": "SWAY:1", "carp streamer": "FLAG:0.1,0,0.62",
     "bouquet": "SWAY",
     "cherry blossom": "SWAY",
     "white flower": "SWAY",
@@ -683,6 +683,12 @@ EFFECT_REVIEW = {
     "person bouncing ball": "PADDLE:0.12,0.72,0.12,0.97,0.5,1,2",
     "man bouncing ball": "PADDLE:0.12,0.72,0.12,0.97,0.5,1,2",
     "woman bouncing ball": "PADDLE:0.16,0.75,0.16,0.97,0.5,1,2",
+    "person with white cane": "STRIDE:0.5,0.6,40,1.1",
+    "person with white cane facing right": "STRIDE:0.5,0.6,40,1.1",
+    "man with white cane": "STRIDE:0.5,0.6,40,1.1",
+    "man with white cane facing right": "STRIDE:0.5,0.6,40,1.1",
+    "woman with white cane": "STRIDE:0.5,0.6,40,1.1",
+    "woman with white cane facing right": "STRIDE:0.5,0.6,40,1.1",
     # Only hot food steams.
     "bread": "SHINE", "croissant": "SHINE", "baguette bread": "SHINE", "flatbread": "SHINE",
     "pretzel": "SHINE", "bagel": "SHINE", "cut of meat": "SHINE", "sandwich": "SHINE",
@@ -752,13 +758,14 @@ EXACT.update({name: "NONE" for name in [
     "cricket game", "field hockey", "ice hockey", "badminton", "ping pong", "lacrosse",
     "person golfing", "man golfing", "woman golfing", "person bouncing ball",
     "man bouncing ball", "woman bouncing ball",
+    "person with white cane", "person with white cane facing right", "man with white cane", "man with white cane facing right", "woman with white cane", "woman with white cane facing right",
     "person walking", "man walking", "woman walking", "person walking facing right", "woman walking facing right", "man walking facing right", "person running", "man running", "woman running", "person running facing right", "woman running facing right", "man running facing right",
 ]})
 
 # Balls: round ones are kicked up and spin in the air (their effect turns the surface with the
 # motion, the light held still); long ones are tossed end over end.
 EXACT.update({
-    "yo-yo": "YOYO", "parachute": "SWING", "suspension railway": "SWING", "mountain cableway": "SWING", "aerial tramway": "SWING",
+    "yo-yo": "YOYO", "money bag": "RATTLE", "parachute": "SWING", "suspension railway": "SWING", "mountain cableway": "SWING", "aerial tramway": "SWING",
     "bouquet": "NONE",
     "cherry blossom": "NONE",
     "white flower": "NONE",

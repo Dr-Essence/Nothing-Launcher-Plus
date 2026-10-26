@@ -262,6 +262,12 @@ final class Scene {
      * none), and the rows of its top and its root (resting grid units).
      */
     float bendAmount = Float.NaN;
+    /**
+     * Cloth waving (see {@link Bend#wave}): the phase (NaN for none), the pole's x and the
+     * cloth's top and bottom rows (resting grid units), wavelength and height (dots).
+     */
+    float wavePhase = Float.NaN;
+    final float[] waveSpec = new float[5];
     float bendTop;
     float bendRoot;
     /** A drawn burst going off (see {@link Burst}): its mode, -1 for none. */
