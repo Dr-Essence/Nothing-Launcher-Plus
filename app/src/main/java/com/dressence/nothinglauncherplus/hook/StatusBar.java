@@ -246,6 +246,21 @@ final class StatusBar {
     private static final Map<TextView, Boolean> SMALL =
             Collections.synchronizedMap(new WeakHashMap<>());
 
+    /**
+     * For a small text already styled: its plain face put back if anything (a text appearance,
+     * the shade opening) has changed it since. True if {@code view} is one.
+     */
+    static boolean keepSmall(TextView view) {
+        if (!SMALL.containsKey(view)) {
+            return false;
+        }
+        if (view.getTypeface() != plain || view.getPaint().getTypeface() != plain) {
+            styleText(view, true, plain);
+            view.getPaint().setTypeface(plain);
+        }
+        return true;
+    }
+
     private static void styleText(TextView view, boolean green, Typeface face) {
         if (face != null && view.getTypeface() != face) {
             view.setTypeface(face);

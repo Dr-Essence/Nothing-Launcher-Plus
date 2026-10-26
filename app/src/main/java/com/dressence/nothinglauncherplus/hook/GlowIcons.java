@@ -92,6 +92,9 @@ final class GlowIcons {
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) {
                         TextView view = (TextView) param.thisObject;
+                        if (StatusBar.keepSmall(view)) {
+                            return;
+                        }
                         if (kind(view) == STATUS && store.get().ndotStatusBar
                                 && !StatusBar.styled(view)) {
                             float sp = view.getTextSize()
@@ -151,6 +154,7 @@ final class GlowIcons {
             // Folded into its callers on this build: the provider hook covers it.
         }
         Hooks.install("green quick settings colours", () -> hookTileColours(cl, store));
+        Hooks.install("green quick settings accent", () -> hookAccent(cl, store));
         Hooks.install("glowing quick settings labels", () -> hookTileLabels(cl, store, common));
     }
 
@@ -231,6 +235,37 @@ final class GlowIcons {
         });
     }
 
+    /**
+     * The accent the shade's Compose theme paints with ({@code ColorScheme.primary}: the white
+     * of a tile that is on, the brightness slider, the sound mode selector) becomes retro
+     * green, or dashboard amber; what is drawn on it ({@code onPrimary}: a tile's icon) the
+     * bright green or amber the icon is then lit. The theme is built when the shade is, so
+     * System UI restarts when the option changes.
+     */
+    private static void hookAccent(ClassLoader cl, ConfigStore store) {
+        Class<?> scheme = XposedHelpers.findClass("androidx.compose.material3.ColorScheme", cl);
+        XposedBridge.hookAllConstructors(scheme, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                store.reloadIfChanged();
+                if (!store.get().ndotQuickSettings || param.args.length < 2
+                        || !(param.args[0] instanceof Long) || !(param.args[1] instanceof Long)) {
+                    return;
+                }
+                boolean amber = store.get().qsAmber;
+                param.args[0] = composeColour(amber ? DASH_AMBER : RETRO_GREEN);
+                param.args[1] = composeColour(amber ? DASH_ICON : GreenGlow.GREEN);
+                if (!loggedAccent) {
+                    loggedAccent = true;
+                    Hooks.log("green quick settings: accent " + (amber ? "amber" : "green"));
+                }
+            }
+        });
+    }
+
+    private static boolean loggedAccent;
+    private static boolean loggedLabels;
+
     /** True for a light, mostly opaque Compose colour: the white of a tile that is on. */
     private static boolean light(long colour) {
         if ((colour & 0x3F) != 0) {
@@ -246,6 +281,13 @@ final class GlowIcons {
     private static void hookTileLabels(ClassLoader cl, ConfigStore store, Class<?> common) {
         Class<?> textStyle = XposedHelpers.findClass("androidx.compose.ui.text.TextStyle", cl);
         Map<Object, Object> glowing = Collections.synchronizedMap(new WeakHashMap<>());
+        Class<?> producer;
+        try {
+            producer = Class.forName("androidx.compose.ui.graphics.ColorProducer", false, cl);
+        } catch (ClassNotFoundException e) {
+            producer = null; // Labels keep their colour; they still glow.
+        }
+        Class<?> colourProducer = producer;
         int hooked = 0;
         for (Method m : common.getDeclaredMethods()) {
             if (!m.getName().startsWith("TileLabel") || !composable(m)) {
@@ -257,8 +299,17 @@ final class GlowIcons {
                     if (!store.get().ndotQuickSettings) {
                         return;
                     }
+                    if (!loggedLabels) {
+                        loggedLabels = true;
+                        Hooks.log("green quick settings: labels drawn green");
+                    }
                     for (int i = 0; i < param.args.length; i++) {
                         Object style = param.args[i];
+                        if (colourProducer != null && colourProducer.isInstance(style)
+                                && !Proxy.isProxyClass(style.getClass())) {
+                            param.args[i] = greenColour(cl, colourProducer, style);
+                            continue;
+                        }
                         if (!textStyle.isInstance(style)) {
                             continue;
                         }
@@ -274,6 +325,29 @@ final class GlowIcons {
             hooked++;
         }
         Hooks.log("green quick settings: " + hooked + " label hooks");
+    }
+
+    /**
+     * A label's {@code ColorProducer} giving green: its one method (named
+     * {@code invoke-0d7_KjU} or so, returning the colour as a long) answers the green.
+     */
+    private static Object greenColour(ClassLoader cl, Class<?> producer, Object original) {
+        long green = composeColour(GreenGlow.GREEN);
+        return Proxy.newProxyInstance(cl, new Class<?>[] {producer}, (proxy, method, args) -> {
+            if (method.getReturnType() == long.class) {
+                return green;
+            }
+            switch (method.getName()) {
+                case "equals":
+                    return proxy == args[0];
+                case "hashCode":
+                    return System.identityHashCode(proxy);
+                case "toString":
+                    return "green " + original;
+                default:
+                    return method.invoke(original, args);
+            }
+        });
     }
 
     /**

@@ -218,6 +218,17 @@ final class SystemFont {
         }
     }
 
+    /** Restarts System UI alone, in the background: the status bar and shade redraw in seconds. */
+    static void restartShade() {
+        new Thread(() -> {
+            try {
+                su("pkill -f com.android.systemui");
+            } catch (Exception e) {
+                // No root: the change shows once System UI next starts.
+            }
+        }).start();
+    }
+
     /** Restarts the phone's interface (not the phone): every app starts again, new fonts. */
     private static final String RESTART = "setprop ctl.restart zygote";
 
