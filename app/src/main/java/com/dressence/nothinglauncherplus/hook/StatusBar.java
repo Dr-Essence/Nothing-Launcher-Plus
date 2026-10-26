@@ -50,6 +50,16 @@ final class StatusBar {
                         }
                     }
                 });
+        // Network speed and the like set their own face as they update: it stays the plain one.
+        XposedBridge.hookAllMethods(TextView.class, "setTypeface", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                if (plain != null && param.args.length > 0 && SMALL.containsKey(param.thisObject)
+                        && param.args[0] != plain) {
+                    param.args[0] = plain;
+                }
+            }
+        });
         Hooks.install("status bar clock", () -> hookClock(cl, store));
         Hooks.install("green status icons", () -> GlowIcons.install(cl, store));
         Hooks.install("status bar battery", () -> hookBattery(cl, store));
@@ -132,7 +142,13 @@ final class StatusBar {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
                 View view = (View) param.thisObject;
-                if (!view.getClass().getName().contains("Battery")) {
+                String name = view.getClass().getName();
+                if ((name.contains("Speed") || name.contains("Traffic"))
+                        && LOGGED.add(name)) {
+                    Hooks.log("network speed view: " + name + " extends "
+                            + view.getClass().getSuperclass().getName());
+                }
+                if (!name.contains("Battery")) {
                     return;
                 }
                 store.reloadIfChanged();
@@ -218,10 +234,17 @@ final class StatusBar {
                 plain = Typeface.DEFAULT;
             }
         }
+        SMALL.put(view, true);
         styleText(view, true, plain);
+        Hooks.log("small status text in a plain face: " + view.getClass().getName());
     }
 
     private static Typeface plain;
+    private static final java.util.Set<String> LOGGED =
+            Collections.synchronizedSet(new java.util.HashSet<>());
+    /** The small texts: kept in the plain face whatever face they set themselves. */
+    private static final Map<TextView, Boolean> SMALL =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     private static void styleText(TextView view, boolean green, Typeface face) {
         if (face != null && view.getTypeface() != face) {

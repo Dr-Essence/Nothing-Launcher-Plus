@@ -93,7 +93,8 @@ final class GlowIcons {
                                 && !StatusBar.styled(view)) {
                             float sp = view.getTextSize()
                                     / view.getResources().getDisplayMetrics().scaledDensity;
-                            if (sp < SMALL_TEXT_SP) {
+                            if (sp < SMALL_TEXT_SP
+                                    || speedView(view)) {
                                 StatusBar.styleSmallText(view);
                             } else {
                                 StatusBar.styleText(view, true);
@@ -163,6 +164,20 @@ final class GlowIcons {
         return false;
     }
 
+    /** {@code o}'s long field {@code name}; 0 if it has none. */
+    private static long getLong(Object o, String name) {
+        for (Class<?> c = o.getClass(); c != null; c = c.getSuperclass()) {
+            try {
+                java.lang.reflect.Field f = c.getDeclaredField(name);
+                f.setAccessible(true);
+                return f.getLong(o);
+            } catch (ReflectiveOperationException e) {
+                // Not declared here: look in the superclass.
+            }
+        }
+        return 0;
+    }
+
     /** Sets {@code o}'s long field {@code name}, final or not. */
     private static void setLong(Object o, String name, long value) {
         for (Class<?> c = o.getClass(); c != null; c = c.getSuperclass()) {
@@ -184,32 +199,38 @@ final class GlowIcons {
 
     /**
      * The tiles' colours: labels green, and a tile that is on lit retro-display green where it
-     * was white (the whole tile, or the icon's part of a tile with two targets).
+     * was white (the whole tile, or the icon's part of a tile with two targets). Set as each
+     * {@code TileColors} is made: the functions choosing them are inlined into their callers.
      */
     private static void hookTileColours(ClassLoader cl, ConfigStore store) {
-        Class<?> defaults = XposedHelpers.findClass(PKG_TILES + ".TileDefaults", cl);
-        XposedBridge.hookAllMethods(defaults, "getColorForState", new XC_MethodHook() {
+        Class<?> colours = XposedHelpers.findClass(PKG_TILES + ".TileColors", cl);
+        XposedBridge.hookAllConstructors(colours, new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
-                Object colours = param.getResult();
-                if (colours == null || !store.get().ndotQuickSettings) {
+                if (!store.get().ndotQuickSettings) {
                     return;
                 }
-                int state = (Integer) XposedHelpers.callMethod(param.args[0], "getState");
-                boolean iconOnly = param.args[1] instanceof Boolean && (Boolean) param.args[1];
-                if (state == 2) { // Tile.STATE_ACTIVE
-                    if (iconOnly) {
-                        setLong(colours, "background",
-                                composeColour(RETRO_GREEN));
+                Object c = param.thisObject;
+                for (String field : new String[] {"background", "iconBackground"}) {
+                    if (light(getLong(c, field))) {
+                        setLong(c, field, composeColour(RETRO_GREEN));
                     }
-                    setLong(colours, "iconBackground",
-                            composeColour(RETRO_GREEN));
                 }
-                setLong(colours, "label", composeColour(GreenGlow.GREEN));
-                setLong(colours, "secondaryLabel",
-                        composeColour(0xB34CFF7A));
+                setLong(c, "label", composeColour(GreenGlow.GREEN));
+                setLong(c, "secondaryLabel", composeColour(0xB34CFF7A));
             }
         });
+    }
+
+    /** True for a light, mostly opaque Compose colour: the white of a tile that is on. */
+    private static boolean light(long colour) {
+        if ((colour & 0x3F) != 0) {
+            return false; // Not sRGB: not the theme's white.
+        }
+        int argb = (int) (colour >>> 32);
+        int luma = (Color.red(argb) * 299 + Color.green(argb) * 587 + Color.blue(argb) * 114)
+                / 1000;
+        return Color.alpha(argb) > 128 && luma > 150;
     }
 
     /** Tile labels glowing as the clock does: their text style given the same soft shadow. */
@@ -412,6 +433,12 @@ final class GlowIcons {
 
     // ---- Icons drawn with views: the status bar, and tiles on older releases ----
 
+    /** The network speed indicator, whatever the release calls it. */
+    private static boolean speedView(View view) {
+        String name = view.getClass().getName();
+        return name.contains("Speed") || name.contains("Traffic");
+    }
+
     /** What {@code view} is: a status bar icon, a quick settings tile icon, or neither. */
     private static int kind(View view) {
         Integer known = KIND.get(view);
@@ -423,8 +450,10 @@ final class GlowIcons {
         }
         int kind = NONE;
         int depth = 0;
-        if (view instanceof TextView && view.getClass().getSimpleName().contains("DateView")) {
-            // The date over the pulled-down quick settings: green like the clock beside it.
+        String own = view.getClass().getSimpleName();
+        if (view instanceof TextView && (own.contains("DateView") || speedView(view))) {
+            // The date over the pulled-down quick settings, and the network speed, wherever
+            // they are: green like the clock.
             KIND.put(view, STATUS);
             return STATUS;
         }
