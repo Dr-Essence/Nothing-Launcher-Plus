@@ -92,6 +92,8 @@ final class DotIcons {
         Bitmap glow;
         /** The dark glass the dots sit on, in the icon's own shape. */
         Bitmap plate;
+        /** The lit dots alone, for the scan line to tint. */
+        Bitmap lit;
 
         float[] x;
         float[] y;
@@ -170,7 +172,7 @@ final class DotIcons {
         long now = SystemClock.uptimeMillis();
         long[] seen = SEEN.get(d);
         if (seen == null) {
-            seen = new long[2];
+            seen = new long[3];
             SEEN.put(d, seen);
         }
         Dots dots = dots(icon, d);
@@ -194,7 +196,7 @@ final class DotIcons {
             canvas.scale(scale, scale, bounds.exactCenterX(), bounds.exactCenterY());
         }
         if (t >= 1) {
-            canvas.drawBitmap(dots.full, null, bounds, paint);
+            drawWithScan(canvas, bounds, dots, paint, d, icon, now, seen);
         } else {
             powerOn(canvas, bounds, dots, Math.max(0, t), paint.getAlpha());
             d.invalidateSelf();
@@ -204,6 +206,69 @@ final class DotIcons {
         }
         canvas.restoreToCount(save);
         return true;
+    }
+
+    /** How often (seconds, varied per icon) the scan line passes, and how long it takes. */
+    private static final float SCAN_EVERY = 11;
+    private static final float SCAN_TIME = 1.5f;
+    /** The scan line's colour (no alpha): the green of an old phosphor screen. */
+    private static final int SCAN_GREEN = 0x4CFF8A;
+    private static final Paint SCAN = new Paint();
+    static {
+        SCAN.setXfermode(new android.graphics.PorterDuffXfermode(
+                android.graphics.PorterDuff.Mode.SRC_IN));
+    }
+
+    private static float hash(int a, int b) {
+        int h = a * 0x27d4eb2d ^ b * 0x165667b1;
+        h ^= h >>> 15;
+        h *= 0x2c1b3c6d;
+        h ^= h >>> 12;
+        return (h & 0xFFFFFF) / (float) 0x1000000;
+    }
+
+    /**
+     * The icon at rest. Now and then, each icon on its own timing, a faint green scan line
+     * rolls down its lit dots, as on an old dot screen; between passes it is one still draw.
+     */
+    private static void drawWithScan(Canvas canvas, Rect bounds, Dots dots, Paint paint,
+            Drawable d, Bitmap icon, long now, long[] seen) {
+        canvas.drawBitmap(dots.full, null, bounds, paint);
+        int seed = System.identityHashCode(icon);
+        float t = (now % 3_600_000L) / 1000f;
+        float period = SCAN_EVERY * (0.7f + 0.6f * hash(seed, 1));
+        float local = (t + hash(seed, 2) * period) % period;
+        if (local < SCAN_TIME) {
+            float scan = local / SCAN_TIME;
+            // Only the lit dots take on the line's green.
+            int layer = canvas.saveLayer(bounds.left, bounds.top, bounds.right, bounds.bottom,
+                    null);
+            canvas.drawBitmap(dots.lit, null, bounds, paint);
+            float band = bounds.height() * 0.22f;
+            float e = scan * scan * (3 - 2 * scan);
+            float y = bounds.top - band + e * (bounds.height() + band * 2);
+            int peak = Math.round(150 * (float) Math.sin(scan * Math.PI)) << 24 | SCAN_GREEN;
+            SCAN.setShader(new android.graphics.LinearGradient(0, y - band / 2, 0, y + band / 2,
+                    new int[] {SCAN_GREEN, peak, SCAN_GREEN}, null,
+                    android.graphics.Shader.TileMode.CLAMP));
+            canvas.drawRect(bounds.left, y - band / 2, bounds.right, y + band / 2, SCAN);
+            canvas.restoreToCount(layer);
+            d.invalidateSelf();
+            return;
+        }
+        // Asleep until the next pass: one redraw is booked for it.
+        long at = now + Math.max(16, Math.round((period - local) * 1000));
+        if (seen[2] > now && seen[2] <= at) {
+            return;
+        }
+        seen[2] = at;
+        WeakReference<Drawable> ref = new WeakReference<>(d);
+        MAIN.postAtTime(() -> {
+            Drawable drawable = ref.get();
+            if (drawable != null) {
+                drawable.invalidateSelf();
+            }
+        }, at);
     }
 
     /**
@@ -592,9 +657,12 @@ final class DotIcons {
         Canvas full = new Canvas(fullBitmap);
         full.drawBitmap(plateBitmap, 0, 0, null);
         full.drawBitmap(glowBitmap, null, whole, smooth);
+        Bitmap litBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas litCanvas = new Canvas(litBitmap);
         for (int i = 0; i < dots.x.length; i++) {
             paint.setColor(dots.color[i]);
             full.drawCircle(dots.x[i], dots.y[i], dots.radius, paint);
+            litCanvas.drawCircle(dots.x[i], dots.y[i], dots.radius, paint);
         }
         // Nothing outside the icon's own shape: no dot or glow spills past its edge, however
         // the launcher scales it (opening an app zooms the icon up).
@@ -607,6 +675,7 @@ final class DotIcons {
         // Kept on the GPU: no upload when drawn, and off the app's Java heap.
         dots.full = toHardware(fullBitmap);
         dots.plate = toHardware(plateBitmap);
+        dots.lit = toHardware(litBitmap);
 
         dots.glow = toHardware(glowBitmap);
         return dots;

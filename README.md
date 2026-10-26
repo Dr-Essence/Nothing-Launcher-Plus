@@ -64,7 +64,8 @@ plus your folders.
 - **Dot-matrix app icons** (option): every app icon the launcher draws, on the home screen, in
   the drawer, in folders and in search, is redrawn as a 22 x 22 panel of round dots in the
   icon's own colours on dark glass in the icon's own shape, each dot casting a dim halo of
-  its own colour on the glass round it. The emoji folder
+  its own colour on the glass round it; now and then, each icon on its own timing, a faint
+  green scan line rolls down its dots. The emoji folder
   screens have the quirks of an old dot screen, each on its own timing: now and then a faint
   green scan line rolls down, the panel flickers dim for a moment or a band of rows jumps a
   dot sideways. One hook on the launcher's icon drawable
