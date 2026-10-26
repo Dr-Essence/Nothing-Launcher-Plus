@@ -265,7 +265,10 @@ final class DotIcons {
         WeakReference<Drawable> ref = new WeakReference<>(d);
         MAIN.postAtTime(() -> {
             Drawable drawable = ref.get();
-            if (drawable != null) {
+            long[] mark = SEEN.get(drawable);
+            if (drawable != null && mark != null) {
+                // Our own wake-up, not the icon coming into view: it must not power on again.
+                mark[0] = SystemClock.uptimeMillis();
                 drawable.invalidateSelf();
             }
         }, at);
