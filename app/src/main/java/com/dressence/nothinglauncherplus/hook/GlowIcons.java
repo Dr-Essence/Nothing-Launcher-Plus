@@ -63,11 +63,15 @@ final class GlowIcons {
                 }
             });
     private static boolean loggedTiles;
+    private static ConfigStore store;
+    private static boolean dumpedTile;
+    private static boolean loggedLabels;
 
     private GlowIcons() {
     }
 
     static void install(ClassLoader cl, ConfigStore store) {
+        GlowIcons.store = store;
         XposedHelpers.findAndHookMethod(ImageView.class, "onDraw", Canvas.class,
                 new XC_MethodHook() {
                     @Override
@@ -92,15 +96,21 @@ final class GlowIcons {
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) {
                         TextView view = (TextView) param.thisObject;
-                        if (StatusBar.keepSmall(view)) {
+                        if (StatusBar.keepSmall(view) || NetworkSpeed.inside(view)) {
+                            return; // The network speed keeps itself clean (NetworkSpeed).
+                        }
+                        int kind = kind(view);
+                        if (kind == TILE && store.get().ndotQuickSettings
+                                && !StatusBar.styled(view)) {
+                            // Tile labels: green and glowing, in their own face.
+                            StatusBar.glowText(view);
                             return;
                         }
-                        if (kind(view) == STATUS && store.get().ndotStatusBar
+                        if (kind == STATUS && store.get().ndotStatusBar
                                 && !StatusBar.styled(view)) {
                             float sp = view.getTextSize()
                                     / view.getResources().getDisplayMetrics().scaledDensity;
-                            if (sp < SMALL_TEXT_SP
-                                    || speedView(view)) {
+                            if (sp < SMALL_TEXT_SP) {
                                 StatusBar.styleSmallText(view);
                             } else {
                                 StatusBar.styleText(view, true);
@@ -154,7 +164,6 @@ final class GlowIcons {
             // Folded into its callers on this build: the provider hook covers it.
         }
         Hooks.install("green quick settings colours", () -> hookTileColours(cl, store));
-        Hooks.install("green quick settings accent", () -> hookAccent(cl, store));
         Hooks.install("glowing quick settings labels", () -> hookTileLabels(cl, store, common));
     }
 
@@ -234,37 +243,6 @@ final class GlowIcons {
             }
         });
     }
-
-    /**
-     * The accent the shade's Compose theme paints with ({@code ColorScheme.primary}: the white
-     * of a tile that is on, the brightness slider, the sound mode selector) becomes retro
-     * green, or dashboard amber; what is drawn on it ({@code onPrimary}: a tile's icon) the
-     * bright green or amber the icon is then lit. The theme is built when the shade is, so
-     * System UI restarts when the option changes.
-     */
-    private static void hookAccent(ClassLoader cl, ConfigStore store) {
-        Class<?> scheme = XposedHelpers.findClass("androidx.compose.material3.ColorScheme", cl);
-        XposedBridge.hookAllConstructors(scheme, new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
-                store.reloadIfChanged();
-                if (!store.get().ndotQuickSettings || param.args.length < 2
-                        || !(param.args[0] instanceof Long) || !(param.args[1] instanceof Long)) {
-                    return;
-                }
-                boolean amber = store.get().qsAmber;
-                param.args[0] = composeColour(amber ? DASH_AMBER : RETRO_GREEN);
-                param.args[1] = composeColour(amber ? DASH_ICON : GreenGlow.GREEN);
-                if (!loggedAccent) {
-                    loggedAccent = true;
-                    Hooks.log("green quick settings: accent " + (amber ? "amber" : "green"));
-                }
-            }
-        });
-    }
-
-    private static boolean loggedAccent;
-    private static boolean loggedLabels;
 
     /** True for a light, mostly opaque Compose colour: the white of a tile that is on. */
     private static boolean light(long colour) {
@@ -516,21 +494,6 @@ final class GlowIcons {
 
     // ---- Icons drawn with views: the status bar, and tiles on older releases ----
 
-    /**
-     * Part of the network speed indicator, whatever the release calls it: on Nothing OS its
-     * texts are plain TextViews inside a {@code NetworkSpeedView} frame.
-     */
-    private static boolean speedView(View view) {
-        Object v = view;
-        for (int i = 0; i < 4 && v instanceof View; i++, v = ((View) v).getParent()) {
-            String name = v.getClass().getName();
-            if (name.contains("Speed") || name.contains("Traffic")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /** What {@code view} is: a status bar icon, a quick settings tile icon, or neither. */
     private static int kind(View view) {
         Integer known = KIND.get(view);
@@ -543,9 +506,8 @@ final class GlowIcons {
         int kind = NONE;
         int depth = 0;
         String own = view.getClass().getSimpleName();
-        if (view instanceof TextView && (own.contains("DateView") || speedView(view))) {
-            // The date over the pulled-down quick settings, and the network speed, wherever
-            // they are: green like the clock.
+        if (view instanceof TextView && own.contains("DateView")) {
+            // The date over the pulled-down quick settings: green like the clock beside it.
             KIND.put(view, STATUS);
             return STATUS;
         }
@@ -595,9 +557,66 @@ final class GlowIcons {
         d.draw(c);
         float radius = kind == STATUS && StatusBar.glowRadius > 0 ? StatusBar.glowRadius
                 : h * GLOW;
-        GreenGlow.draw(canvas, icon, radius, view.getImageAlpha() / 255f, kind == TILE);
+        int colour = GreenGlow.GREEN;
+        if (kind == TILE) {
+            wrapBackgrounds(view);
+            // A tile that is on draws its icon dark (on its white): amber, in the amber style.
+            if (store.get().qsAmber && dark(icon)) {
+                colour = DASH_ICON;
+            }
+        }
+        GreenGlow.draw(canvas, icon, radius, view.getImageAlpha() / 255f, kind == TILE, colour);
         letGlowShow(view);
         return true;
+    }
+
+    /**
+     * The tile's backgrounds, from the icon up to the tile itself (whichever of them draws the
+     * tile's circle or pill), drawn through a retro display (TileBackground). Checked each
+     * time the icon draws, as a tile may set itself a new background when its state changes.
+     */
+    private static void wrapBackgrounds(ImageView icon) {
+        StringBuilder dump = dumpedTile ? null : new StringBuilder("tile:");
+        View v = icon;
+        for (int i = 0; i < 6 && v != null; i++) {
+            String name = v.getClass().getSimpleName();
+            if (i > 0 && (name.contains("Layout") || name.contains("Panel")
+                    || name.contains("Page") || name.contains("Pager"))) {
+                break; // Past the tile, into the grid holding it.
+            }
+            Drawable bg = v.getBackground();
+            if (dump != null) {
+                dump.append("\n  ").append(v.getClass().getName()).append(" bg=")
+                        .append(bg == null ? "none" : bg.getClass().getName());
+            }
+            if (bg != null && !(bg instanceof TileBackground)) {
+                v.setBackground(new TileBackground(bg, store));
+            }
+            v = v.getParent() instanceof View ? (View) v.getParent() : null;
+        }
+        if (dump != null) {
+            dumpedTile = true;
+            Hooks.log(dump.toString());
+        }
+    }
+
+    /** True if the icon's lit pixels are dark: a tile that is on. */
+    private static boolean dark(Bitmap icon) {
+        int w = icon.getWidth();
+        int h = icon.getHeight();
+        long luma = 0;
+        int n = 0;
+        for (int y = 0; y < h; y += 2) {
+            for (int x = 0; x < w; x += 2) {
+                int p = icon.getPixel(x, y);
+                if ((p >>> 24) > 160) {
+                    luma += (Color.red(p) * 299 + Color.green(p) * 587 + Color.blue(p) * 114)
+                            / 1000;
+                    n++;
+                }
+            }
+        }
+        return n > 0 && luma / n < 110;
     }
 
     /** The glow reaches a little past the icon: let it show rather than be cut off. */

@@ -52,6 +52,7 @@ final class StatusBar {
                 });
         Hooks.install("status bar clock", () -> hookClock(cl, store));
         Hooks.install("green status icons", () -> GlowIcons.install(cl, store));
+        Hooks.install("network speed", () -> NetworkSpeed.install(store));
         Hooks.install("status bar battery", () -> hookBattery(cl, store));
     }
 
@@ -227,6 +228,11 @@ final class StatusBar {
     /** The small texts: coloured only. */
     private static final Map<TextView, Boolean> SMALL =
             Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** A text lit green and glowing in its own face (quick settings tile labels). */
+    static void glowText(TextView view) {
+        styleText(view, true, null);
+    }
 
     /** True for a small text already styled: nothing more to do for it. */
     static boolean keepSmall(TextView view) {
