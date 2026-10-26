@@ -63,7 +63,8 @@ plus your folders.
   the wider falloff), redone every frame so the glow moves with the animation.
 - **Dot-matrix app icons** (option): every app icon the launcher draws, on the home screen, in
   the drawer, in folders and in search, is redrawn as a 22 x 22 panel of round dots in the
-  icon's own colours, each lit dot glowing softly. One hook on the launcher's icon drawable
+  icon's own colours, each lit dot glowing softly on solid dark glass in the icon's own shape,
+  so icons stay opaque and the wallpaper never shows through them. One hook on the launcher's icon drawable
   covers every surface; each icon is converted once and cached. When icons come into view
   (the drawer opening, going home, a folder opening) each powers on like a little screen: dots
   light from the centre outwards on a spring with a brief white LED flash, the glow fading up
@@ -104,6 +105,9 @@ plus your folders.
   glance about within their whites; 💔 cracks apart and mends; 🤖's antenna lamp blinks; 🤹
   juggles, the balls passing behind the head; only round open eyes blink, never ^ ^ or
   brows; angry faces flush from the chin up.
+- **Animation test**: in the module's settings, play any emoji's animation on a big dot
+  screen without making a folder for it: step through emoji one by one, replay its reaction,
+  slow it to half or a quarter speed, and compare the dots with the plain emoji.
 - **Nothing is cut off**: a hop, lean or swell that would carry an emoji past the edge of
   the panel is eased back so it comes up to the edge smoothly.
 - **Particles are smooth**: steam, smoke, snow, rain, bubbles, confetti, sparks, hearts,

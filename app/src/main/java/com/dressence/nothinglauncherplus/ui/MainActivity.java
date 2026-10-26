@@ -88,6 +88,8 @@ public class MainActivity extends Activity {
                     config.dotIcons = checked;
                     store.save(this);
                 });
+        ui.row("Animation test", "Play any emoji's animation on a big dot screen", null,
+                ui.chevron(), v -> startActivity(EmojiPickerActivity.testIntent(this)));
 
         addSoundSection(ui, config);
 

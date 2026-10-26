@@ -53,6 +53,8 @@ final class DotIcons {
     private static final float POWER_ON_MS = 560;
     private static final long MAX_STAGGER_MS = 110;
     private static final int GLOW_SCALE = 4;
+    /** The dark glass behind the dots, like the screen of a Nothing dot display. */
+    private static final int PLATE = 0xFF0C0C0C;
 
     /** Marks an icon that could not be converted. */
     private static final Dots FAILED = new Dots();
@@ -89,6 +91,8 @@ final class DotIcons {
     private static final class Dots {
         Bitmap full;
         Bitmap glow;
+        /** The dark glass the dots sit on, in the icon's own shape. */
+        Bitmap plate;
         float[] x;
         float[] y;
         int[] color;
@@ -208,6 +212,9 @@ final class DotIcons {
      */
     private static void powerOn(Canvas canvas, Rect bounds, Dots dots, float t, int alpha) {
         float k = bounds.width() / dots.size;
+        // The glass is there from the start; only the dots power on.
+        GLOW_PAINT.setAlpha(alpha);
+        canvas.drawBitmap(dots.plate, null, bounds, GLOW_PAINT);
         GLOW_PAINT.setAlpha(Math.round(alpha * ease(t)));
         canvas.drawBitmap(dots.glow, null, bounds, GLOW_PAINT);
         float half = dots.size / 2;
@@ -409,8 +416,16 @@ final class DotIcons {
                     new float[] {0, 0.5f, 1}, Shader.TileMode.CLAMP));
             glow.drawCircle(cx, cy, halo, paint);
         }
+        // The dark glass in the icon's own shape, so the icon is solid and the wallpaper never
+        // shows between its dots.
+        Bitmap plateBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Paint platePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        platePaint.setColorFilter(new android.graphics.PorterDuffColorFilter(PLATE,
+                android.graphics.PorterDuff.Mode.SRC_IN));
+        new Canvas(plateBitmap).drawBitmap(icon, 0, 0, platePaint);
         Bitmap fullBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas full = new Canvas(fullBitmap);
+        full.drawBitmap(plateBitmap, 0, 0, null);
         full.drawBitmap(glowBitmap, null, new Rect(0, 0, w, h),
                 new Paint(Paint.FILTER_BITMAP_FLAG));
         paint.setShader(null);
@@ -420,6 +435,7 @@ final class DotIcons {
         }
         // Kept on the GPU: no upload when drawn, and off the app's Java heap.
         dots.full = toHardware(fullBitmap);
+        dots.plate = toHardware(plateBitmap);
         dots.glow = toHardware(glowBitmap);
         return dots;
     }

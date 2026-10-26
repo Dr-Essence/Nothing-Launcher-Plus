@@ -50,6 +50,9 @@ public class AnimatedEmojiView extends TextView {
     private float restScale = 1;
     private float phase;
     private boolean atRest = true;
+    private float speed = 1;
+    private long clockReal = -1;
+    private long clockVirtual;
     private DotMatrix dots;
     /** Where the emoji square sits (null: centred) and the dot screen around it (null: none). */
     private Rect dotContent;
@@ -156,8 +159,26 @@ public class AnimatedEmojiView extends TextView {
 
     /** Reacts now (a touch, the drawer opening): plays its motion and flares its effect. */
     public void react() {
-        reactStart = System.nanoTime();
+        long now = System.nanoTime();
+        reactStart = clockReal < 0 ? now : clockVirtual + (long) ((now - clockReal) * speed);
         MotionDriver.get().wake();
+    }
+
+    /** Plays everything (motion and effect) at {@code speed} times its pace: 0.25 is slow-mo. */
+    public void setSpeed(float speed) {
+        this.speed = speed;
+        MotionDriver.get().wake();
+    }
+
+    /** This view's own clock: real time, run at {@link #speed}. */
+    private long clock(long nowNanos) {
+        if (clockReal < 0) {
+            clockReal = nowNanos;
+            clockVirtual = nowNanos;
+        }
+        clockVirtual += (long) ((nowNanos - clockReal) * speed);
+        clockReal = nowNanos;
+        return clockVirtual;
     }
 
     /** The motion a reaction plays: the emoji's own, unless it is a slow one. */
@@ -214,6 +235,14 @@ public class AnimatedEmojiView extends TextView {
      * nanoseconds until it next needs a frame ({@link Long#MAX_VALUE} for a static emoji).
      */
     long step(long nowNanos, float durationScale) {
+        nowNanos = clock(nowNanos);
+        long wait = stepAt(nowNanos, durationScale);
+        // Waits are in this view's time; slowed down, they last longer in real time.
+        return wait == 0 || wait == Long.MAX_VALUE || speed >= 1 ? wait
+                : (long) Math.min(Long.MAX_VALUE / 2, wait / Math.max(0.05f, speed));
+    }
+
+    private long stepAt(long nowNanos, float durationScale) {
         pose.reset();
         boolean moving = false;
         long wait = Long.MAX_VALUE;

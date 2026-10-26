@@ -40,10 +40,22 @@ public class EmojiPickerActivity extends Activity {
     static final String EXTRA_EMOJI = "emoji";
     private static final String EXTRA_SEED = "seed";
 
+    private static final String EXTRA_TEST = "test";
+    private static final float[] SPEEDS = {1, 0.5f, 0.25f};
+    private static final String[] SPEED_LABELS = {"1×", "½×", "¼×"};
+
     static Intent intent(Context context, String current, long seed) {
         return new Intent(context, EmojiPickerActivity.class)
                 .putExtra(EXTRA_EMOJI, current)
                 .putExtra(EXTRA_SEED, seed);
+    }
+
+    /**
+     * The animation test: any emoji playing its animation on a big dot panel, without making a
+     * folder for it, stepped through one by one, slowed down to see every frame.
+     */
+    static Intent testIntent(Context context) {
+        return new Intent(context, EmojiPickerActivity.class).putExtra(EXTRA_TEST, true);
     }
 
     private EmojiCatalog catalog;
@@ -59,13 +71,19 @@ public class EmojiPickerActivity extends Activity {
     private long seed;
     private boolean dotMatrix;
     private int accent;
+    private boolean test;
+    private int speed;
+    private TextView speedButton;
+    private TextView modeButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         catalog = EmojiCatalog.get(this);
         seed = getIntent().getLongExtra(EXTRA_SEED, 0);
-        dotMatrix = new SettingsStore(this).config.dotMatrix;
+        test = getIntent().getBooleanExtra(EXTRA_TEST, false);
+        // The test shows the dots by default: that is what the covers are.
+        dotMatrix = test || new SettingsStore(this).config.dotMatrix;
         TypedArray a = obtainStyledAttributes(new int[]{android.R.attr.colorAccent});
         accent = a.getColor(0, 0xFFD71921);
         a.recycle();
@@ -95,30 +113,16 @@ public class EmojiPickerActivity extends Activity {
         back.setContentDescription("Back");
         back.setOnClickListener(v -> finish());
         bar.addView(back, new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 48)));
-        TextView title = text("Choose emoji", 28, Ui.TEXT);
+        TextView title = text(test ? "Animation test" : "Choose emoji", 28, Ui.TEXT);
         title.setTypeface(Typeface.SERIF);
         bar.addView(title);
         root.addView(bar);
 
-        // Preview: the selected emoji playing its animation.
-        LinearLayout card = new LinearLayout(this);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(pad, pad, pad, pad);
-        card.setBackground(rounded(Ui.SURFACE, Ui.dp(this, 24)));
-        preview = new AnimatedEmojiView(this);
-        preview.setTextSize(TypedValue.COMPLEX_UNIT_SP, 52);
-        preview.setDotMatrix(dotMatrix);
-        preview.setOnClickListener(v -> preview.react());
-        card.addView(preview, new LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)));
-        LinearLayout texts = new LinearLayout(this);
-        texts.setOrientation(LinearLayout.VERTICAL);
-        texts.setPadding(Ui.dp(this, 16), 0, 0, 0);
-        previewName = text("", 19, Ui.TEXT);
-        previewMotion = text("", 14, accent);
-        texts.addView(previewName);
-        texts.addView(previewMotion);
-        card.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        root.addView(card, margins(pad, Ui.dp(this, 16), pad, Ui.dp(this, 12)));
+        if (test) {
+            root.addView(testCard(pad), margins(pad, Ui.dp(this, 12), pad, Ui.dp(this, 12)));
+        } else {
+            root.addView(previewCard(pad), margins(pad, Ui.dp(this, 16), pad, Ui.dp(this, 12)));
+        }
 
         EditText search = new EditText(this);
         search.setHint("Search emoji");
@@ -228,8 +232,107 @@ public class EmojiPickerActivity extends Activity {
             }
             finish();
         });
-        root.addView(use, margins(pad, Ui.dp(this, 8), pad, Ui.dp(this, 16)));
+        if (!test) {
+            root.addView(use, margins(pad, Ui.dp(this, 8), pad, Ui.dp(this, 16)));
+        }
         return root;
+    }
+
+    /** The selected emoji playing its animation, beside its name. */
+    private View previewCard(int pad) {
+        LinearLayout card = new LinearLayout(this);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(pad, pad, pad, pad);
+        card.setBackground(rounded(Ui.SURFACE, Ui.dp(this, 24)));
+        preview = new AnimatedEmojiView(this);
+        preview.setTextSize(TypedValue.COMPLEX_UNIT_SP, 52);
+        preview.setDotMatrix(dotMatrix);
+        preview.setOnClickListener(v -> preview.react());
+        card.addView(preview, new LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)));
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        texts.setPadding(Ui.dp(this, 16), 0, 0, 0);
+        previewName = text("", 19, Ui.TEXT);
+        previewMotion = text("", 14, accent);
+        texts.addView(previewName);
+        texts.addView(previewMotion);
+        card.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        return card;
+    }
+
+    /**
+     * The test: a big dot panel playing the selected emoji, its name and animation, and
+     * controls to step through emoji, replay its reaction, slow it down and see it as dots or
+     * as the plain emoji.
+     */
+    private View testCard(int pad) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding(pad, pad, pad, pad);
+        card.setBackground(rounded(Ui.SURFACE, Ui.dp(this, 28)));
+        int side = Math.min(getResources().getDisplayMetrics().widthPixels - pad * 4,
+                Math.round(getResources().getDisplayMetrics().heightPixels * 0.36f));
+        preview = new AnimatedEmojiView(this);
+        preview.setTextSize(TypedValue.COMPLEX_UNIT_PX, side * 0.6f);
+        preview.setDotMatrix(dotMatrix);
+        preview.setOnClickListener(v -> preview.react());
+        card.addView(preview, new LinearLayout.LayoutParams(side, side));
+        previewName = text("", 19, Ui.TEXT);
+        previewName.setGravity(Gravity.CENTER);
+        previewName.setPadding(0, Ui.dp(this, 12), 0, 0);
+        card.addView(previewName);
+        previewMotion = text("", 14, accent);
+        previewMotion.setGravity(Gravity.CENTER);
+        card.addView(previewMotion);
+
+        LinearLayout controls = new LinearLayout(this);
+        controls.setGravity(Gravity.CENTER);
+        controls.setPadding(0, Ui.dp(this, 14), 0, 0);
+        controls.addView(button("‹", v -> step(-1)), buttonSize(48));
+        controls.addView(button("Replay", v -> preview.react()), buttonSize(0));
+        speedButton = button(SPEED_LABELS[0], v -> {
+            speed = (speed + 1) % SPEEDS.length;
+            speedButton.setText(SPEED_LABELS[speed]);
+            preview.setSpeed(SPEEDS[speed]);
+        });
+        controls.addView(speedButton, buttonSize(56));
+        modeButton = button("Dots", v -> {
+            dotMatrix = !dotMatrix;
+            modeButton.setText(dotMatrix ? "Dots" : "Emoji");
+            preview.setDotMatrix(dotMatrix);
+            select(selected);
+        });
+        controls.addView(modeButton, buttonSize(0));
+        controls.addView(button("›", v -> step(1)), buttonSize(48));
+        card.addView(controls);
+        return card;
+    }
+
+    private TextView button(String label, View.OnClickListener onClick) {
+        TextView b = text(label, 15, Ui.TEXT);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(Ui.dp(this, 14), 0, Ui.dp(this, 14), 0);
+        b.setBackground(rounded(0x22FFFFFF, Ui.dp(this, 20)));
+        b.setOnClickListener(onClick);
+        return b;
+    }
+
+    private LinearLayout.LayoutParams buttonSize(int widthDp) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                widthDp == 0 ? ViewGroup.LayoutParams.WRAP_CONTENT : Ui.dp(this, widthDp),
+                Ui.dp(this, 40));
+        lp.setMargins(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0);
+        return lp;
+    }
+
+    /** The next ({@code 1}) or previous ({@code -1}) emoji of those shown. */
+    private void step(int by) {
+        if (shown.isEmpty()) {
+            return;
+        }
+        int at = shown.indexOf(selected);
+        select(shown.get(((at < 0 ? 0 : at + by) % shown.size() + shown.size()) % shown.size()));
     }
 
     private void showGroup(int index) {
@@ -259,6 +362,10 @@ public class EmojiPickerActivity extends Activity {
         previewName.setText(capitalize(entry.name));
         previewMotion.setText("Animation · " + entry.motion.title
                 + (dotMatrix ? " · " + entry.effect.title() : ""));
+        if (test) {
+            preview.setSpeed(SPEEDS[speed]);
+            preview.react(); // Play it straight away.
+        }
     }
 
     private EmojiCatalog.Entry firstOf(int index) {
