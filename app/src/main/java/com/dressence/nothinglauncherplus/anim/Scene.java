@@ -44,6 +44,87 @@ final class Scene {
      */
     final int[] partKeepHue = new int[MAX_PARTS];
     final int[] partFold = new int[MAX_PARTS];
+    /**
+     * Per part: what it is when the emoji is split by {@link #detach}: 0, cut from the drawing;
+     * 1, the lifted object; 2, its shadow; and how opaque it is drawn.
+     */
+    final int[] partLayer = new int[MAX_PARTS];
+    final float[] partAlpha = new float[MAX_PARTS];
+    /** Set by {@link #detach}: the board's centre, radius (grid units) and the directions. */
+    boolean detached;
+    final float[] detachSpec = new float[5];
+    /** True when the emoji is split by colour ({@link #liftHue}) rather than as a board. */
+    boolean detachByHue;
+
+    /**
+     * Splits the emoji into a round board (centre and radius in resting grid units), the
+     * object lying on it toward {@code objectDegrees} and its shadow toward
+     * {@code shadowDegrees} (see Detach); move them with {@link #addLayer}.
+     */
+    void detach(float cx, float cy, float radius, float objectDegrees, float shadowDegrees) {
+        detached = true;
+        detachByHue = false;
+        detachSpec[0] = cx;
+        detachSpec[1] = cy;
+        detachSpec[2] = radius;
+        detachSpec[3] = objectDegrees;
+        detachSpec[4] = shadowDegrees;
+    }
+
+    /**
+     * Splits off everything of hue {@code hue} (degrees) as layer 1 (a padlock's shackle),
+     * leaving the rest, with what it covered filled in, as the board.
+     */
+    void liftHue(float hue) {
+        detached = true;
+        detachByHue = true;
+        detachSpec[0] = hue;
+    }
+
+    /** As {@link #addLayer}, showing only the part of the layer inside x0, y0, x1, y1. */
+    void addLayerPiece(int layer, float x0, float y0, float x1, float y1, float dx, float dy) {
+        addLayer(layer, 0, 0, 0, dx, dy, 1);
+        if (partCount > 0 && partLayer[partCount - 1] == layer) {
+            int k = partCount - 1;
+            partRect[k * 4] = x0;
+            partRect[k * 4 + 1] = y0;
+            partRect[k * 4 + 2] = x1;
+            partRect[k * 4 + 3] = y1;
+        }
+    }
+
+    /** Moves layer 1 (the object) or 2 (its shadow) of a {@link #detach}ed emoji. */
+    void addLayer(int layer, float pivotX, float pivotY, float degrees, float dx, float dy,
+            float alpha) {
+        int before = partCount;
+        addPart(0, 0, size, size, pivotX, pivotY, degrees, dx, dy);
+        if (partCount > before) {
+            partLayer[partCount - 1] = layer;
+            partAlpha[partCount - 1] = alpha;
+        }
+    }
+    /**
+     * A round emoji turned as a sphere (see SphereSurface): centre and radius in resting grid
+     * units, and the turn in radians; NaN when there is none this frame.
+     */
+    float sphereTurn = Float.NaN;
+    float sphereX;
+    float sphereY;
+    float sphereRadius;
+    boolean sphereRoll;
+
+    /**
+     * Turns the round emoji centred at (cx, cy) by {@code radians}: about its own axis (a globe)
+     * or, {@code roll}, in the picture plane (a ball rolling).
+     */
+    void turnSphere(float cx, float cy, float radius, float radians, boolean roll) {
+        sphereRoll = roll;
+        sphereX = cx;
+        sphereY = cy;
+        sphereRadius = radius;
+        sphereTurn = radians;
+    }
+
     /** Set by an effect while something is moving: render at the display's full rate. */
     boolean busy;
 
@@ -66,6 +147,8 @@ final class Scene {
         partShift[k * 2 + 1] = dy;
         partScaleX[k] = 1;
         partKeepHue[k] = -1;
+        partLayer[k] = 0;
+        partAlpha[k] = 1;
     }
 
     /** Turns the last part about the vertical line through its pivot, as seen from the front. */

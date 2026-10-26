@@ -472,16 +472,16 @@ EFFECT_OBJECTS = {
 EFFECT_OBJECTS.update({
     "speech balloon": "TYPING_DOTS",
     "clapper board": "CLAPPER:0.02,0.24,-0.02,-0.02,1.02,0.256",
-    "locked": "LOCK:0.13,-0.02,0.92,0.37,0.82,0.37",
+    "locked": "LOCK:200,0.1,0.34,0.47,2.6",
     "open book": "PAGE_TURN", "memo": "WRITING",
     "calendar": "DATE_FLIP", "tear-off calendar": "DATE_FLIP", "spiral calendar": "DATE_FLIP",
     "chart increasing": "CHART_LINE", "chart decreasing": "CHART_LINE",
     "chart increasing with yen": "CHART_LINE", "bar chart": "CHART_BARS",
     "shopping cart": "WHEELS",
-    "soccer ball": "GLOBE", "basketball": "GLOBE", "american football": "GLOBE",
-    "rugby football": "GLOBE", "tennis": "GLOBE", "volleyball": "GLOBE", "baseball": "GLOBE",
-    "softball": "GLOBE",
-    "bullseye": "SIGNAL:0.42,0.55",
+    "soccer ball": "GLOBE:1", "basketball": "GLOBE:1", "american football": "GLOBE:1",
+    "rugby football": "GLOBE:1", "tennis": "TENNIS:0.17,0.16,0.15,0.66,0.35",
+    "volleyball": "GLOBE:1", "baseball": "GLOBE:1", "softball": "GLOBE:1",
+    "bullseye": "DARTS:0.4625,0.5,0.4625,-29,31",
 })
 EFFECT_EXACT.update(EFFECT_OBJECTS)
 

@@ -1062,11 +1062,40 @@ public enum DotEffect {
         }
     },
 
+    /** 🎯: a dart is thrown into the bull. */
+    DARTS {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.dartsPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
+    /** 🎾: the ball is bounced on the racket. */
+    TENNIS {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.tennisPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.tennis(s);
+        }
+    },
+
     /** Globes: the world turns. */
     GLOBE {
         @Override
+        void pose(Scene s) {
+            ObjectEffects.globePose(s);
+        }
+
+        @Override
         void apply(Scene s) {
-            ObjectEffects.globe(s);
         }
     },
 

@@ -1241,39 +1241,171 @@ final class ObjectEffects {
     }
 
     /**
-     * The globe turns: each row of the sphere is read at a turning longitude, so continents
-     * travel across the face, squeezed at the edges as on a real ball.
+     * The emoji turns as a real solid (see SphereSurface): a globe steadily, its continents
+     * travelling round; a ball ({@code anchor} 1) rolls one full turn in the picture plane,
+     * rests, its shading staying on its shaded side all the while. A touch spins it faster.
      */
-    static void globe(Scene s) {
+    static void globePose(Scene s) {
         Regions r = s.regions;
-        float cx = (r.minX + r.maxX) / 2f;
-        float cy = (r.minY + r.maxY) / 2f;
-        float radius = Math.max(r.maxX - r.minX, r.maxY - r.minY) / 2f + 0.5f;
-        float turn = s.t * (0.32f + 0.6f * s.boost);
-        float half = (float) (Math.PI / 2);
+        float cx = (r.minX + r.maxX + 1) / 2f;
+        float cy = (r.minY + r.maxY + 1) / 2f;
+        float radius = Math.max(r.maxX - r.minX + 1, r.maxY - r.minY + 1) / 2f + 0.5f;
+        float full = (float) (Math.PI * 2);
+        float turn;
+        boolean ball = s.anchor != null && s.anchor.length > 0 && s.anchor[0] == 1;
+        if (ball) {
+            // A ball: rolls once, rests; a touch kicks it into a quick extra turn.
+            float roll = 2.4f;
+            float period = roll + 2.2f;
+            float t = s.t % period;
+            turn = full * ease(t / roll);
+            s.busy = t < roll;
+            if (s.since < 1.2f) {
+                turn += full * easeOut(s.since / 1.2f);
+                s.busy = true;
+            }
+        } else {
+            turn = s.t * 0.45f + full * easeOut(Math.min(1, s.since / 1.6f));
+            s.busy = true;
+        }
+        s.turnSphere(cx, cy, radius, turn, ball);
+    }
+
+    /** One bounce of the tennis ball, 0 (resting spot) to 1 (on the strings) and back. */
+    private static final float BOUNCE = 0.86f;
+
+    /**
+     * How far down the tennis ball is at {@code t}: it drops onto the strings under gravity
+     * and pops back up, twice, then rests in the air where it is drawn; -1 while resting.
+     */
+    private static float tennisDrop(Scene s) {
+        float period = BOUNCE * 2 + 1.7f;
+        float t = s.since < BOUNCE * 2 ? s.since : s.t % period;
+        if (t >= BOUNCE * 2) {
+            return -1;
+        }
+        float b = (t % BOUNCE) / BOUNCE;
+        // Falling it speeds up, rising it slows down: a parabola either way.
+        return b < 0.5f ? (b * 2) * (b * 2) : 1 - ((b - 0.5f) * 2) * ((b - 0.5f) * 2);
+    }
+
+    /**
+     * 🎾: the ball ({@code anchor}: x, y, radius as a fraction of the width, then the strings'
+     * middle x, y) is bounced on the racket, spinning as it flies.
+     */
+    static void tennisPose(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 5) {
+            return;
+        }
+        float drop = tennisDrop(s);
+        if (drop < 0) {
+            return;
+        }
+        float bx = edgeX(r, s.anchor[0]);
+        float by = edgeY(r, s.anchor[1]);
+        float rad = s.anchor[2] * (r.maxX - r.minX + 1);
+        float dx = (edgeX(r, s.anchor[3]) - bx) * drop;
+        // It falls along a slight arc, as a ball tossed toward the racket face does.
+        float dy = (edgeY(r, s.anchor[4]) - by) * drop - 2.2f * drop * (1 - drop);
+        float t = s.since < BOUNCE * 2 ? s.since : s.t % (BOUNCE * 2 + 1.7f);
+        // Cut a dot wider than the ball, so none of its soft edge stays behind.
+        rad += 1;
+        s.addPart(bx - rad, by - rad, bx + rad, by + rad, bx, by, -t * 420, dx, dy);
+        s.partRound[s.partCount - 1] = true;
+        s.busy = true;
+    }
+
+    /** 🎾: the strings flash where the ball hits them. */
+    static void tennis(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 5) {
+            return;
+        }
+        float period = BOUNCE * 2 + 1.7f;
+        float t = s.since < BOUNCE * 2 ? s.since : s.t % period;
+        if (t >= BOUNCE * 2) {
+            return;
+        }
+        float sinceHit = (t + BOUNCE / 2) % BOUNCE;
+        float flash = 1 - ease(sinceHit / 0.22f);
+        if (flash <= 0) {
+            return;
+        }
+        float sx = edgeX(r, s.anchor[3]);
+        float sy = edgeY(r, s.anchor[4]);
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
-            if (ri < 0 || !r.ink[ri]) {
-                continue;
+            if (ri < 0 || !r.ink[ri] || r.sat[ri] > 0.3f || r.luma[ri] < 0.55f) {
+                continue; // Only the pale strings.
             }
-            float dy = ri / r.size - cy;
-            float chord = (float) Math.sqrt(Math.max(0, radius * radius - dy * dy)) - 1.2f;
-            if (chord < 1) {
-                continue;
-            }
-            float u = (ri % r.size - cx) / chord;
-            if (u <= -1 || u >= 1) {
-                continue; // The rim stays put.
-            }
-            float lon = (float) Math.asin(u) - turn;
-            // The front half of the ball repeats round the back, so the turn never runs out.
-            lon = (float) ((((lon + half) % Math.PI) + Math.PI) % Math.PI) - half;
-            int sx = Math.round(cx + (float) Math.sin(lon) * chord);
-            int src = ri - ri % r.size + Math.max(0, Math.min(r.size - 1, sx));
-            if (r.ink[src]) {
-                s.dots[i] = Scene.alpha(r.rest[src], s.dots[i] >>> 24);
+            float dx = ri % r.size + 0.5f - sx;
+            float dy = ri / r.size + 0.5f - sy;
+            float d = (float) Math.sqrt(dx * dx + dy * dy);
+            if (d < 4.5f) {
+                MusicEffects.lighten(s, i, 0.6f * flash * (1 - d / 4.5f));
             }
         }
+    }
+
+    private static final float DART_FLIGHT = 0.3f;
+    private static final float DART_PULL = 2.3f;
+    private static final float DART_GONE = 2.62f;
+    private static final float DART_PERIOD = 3.4f;
+
+    /**
+     * 🎯: a dart is thrown into the bull ({@code anchor}: the board's centre x, y and radius,
+     * then the directions in degrees the dart and its shadow point from the bull). It flies in
+     * from beyond the frame, slowing a little as darts do, strikes and quivers about its tip,
+     * its shadow closing in and darkening as it lands; later it is drawn back out and lifted
+     * away, and the board waits empty for the next throw.
+     */
+    static void dartsPose(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 5) {
+            return;
+        }
+        float cx = edgeX(r, s.anchor[0]);
+        float cy = edgeY(r, s.anchor[1]);
+        float radius = s.anchor[2] * (r.maxX - r.minX + 1);
+        s.detach(cx, cy, radius, s.anchor[3], s.anchor[4]);
+        float t = s.since < DART_PERIOD ? s.since : s.t % DART_PERIOD;
+        if (t >= DART_GONE) {
+            return; // The empty board.
+        }
+        double along = Math.toRadians(s.anchor[3]);
+        double fall = Math.toRadians(s.anchor[4]);
+        // How far back along its line the dart is, how high off the board, how lit its shadow.
+        float back;
+        float height;
+        float alpha = 1;
+        float wobble = 0;
+        if (t < DART_FLIGHT) {
+            float u = t / DART_FLIGHT;
+            back = 26 * (1 - u) * (1 - 0.35f * u);
+            height = 1 - u;
+            s.busy = true;
+        } else if (t < DART_PULL) {
+            float k = t - DART_FLIGHT;
+            back = 0;
+            height = 0;
+            wobble = 7 * (float) (Math.exp(-k * 6.5) * Math.sin(k * 36));
+            s.busy = k < 0.8f;
+        } else {
+            float u = (t - DART_PULL) / (DART_GONE - DART_PULL);
+            back = 1.6f * easeOut(u);
+            height = 0.25f * u;
+            alpha = 1 - ease(u);
+            s.busy = true;
+        }
+        float dx = (float) Math.cos(along) * back;
+        float dy = (float) Math.sin(along) * back;
+        // The higher the dart, the farther its shadow falls from it, and the fainter it is.
+        float sx = dx + (float) Math.cos(fall) * 7 * height;
+        float sy = dy + (float) Math.sin(fall) * 7 * height;
+        float shade = alpha * (1 - height) * (1 - height);
+        s.addLayer(2, cx, cy, wobble * 0.6f, sx, sy, shade);
+        s.addLayer(1, cx, cy, wobble, dx, dy, alpha);
     }
 
     // -------------------------------------------------------------------------------------
@@ -1516,63 +1648,73 @@ final class ObjectEffects {
         }
     }
 
+    private static final float LOCK_POP = 1.2f;
+    private static final float LOCK_SHUT = 2.9f;
+    private static final float LOCK_HOME = 3.08f;
+    private static final float LOCK_PERIOD = 4.6f;
+
     /**
-     * The padlock opens and closes as a real one does: the shackle ({@code anchor}: the cut
-     * x0, y0, x1, y1, then the long leg's x and the shackle's base y) pops up out of the body,
-     * turns half round on its long leg, so from the front its loop narrows, flips and swings to
-     * the other side, turns back, and drops home with a click.
+     * The padlock opens and closes as a real one does ({@code anchor}: the shackle's hue in
+     * degrees, the long leg's x0 and x1, where the legs end, and how far it lifts in dots). The
+     * key turns, the shackle springs up and its free leg clears the body while the long leg
+     * stays in it, held by the lock; then it is pushed home and snaps shut.
      */
     static void lockPose(Scene s) {
         Regions r = s.regions;
-        if (s.anchor == null || s.anchor.length < 6) {
+        if (s.anchor == null || s.anchor.length < 5) {
             return;
         }
         float t = lockTime(s);
-        float lift, turn;
-        if (t < 0.26f) {
-            lift = easeOut(t / 0.26f);
-            turn = 0;
-        } else if (t < 0.78f) {
-            lift = 1;
-            turn = ease((t - 0.26f) / 0.52f);
-        } else if (t < 1.7f) {
-            lift = 1;
-            turn = 1;
-        } else if (t < 2.2f) {
-            lift = 1;
-            turn = 1 - ease((t - 1.7f) / 0.5f);
-        } else if (t < 2.32f) {
-            lift = 1 - easeIn((t - 2.2f) / 0.12f);
-            turn = 0;
+        float lift;
+        if (t < LOCK_POP) {
+            return;
+        } else if (t < LOCK_SHUT) {
+            // Sprung: up fast, a touch past, settling.
+            lift = spring((t - LOCK_POP) / 0.45f);
+        } else if (t < LOCK_HOME) {
+            // Pushed home, quickening till it catches.
+            lift = 1 - easeIn((t - LOCK_SHUT) / (LOCK_HOME - LOCK_SHUT));
+        } else if (t < LOCK_HOME + 0.16f) {
+            // It catches with a little rebound.
+            lift = 0.1f * (float) Math.sin(Math.PI * (t - LOCK_HOME) / 0.16f);
         } else {
             return;
         }
         s.busy = true;
-        float px = edgeX(r, s.anchor[4]);
-        float py = edgeY(r, s.anchor[5]);
-        s.addPart(edgeX(r, s.anchor[0]), edgeY(r, s.anchor[1]), edgeX(r, s.anchor[2]),
-                edgeY(r, s.anchor[3]), px, py, 0, 0, -2.4f * lift);
-        s.turnLastPart((float) Math.cos(turn * Math.PI * 0.7));
+        float up = -s.anchor[4] * lift;
+        s.liftHue(s.anchor[0]);
+        s.addLayer(1, 0, 0, 0, 0, up, 1);
+        // The long leg runs on down into the body: below the lifted shackle it is still there.
+        if (up < 0) {
+            float end = edgeY(r, s.anchor[3]);
+            s.addLayerPiece(1, edgeX(r, s.anchor[1]), end + up - 0.5f, edgeX(r, s.anchor[2]),
+                    end + 0.5f, 0, 0);
+        }
     }
 
+    /** The key turning in the keyhole before it opens, and its glint as it snaps shut. */
     static void lock(Scene s) {
         Regions r = s.regions;
         float t = lockTime(s);
-        if (t < 2.32f || t > 2.7f) {
+        float k;
+        if (t > LOCK_POP - 0.35f && t < LOCK_POP) {
+            k = 0.45f * (float) Math.sin(Math.PI * (t - LOCK_POP + 0.35f) / 0.35f);
+        } else if (t > LOCK_HOME && t < LOCK_HOME + 0.4f) {
+            k = 0.6f * (1 - ease((t - LOCK_HOME) / 0.4f));
+        } else {
             return;
         }
-        float k = 1 - (t - 2.32f) / 0.38f;
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
             if (ri >= 0 && r.ink[ri] && r.luma[ri] < 0.4f) {
-                MusicEffects.lighten(s, i, 0.6f * k); // The keyhole glints: locked.
+                MusicEffects.lighten(s, i, k);
             }
         }
     }
 
     private static float lockTime(Scene s) {
-        float period = 5f;
-        return s.since < period ? s.since : (s.t + Scene.hash(s.seed, 2, 2) * period) % period;
+        return s.since < LOCK_PERIOD ? s.since
+                : (s.t + Scene.hash(s.seed, 2, 2) * LOCK_PERIOD) % LOCK_PERIOD;
     }
 
     // -------------------------------------------------------------------------------------

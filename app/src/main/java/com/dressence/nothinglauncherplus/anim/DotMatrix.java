@@ -74,11 +74,20 @@ final class DotMatrix {
     private final Matrix pose = new Matrix();
     private final Matrix shaderMatrix = new Matrix();
     private final Paint glyphPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private final Paint shadowPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint litPaint = new Paint();
     private final Paint unlitPaint = new Paint();
     private final Rect square = new Rect();
     private Bitmap glyph;
     private String glyphKey;
+    /** The turning ball, if the effect has one (see #drawSphere), and what it was made for. */
+    private SphereSurface sphere;
+    private int[] spherePixels;
+    private Bitmap sphereFrame;
+    private float sphereCx;
+    private float sphereCy;
+    private float sphereR;
+    private boolean sphereRoll;
 
     /** The emoji at rest, the regions effects work on, and the frame they paint. */
     private final int[] restDots = new int[GRID * GRID];
@@ -129,6 +138,8 @@ final class DotMatrix {
         litPaint.setFilterBitmap(false);
         unlitPaint.setColor(darkBackground ? UNLIT_DARK : UNLIT_LIGHT);
         labelPaint.setFilterBitmap(false);
+        shadowPaint.setXfermode(new android.graphics.PorterDuffXfermode(
+                android.graphics.PorterDuff.Mode.SRC_ATOP));
         // Dark glass on the tile in dark mode; a faint smoked glass in light mode.
         glassPaint.setColor(darkBackground ? 0xF0000000 : 0x1A000000);
         rimPaint.setStyle(Paint.Style.STROKE);
@@ -143,6 +154,8 @@ final class DotMatrix {
     void setText(CharSequence text, int color) {
         glyph = text == null || text.length() == 0 ? null : glyph(text.toString(), color);
         glyphKey = color + "|" + text;
+        sphere = null;
+        sphereFrame = null;
         // The resting frame, once: what effects find their regions in and paint over.
         rasterize(null);
         System.arraycopy(dots, 0, restDots, 0, dots.length);
@@ -171,6 +184,8 @@ final class DotMatrix {
         }
         boolean effects = effect != DotEffect.NONE && scene.regions != null;
         scene.partCount = 0;
+        scene.detached = false;
+        scene.sphereTurn = Float.NaN;
         scene.busy = false;
         if (effects) {
             scene.t = time;
@@ -180,7 +195,8 @@ final class DotMatrix {
             scene.seed = seed;
             effect.pose(scene);
         }
-        boolean still = p.isRest() && scene.partCount == 0;
+        boolean still = p.isRest() && scene.partCount == 0 && !scene.detached
+                && scene.sphereTurn != scene.sphereTurn;
         if (still) {
             System.arraycopy(restDots, 0, dots, 0, dots.length);
         } else {
@@ -224,7 +240,9 @@ final class DotMatrix {
                 pose.postTranslate(p.tx * RENDER, p.ty * RENDER);
             }
             glyphPaint.setAlpha(p == null ? 255 : Math.round(Math.min(1, p.alpha) * 255));
-            if (p == null || scene.partCount == 0) {
+            if (p != null && scene.sphereTurn == scene.sphereTurn) {
+                drawSphere();
+            } else if (p == null || scene.partCount == 0 && !scene.detached) {
                 renderCanvas.drawBitmap(glyph, pose, glyphPaint);
             } else {
                 drawParts();
@@ -247,13 +265,35 @@ final class DotMatrix {
         partMatrix.postConcat(pose);
         c.save();
         c.concat(partMatrix);
+        Bitmap[] layers = scene.detached ? detached() : null;
         c.save();
         for (int k = 0; k < scene.partCount; k++) {
-            clipPart(c, k, true);
+            if (scene.partLayer[k] == 0) {
+                clipPart(c, k, true);
+            }
         }
-        c.drawBitmap(glyph, restPose, glyphPaint);
+        c.drawBitmap(layers != null ? layers[0] : glyph, restPose, glyphPaint);
         c.restore();
+        int alpha = glyphPaint.getAlpha();
         for (int k = 0; k < scene.partCount; k++) {
+            if (scene.partLayer[k] != 0) {
+                if (layers == null) {
+                    continue;
+                }
+                c.save();
+                c.translate(scene.partShift[k * 2] * SUPERSAMPLE,
+                        scene.partShift[k * 2 + 1] * SUPERSAMPLE);
+                c.rotate(scene.partAngle[k], scene.partPivot[k * 2] * SUPERSAMPLE,
+                        scene.partPivot[k * 2 + 1] * SUPERSAMPLE);
+                clipPart(c, k, false);
+                // A shadow only darkens what is there: it never falls on thin air.
+                Paint paint = scene.partLayer[k] == 2 ? shadowPaint : glyphPaint;
+                paint.setAlpha(Math.round(alpha * scene.partAlpha[k]));
+                c.drawBitmap(layers[scene.partLayer[k]], restPose, paint);
+                glyphPaint.setAlpha(alpha);
+                c.restore();
+                continue;
+            }
             c.save();
             c.translate(scene.partShift[k * 2] * SUPERSAMPLE, scene.partShift[k * 2 + 1] * SUPERSAMPLE);
             c.rotate(scene.partAngle[k], scene.partPivot[k * 2] * SUPERSAMPLE,
@@ -275,6 +315,45 @@ final class DotMatrix {
             }
         }
         c.restore();
+    }
+
+    /** The glyph split by the effect's {@link Scene#detach}: board, object, shadow. */
+    private Bitmap[] detached() {
+        float[] d = scene.detachSpec;
+        if (scene.detachByHue) {
+            String key = glyphKey + "|hue|" + d[0];
+            Bitmap[] cached = SPLITS.get(key);
+            if (cached == null) {
+                int[] px = new int[GLYPH * GLYPH];
+                glyph.getPixels(px, 0, GLYPH, 0, 0, GLYPH, GLYPH);
+                Detach split = Detach.byHue(px, GLYPH, d[0]);
+                cached = new Bitmap[] {
+                        Bitmap.createBitmap(split.board, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                        Bitmap.createBitmap(split.object, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                        Bitmap.createBitmap(split.shadow, GLYPH, GLYPH, Bitmap.Config.ARGB_8888)};
+                SPLITS.put(key, cached);
+            }
+            return cached;
+        }
+        float[] centre = {d[0] * SUPERSAMPLE, d[1] * SUPERSAMPLE};
+        restInverse.mapPoints(centre);
+        float radius = restInverse.mapRadius(d[2] * SUPERSAMPLE);
+        String key = glyphKey + "|detach|" + Math.round(centre[0] * 4) + ","
+                + Math.round(centre[1] * 4) + "," + Math.round(radius * 4) + "|" + d[3] + ","
+                + d[4];
+        Bitmap[] cached = SPLITS.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        int[] px = new int[GLYPH * GLYPH];
+        glyph.getPixels(px, 0, GLYPH, 0, 0, GLYPH, GLYPH);
+        Detach split = new Detach(px, GLYPH, centre[0], centre[1], radius, d[3], d[4]);
+        Bitmap[] layers = {
+                Bitmap.createBitmap(split.board, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                Bitmap.createBitmap(split.object, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                Bitmap.createBitmap(split.shadow, GLYPH, GLYPH, Bitmap.Config.ARGB_8888)};
+        SPLITS.put(key, layers);
+        return layers;
     }
 
     /**
@@ -361,6 +440,40 @@ final class DotMatrix {
                 Bitmap.createBitmap(kept, GLYPH, GLYPH, Bitmap.Config.ARGB_8888)};
         SPLITS.put(key, split);
         return split;
+    }
+
+    /**
+     * Draws the emoji with its ball turned (see SphereSurface): the resting frame with the
+     * sphere turned in it, under the emoji's own pose.
+     */
+    private void drawSphere() {
+        float cx = scene.sphereX * SUPERSAMPLE;
+        float cy = scene.sphereY * SUPERSAMPLE;
+        float radius = scene.sphereRadius * SUPERSAMPLE;
+        if (sphere == null || sphereCx != cx || sphereCy != cy || sphereR != radius
+                || sphereRoll != scene.sphereRoll) {
+            int[] rest = new int[RENDER * RENDER];
+            render.eraseColor(Color.TRANSPARENT);
+            renderCanvas.drawBitmap(glyph, restPose, glyphPaint);
+            render.getPixels(rest, 0, RENDER, 0, 0, RENDER, RENDER);
+            render.eraseColor(Color.TRANSPARENT);
+            sphere = new SphereSurface(rest, RENDER, cx, cy, radius, scene.sphereRoll);
+            sphereRoll = scene.sphereRoll;
+            spherePixels = rest;
+            sphereFrame = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
+            sphereCx = cx;
+            sphereCy = cy;
+            sphereR = radius;
+        }
+        sphere.render(scene.sphereTurn, spherePixels);
+        sphereFrame.setPixels(spherePixels, 0, RENDER, 0, 0, RENDER, RENDER);
+        // Resting supersampled coordinates to posed ones.
+        partMatrix.set(restInverse);
+        partMatrix.postConcat(pose);
+        renderCanvas.save();
+        renderCanvas.concat(partMatrix);
+        renderCanvas.drawBitmap(sphereFrame, 0, 0, glyphPaint);
+        renderCanvas.restore();
     }
 
     /** Clips to part {@code k} ({@code out}: everything but it). */

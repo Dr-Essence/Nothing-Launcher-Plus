@@ -1090,14 +1090,14 @@
 🥇	5	POP	SPARKLE	1st place medal
 🥈	5	POP	SPARKLE	2nd place medal
 🥉	5	POP	SPARKLE	3rd place medal
-⚽️	5	BOUNCE	GLOBE	soccer ball
-⚾️	5	BOUNCE	GLOBE	baseball
-🥎	5	BOUNCE	GLOBE	softball
-🏀	5	BOUNCE	GLOBE	basketball
-🏐	5	BOUNCE	GLOBE	volleyball
-🏈	5	BOUNCE	GLOBE	american football
-🏉	5	BOUNCE	GLOBE	rugby football
-🎾	5	BOUNCE	GLOBE	tennis
+⚽️	5	BOUNCE	GLOBE:1	soccer ball
+⚾️	5	BOUNCE	GLOBE:1	baseball
+🥎	5	BOUNCE	GLOBE:1	softball
+🏀	5	BOUNCE	GLOBE:1	basketball
+🏐	5	BOUNCE	GLOBE:1	volleyball
+🏈	5	BOUNCE	GLOBE:1	american football
+🏉	5	BOUNCE	GLOBE:1	rugby football
+🎾	5	BOUNCE	TENNIS:0.17,0.16,0.15,0.66,0.35	tennis
 🥏	5	BOUNCE	SHINE	flying disc
 🎳	5	BOUNCE	SHINE	bowling
 🏏	5	BOUNCE	SHINE	cricket game
@@ -1117,7 +1117,7 @@
 🎿	5	BOUNCE	SHINE	skis
 🛷	5	BOUNCE	SHINE	sled
 🥌	5	BOUNCE	SHINE	curling stone
-🎯	5	RATTLE	SIGNAL:0.42,0.55	bullseye
+🎯	5	RATTLE	DARTS:0.4625,0.5,0.4625,-29,31	bullseye
 🪀	5	BOUNCE	SPARKLE	yo-yo
 🪁	5	FLY	SPARKLE	kite
 🔫	5	HAMMER	DRIP	water pistol
@@ -1331,7 +1331,7 @@
 🗃️	6	HOP	SHINE	card file box
 🗄️	6	HOP	SHINE	file cabinet
 🗑️	6	HOP	SHINE	wastebasket
-🔒️	6	UNLOCK	LOCK:0.13,-0.02,0.92,0.37,0.82,0.37	locked
+🔒️	6	UNLOCK	LOCK:200,0.1,0.34,0.47,2.6	locked
 🔓️	6	UNLOCK	SHINE	unlocked
 🔏	6	UNLOCK	SHINE	locked with pen
 🔐	6	UNLOCK	SHINE	locked with key
