@@ -145,14 +145,16 @@ final class ObjectEffects {
     private static final float TRAVEL = 0.42f;
 
     /**
-     * Someone plays: the stick (cut from the drawing above its collar, {@code anchor}: pivot
-     * x, y, then the cut x0, y0, x1, y1) is pushed from one direction to the next, springing
-     * there with a touch of overshoot, tilting left and right and leaning towards or away from
-     * us, often back to centre. It is moved before the emoji becomes dots, so it stays smooth.
+     * Someone plays: the stick and its ball ({@code anchor}: the pivot x, y inside the boot,
+     * the ball's lowest row, the stick's hue and the row of the boot's opening) are lifted off
+     * the drawing by their own shapes and pushed from one direction to the next, springing
+     * there with a touch of overshoot. The stick turns about its pivot inside the boot and
+     * shows only above the opening, so it slides in and out of the boot as it tilts rather
+     * than bending, and nothing of the boot or the background goes with it.
      */
     static void joystickPose(Scene s) {
         Regions r = s.regions;
-        if (s.anchor == null || s.anchor.length < 6) {
+        if (s.anchor == null || s.anchor.length < 5) {
             return;
         }
         int move = (int) (s.t / MOVE);
@@ -161,10 +163,9 @@ final class ObjectEffects {
         float angle = lerp(stickAngle(move - 1, s.seed), stickAngle(move, s.seed), k);
         float lean = lerp(stickLean(move - 1, s.seed), stickLean(move, s.seed), k);
         s.busy = local < TRAVEL + 0.08f;
-        float px = edgeX(r, s.anchor[0]);
-        float py = edgeY(r, s.anchor[1]);
-        s.addPart(edgeX(r, s.anchor[2]), edgeY(r, s.anchor[3]), edgeX(r, s.anchor[4]),
-                edgeY(r, s.anchor[5]), px, py, angle, 0, lean);
+        s.liftStick(edgeY(r, s.anchor[2]), s.anchor[3], edgeY(r, s.anchor[4]));
+        s.tiltLayer(edgeX(r, s.anchor[0]), edgeY(r, s.anchor[1]), angle, 0, lean,
+                edgeY(r, s.anchor[4]));
     }
 
     /** The fire button: pressed down for a moment, then lit, on the moves that fire. */
@@ -177,7 +178,8 @@ final class ObjectEffects {
             return;
         }
         s.busy = true;
-        float lowest = s.anchor != null && s.anchor.length >= 6 ? edgeY(r, s.anchor[5]) : 0;
+        // Below the boot's opening: the fire button, not the ball.
+        float lowest = s.anchor != null && s.anchor.length >= 5 ? edgeY(r, s.anchor[4]) : 0;
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
             if (ri < 0 || ri / r.size < lowest || !r.ink[ri] || r.sat[ri] < 0.5f
@@ -1999,12 +2001,15 @@ final class ObjectEffects {
 
     /** Wire globe: the meridians' spacing, and the parallels' latitudes, in degrees. */
     private static final float MERIDIANS = 60;
-    private static final float[] PARALLELS = {-32, 0, 32};
+    private static final float[] PARALLELS = {-40, 0, 40};
+    /** How bright the far side of the wire globe shows through, against the near side. */
+    private static final float FAR_SIDE = 0.3f;
 
     /**
-     * 🌐 turning ({@code anchor} 2): the wire globe is drawn afresh as a real sphere, so every
-     * line keeps the same width: the rim, the parallels (straight, as seen from the equator)
-     * and the meridians, which travel round and fade as they reach the edge.
+     * 🌐 turning ({@code anchor} 2): a see-through wire globe drawn afresh as a real sphere,
+     * every line one dot fine: the rim, the parallels (straight, as seen from the equator)
+     * and the meridians, which turn right round it, bright as they pass in front, dim as they
+     * go round the back, so each one is followed all the way.
      */
     static void wireGlobe(Scene s) {
         Regions r = s.regions;
@@ -2027,53 +2032,130 @@ final class ObjectEffects {
                 s.dots[i] = 0;
             }
         }
-        // The width the lines show at; the drawing pads each line by a soft edge of its own.
-        float line = Math.max(1.8f, radius * 0.14f);
-        // The drawing works in dot indices (a dot's centre is half a dot in): the globe's own
-        // centre in those terms, so it sits exactly where the emoji's circle is.
+        // The drawing works in dot indices (a dot's centre is half a dot in).
         float ox = cx - 0.5f;
         float oy = cy - 0.5f;
-        float stroke = line - 0.6f;
-        float inner = radius - line * 0.5f - 0.3f;
-        s.ring(ox, oy, inner, stroke - 0.1f, color, 1);
-        // Parallels: straight lines across, ending at the rim.
+        float inner = radius - 0.8f;
+        float fine = 0.75f;
+        float turn = (float) Math.toDegrees(s.t * 0.5f + 2 * Math.PI
+                * ease(Math.min(1, s.since / 1.6f)));
+        // Meridians: the far side first, so the near side is drawn over it.
+        for (int pass = 0; pass < 2; pass++) {
+            for (float m = 0; m < 360; m += MERIDIANS) {
+                double lon = Math.toRadians(m + turn);
+                float facing = (float) Math.cos(lon);
+                if ((facing >= 0) != (pass == 1)) {
+                    continue;
+                }
+                // Brightening smoothly as it comes round the edge to the front.
+                float k = FAR_SIDE + (1 - FAR_SIDE) * ease((facing + 0.25f) / 0.5f);
+                float sx = (float) Math.sin(lon) * inner;
+                float px = ox;
+                float py = oy - inner;
+                for (int j = 1; j <= 24; j++) {
+                    double lat = Math.PI / 2 - Math.PI * j / 24;
+                    float x = ox + sx * (float) Math.cos(lat);
+                    float y = oy - (float) Math.sin(lat) * inner;
+                    float len = (float) Math.hypot(x - px, y - py);
+                    if (len > 0.01f) {
+                        s.strip((x + px) / 2, (y + py) / 2, len + 0.1f, fine,
+                                (float) Math.atan2(y - py, x - px), color, k);
+                    }
+                    px = x;
+                    py = y;
+                }
+            }
+        }
+        // Parallels: on dot rows, one dot fine, from rim to rim.
         for (float lat : PARALLELS) {
             double l = Math.toRadians(lat);
-            // On a row boundary, so each parallel is two whole rows of dots, crisp and equal.
-            float y = Math.round(cy - (float) Math.sin(l) * inner) - 0.5f;
-            float half = (float) Math.cos(l) * inner;
-            s.strip(ox, y, half * 2 - line, stroke, 0, color, 1);
+            float y = Math.round(oy - (float) Math.sin(l) * inner);
+            float half = (float) Math.sqrt(Math.max(0, inner * inner - (y - oy) * (y - oy)));
+            s.strip(ox, y, half * 2, fine, 0, color, 1);
         }
-        // Meridians: half ellipses, those on the near side, fading in and out at the rim.
-        float turn = (float) Math.toDegrees(s.t * 0.45f + 2 * Math.PI
-                * ease(Math.min(1, s.since / 1.6f)));
-        for (float m = 0; m < 360; m += MERIDIANS) {
-            double lon = Math.toRadians(m + turn);
-            float facing = (float) Math.cos(lon);
-            if (facing <= 0) {
+        s.ring(ox, oy, inner, 1.0f, color, 1);
+    }
+
+    /** How far a toolbox's lid is open (0 shut, 1 swung back), with a little settle. */
+    private static float lidOpen(Scene s) {
+        float t = s.since < 4f ? s.since : (s.t + Scene.hash(s.seed, 9, 9) * 5.2f) % 5.2f;
+        if (t < 1.2f) {
+            return 0;
+        }
+        if (t < 1.75f) {
+            return spring((t - 1.2f) / 0.55f);
+        }
+        if (t < 3.3f) {
+            return 1;
+        }
+        if (t < 3.7f) {
+            return 1 - easeIn((t - 3.3f) / 0.4f);
+        }
+        // Shut with a small bounce as it lands.
+        return t < 3.86f ? 0.08f * (float) Math.sin(Math.PI * (t - 3.7f) / 0.16f) : 0;
+    }
+
+    /**
+     * 🧰: the lid ({@code anchor}: its hinge row, the seam row) swings back on its hinge; seen
+     * from the front its face shortens up toward the hinge, showing the dark inside of the box
+     * with the tools in it; then it drops shut with a small bounce.
+     */
+    static void toolboxPose(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 2) {
+            return;
+        }
+        float open = lidOpen(s);
+        if (open <= 0) {
+            return;
+        }
+        s.busy = true;
+        float hinge = edgeY(r, s.anchor[0]);
+        float seam = edgeY(r, s.anchor[1]);
+        s.addPart(-1, -1, r.size + 1, seam, (r.minX + r.maxX + 1) / 2f, hinge, 0, 0, 0);
+        s.swingLastPart((float) Math.cos(Math.toRadians(68 * open)));
+    }
+
+    /** The inside of the open toolbox, and the tools standing in it. */
+    static void toolbox(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 2 || lidOpen(s) <= 0) {
+            return;
+        }
+        float hinge = edgeY(r, s.anchor[0]);
+        float seam = edgeY(r, s.anchor[1]);
+        // The box's own colour, from its front just below the seam.
+        int bx = Math.round((r.minX + r.maxX) / 2f);
+        int by = Math.min(r.size - 1, Math.round(seam) + 3);
+        int box = r.rest[by * r.size + bx] | 0xFF000000;
+        float w = r.maxX - r.minX + 1;
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0 || !r.ink[ri] || (s.dots[i] >>> 24) > 110) {
                 continue;
             }
-            // Gone before it reaches the rim, so it never doubles it.
-            float strength = ease((facing - 0.3f) / 0.4f);
-            if (strength <= 0) {
+            int x = ri % r.size;
+            int y = ri / r.size;
+            if (y < hinge || y >= seam) {
                 continue;
             }
-            float sx = (float) Math.sin(lon) * inner;
-            // From where the rim begins at the top to where it begins at the bottom: the
-            // meridians stop short of the poles rather than bunching into a knot there.
-            double reach = Math.asin(Math.min(1, (inner - line * 0.8f) / inner));
-            float px = ox + sx * (float) Math.cos(reach);
-            float py = oy - (float) Math.sin(reach) * inner;
-            for (int k = 1; k <= 20; k++) {
-                double lat = reach - 2 * reach * k / 20;
-                float x = ox + sx * (float) Math.cos(lat);
-                float y = oy - (float) Math.sin(lat) * inner;
-                float len = (float) Math.hypot(x - px, y - py);
-                s.strip((x + px) / 2, (y + py) / 2, len, stroke,
-                        (float) Math.atan2(y - py, x - px), color, strength);
-                px = x;
-                py = y;
+            // The back wall, in shadow, darker toward the bottom of the box.
+            float depth = (y - hinge) / Math.max(1, seam - hinge);
+            int c = Scene.scale(box, 0.45f - 0.25f * depth);
+            // A wrench (a shaft and an open head) and a screwdriver (handle, then shaft)
+            // standing in it.
+            float fx = (x + 0.5f - r.minX) / w;
+            float up = seam - y;
+            if (Math.abs(fx - 0.33f) < 0.035f && up <= 6
+                    || up > 5 && up <= 7 && Math.abs(fx - 0.33f) < 0.09f
+                    && Math.abs(fx - 0.33f) > 0.025f) {
+                c = 0xFFB8C0C6;
+            } else if (Math.abs(fx - 0.64f) < 0.05f && up <= 3) {
+                c = 0xFFFFC52E;
+            } else if (Math.abs(fx - 0.64f) < 0.02f && up > 3 && up <= 6) {
+                c = 0xFFC8CED2;
             }
+            s.dots[i] = Scene.alpha(c, r.rest[ri] >>> 24);
         }
     }
 

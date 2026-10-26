@@ -48,6 +48,37 @@ final class Detach {
             float d = Math.abs(hsv[0] - hue);
             piece[i] = hsv[1] > 0.1f && Math.min(d, 360 - d) < 32;
         }
+        return fromPiece(pixels, size, piece);
+    }
+
+    /**
+     * Lifts a stick and its knob (a joystick's): everything above {@code knobBottom}, and
+     * below it the pixels of hue {@code hue} down to {@code cut} (pixel rows).
+     */
+    static Detach stick(int[] pixels, int size, float knobBottom, float hue, float cut) {
+        int n = size * size;
+        boolean[] piece = new boolean[n];
+        float[] hsv = new float[3];
+        for (int i = 0; i < n; i++) {
+            int c = pixels[i];
+            int y = i / size;
+            if ((c >>> 24) < 24 || y > cut) {
+                continue;
+            }
+            if (y < knobBottom) {
+                piece[i] = true;
+                continue;
+            }
+            rgbToHsv(c, hsv);
+            float d = Math.abs(hsv[0] - hue);
+            piece[i] = hsv[1] > 0.1f && Math.min(d, 360 - d) < 30;
+        }
+        return fromPiece(pixels, size, piece);
+    }
+
+    /** Lifts {@code piece} off the drawing (see byHue). */
+    private static Detach fromPiece(int[] pixels, int size, boolean[] piece) {
+        int n = size * size;
         // Grown a little (a third of a dot), so the blend where the piece meets what it lies
         // on goes with it rather than staying behind as a faint ghost.
         boolean[] grown = piece;

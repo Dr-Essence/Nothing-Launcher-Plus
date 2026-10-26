@@ -1125,7 +1125,7 @@
 🔮	5	TWINKLE	MAGIC	crystal ball
 🪄	5	TWINKLE	TWINKLE	magic wand
 🎮️	5	BUZZ	CONTROLLER	video game
-🕹️	5	SETTLE	JOYSTICK:0.5,0.574,0.25,-0.05,0.75,0.444	joystick
+🕹️	5	SETTLE	JOYSTICK:0.5,0.6,0.3,195,0.52	joystick
 🎰	5	RATTLE	SLOTS:0.15,0.48,0.92,0.7	slot machine
 🎲	5	RATTLE	GLOBE:1	game die
 🧩	5	RATTLE	SPARKLE	puzzle piece
@@ -1360,7 +1360,7 @@
 ⛓️‍💥	6	HAMMER	SHINE	broken chain
 ⛓️	6	HAMMER	SHINE	chains
 🪝	6	HAMMER	SHINE	hook
-🧰	6	HAMMER	SHINE	toolbox
+🧰	6	HAMMER	TOOLBOX:0.15,0.55	toolbox
 🧲	6	PULSE	TWINKLE	magnet
 🪜	6	HAMMER	SHINE	ladder
 🪏	6	HAMMER	SHINE	shovel

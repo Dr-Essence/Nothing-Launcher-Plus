@@ -71,17 +71,17 @@ plus your folders.
   shadowed inside and the papers in it, then closes again (📂 closes up and reopens). It is
   drawn from the emoji's own dots, so it never changes size; tap it and it opens at once.
 - **Objects do what the real thing does**: 🎮 buttons are pressed in combos and the d-pad
-  clicks; 🕹️'s stick tilts on its base with spring physics and the fire button flashes;
+  clicks; 🕹️'s stick and ball, lifted by their own shapes, tilt in and out of the boot with spring physics and the fire button flashes;
   📷 📸 press the shutter, close iris blades over the glass only and fire a flash bloom;
   📹 🎥 pulse their red REC lamp; 📽️'s reels turn under their arms; 🎬 snaps shut; 🔒 opens
   like a real padlock, the free leg popping out while the long leg stays in the body, then
   snaps shut; 🎯 has a dart thrown into the bull, quivering as it lands with its shadow, then
   pulled out; ⚽ 🏀 ⚾ 🏐 roll with their shading held still and 🏈 🏉 tumble end over end;
-  🎾's ball is bounced on the racket; 🎲 tumbles; 🌍 🌎 🌏 turn as globes and 🌐 is drawn afresh as a turning wire globe, every line the same width; ⌛ ⏳ drain and
+  🎾's ball is bounced on the racket; 🎲 tumbles; 🌍 🌎 🌏 turn as globes and 🌐 is drawn afresh as a see-through wire globe whose meridians go right round, bright in front and dim behind; ⌛ ⏳ drain and
   are turned over; 🎠's horse rides its pole; 🎡 turns behind its legs; ☯️ ☸️ 🔁 turn on
   their tiles; 🚓 🚑 🚒 flash their roof lights; 🚘 🚖 🚍 flash their headlights; 🛸's rim
   lights chase; 🚲's spoked wheels turn; 🚦 🚥 cycle with a glow; ☎️ rattles its handset,
-  📞 ⏰ ring, 🛎️'s plunger is struck; 🔌 sparks between its pins; ⚛️'s electrons orbit;
+  📞 ⏰ ring, 🛎️'s plunger is struck; 🧰's lid swings open on its hinge, showing the tools inside, and drops shut; 🔌 sparks between its pins; ⚛️'s electrons orbit;
   ⚡ 🌩️ 💥 flash; 📶 🛜 fill bar by bar; buttons and keycaps are tapped; 👾 marches; 🎚️'s
   fader slides; 🕰️ ⌚ and the clocks tick their second hand; 💬 types; 📖 📝 📅 📈 📊 turn,
   write, flip, draw and grow; 🏭 🚂 smoke from the chimney, ✈️ trails; 🚀 throws sparks;

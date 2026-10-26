@@ -1189,6 +1189,19 @@ public enum DotEffect {
         }
     },
 
+    /** 🧰: the lid swings open, showing the tools inside, and drops shut. */
+    TOOLBOX {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.toolboxPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.toolbox(s);
+        }
+    },
+
     /** 🎠: the horse rides up and down its pole. */
     CAROUSEL {
         @Override

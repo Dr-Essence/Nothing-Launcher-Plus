@@ -285,6 +285,9 @@ final class DotMatrix {
                     continue;
                 }
                 c.save();
+                if (scene.partClipFixed[k]) {
+                    clipPart(c, k, false);
+                }
                 c.translate(scene.partShift[k * 2] * SUPERSAMPLE,
                         scene.partShift[k * 2 + 1] * SUPERSAMPLE);
                 c.rotate(scene.partAngle[k], scene.partPivot[k * 2] * SUPERSAMPLE,
@@ -294,7 +297,9 @@ final class DotMatrix {
                             scene.partPivot[k * 2] * SUPERSAMPLE,
                             scene.partPivot[k * 2 + 1] * SUPERSAMPLE);
                 }
-                clipPart(c, k, false);
+                if (!scene.partClipFixed[k]) {
+                    clipPart(c, k, false);
+                }
                 // A shadow only darkens what is there: it never falls on thin air.
                 Paint paint = scene.partLayer[k] == 2 ? shadowPaint : glyphPaint;
                 paint.setAlpha(Math.round(alpha * scene.partAlpha[k]));
@@ -307,8 +312,9 @@ final class DotMatrix {
             c.translate(scene.partShift[k * 2] * SUPERSAMPLE, scene.partShift[k * 2 + 1] * SUPERSAMPLE);
             c.rotate(scene.partAngle[k], scene.partPivot[k * 2] * SUPERSAMPLE,
                     scene.partPivot[k * 2 + 1] * SUPERSAMPLE);
-            if (scene.partScaleX[k] != 1) {
-                c.scale(scene.partScaleX[k], 1, scene.partPivot[k * 2] * SUPERSAMPLE,
+            if (scene.partScaleX[k] != 1 || scene.partScaleY[k] != 1) {
+                c.scale(scene.partScaleX[k], scene.partScaleY[k],
+                        scene.partPivot[k * 2] * SUPERSAMPLE,
                         scene.partPivot[k * 2 + 1] * SUPERSAMPLE);
             }
             clipPart(c, k, false);
@@ -329,6 +335,24 @@ final class DotMatrix {
     /** The glyph split by the effect's {@link Scene#detach}: board, object, shadow. */
     private Bitmap[] detached() {
         float[] d = scene.detachSpec;
+        if (scene.detachStick) {
+            float[] rows = {0, d[0] * SUPERSAMPLE, 0, d[2] * SUPERSAMPLE};
+            restInverse.mapPoints(rows);
+            String key = glyphKey + "|stick|" + Math.round(rows[1]) + "," + d[1] + ","
+                    + Math.round(rows[3]);
+            Bitmap[] cached = SPLITS.get(key);
+            if (cached == null) {
+                int[] px = new int[GLYPH * GLYPH];
+                glyph.getPixels(px, 0, GLYPH, 0, 0, GLYPH, GLYPH);
+                Detach split = Detach.stick(px, GLYPH, rows[1], d[1], rows[3]);
+                cached = new Bitmap[] {
+                        Bitmap.createBitmap(split.board, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                        Bitmap.createBitmap(split.object, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                        Bitmap.createBitmap(split.shadow, GLYPH, GLYPH, Bitmap.Config.ARGB_8888)};
+                SPLITS.put(key, cached);
+            }
+            return cached;
+        }
         if (scene.detachByDark) {
             float[] box = {d[0] * SUPERSAMPLE, d[1] * SUPERSAMPLE, d[2] * SUPERSAMPLE,
                     d[3] * SUPERSAMPLE};

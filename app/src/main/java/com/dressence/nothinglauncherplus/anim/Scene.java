@@ -37,6 +37,8 @@ final class Scene {
     final float[] partShift = new float[MAX_PARTS * 2];
     /** Per part: horizontal scale about the pivot (a turn about a vertical axis: cos θ). */
     final float[] partScaleX = new float[MAX_PARTS];
+    /** Per part: vertical scale about the pivot (a lid swinging back: cos θ). */
+    final float[] partScaleY = new float[MAX_PARTS];
     /**
      * Per part: the hue (degrees) of something drawn over it that must stay put while it turns
      * (a projector's arm across its reel), or -1; and the part's n-fold symmetry, which fills
@@ -59,6 +61,10 @@ final class Scene {
     boolean detachByHue;
     /** True when dark pieces inside a box are lifted ({@link #liftDark}). */
     boolean detachByDark;
+    /** True when a stick and its knob are lifted ({@link #liftStick}). */
+    boolean detachStick;
+    /** Per part: clipped where the board is (a fixed opening), not where the part has gone. */
+    final boolean[] partClipFixed = new boolean[MAX_PARTS];
     /** How far the board itself (what is left when a piece is lifted) moves down, in dots. */
     float boardDy;
 
@@ -69,6 +75,7 @@ final class Scene {
      */
     void detach(float cx, float cy, float radius, float objectDegrees, float shadowDegrees) {
         detached = true;
+        detachStick = false;
         detachByHue = false;
         detachByDark = false;
         detachSpec[0] = cx;
@@ -84,6 +91,7 @@ final class Scene {
      */
     void liftHue(float hue) {
         detached = true;
+        detachStick = false;
         detachByDark = false;
         detachByHue = true;
         detachSpec[0] = hue;
@@ -95,12 +103,43 @@ final class Scene {
      */
     void liftDark(float x0, float y0, float x1, float y1) {
         detached = true;
+        detachStick = false;
         detachByHue = false;
         detachByDark = true;
         detachSpec[0] = x0;
         detachSpec[1] = y0;
         detachSpec[2] = x1;
         detachSpec[3] = y1;
+    }
+
+    /**
+     * Lifts a stick and its knob as layer 1: everything above {@code knobBottom}, then the
+     * pieces of hue {@code hue} down to {@code cut} (resting grid rows).
+     */
+    void liftStick(float knobBottom, float hue, float cut) {
+        detached = true;
+        detachByHue = false;
+        detachByDark = false;
+        detachStick = true;
+        detachSpec[0] = knobBottom;
+        detachSpec[1] = hue;
+        detachSpec[2] = cut;
+    }
+
+    /**
+     * Turns layer 1 about (pivotX, pivotY) and shifts it, showing it only above row
+     * {@code opening} of the board: a stick tilting in the hole it comes out of.
+     */
+    void tiltLayer(float pivotX, float pivotY, float degrees, float dx, float dy, float opening) {
+        addLayer(1, pivotX, pivotY, degrees, dx, dy, 1);
+        if (partCount > 0 && partLayer[partCount - 1] == 1) {
+            int k = partCount - 1;
+            partRect[k * 4] = -size;
+            partRect[k * 4 + 1] = -size;
+            partRect[k * 4 + 2] = size * 2;
+            partRect[k * 4 + 3] = opening;
+            partClipFixed[k] = true;
+        }
     }
 
     /** As {@link #addLayer}, showing only the part of the layer inside x0, y0, x1, y1. */
@@ -183,10 +222,19 @@ final class Scene {
         partShift[k * 2] = dx;
         partShift[k * 2 + 1] = dy;
         partScaleX[k] = 1;
+        partScaleY[k] = 1;
         partKeepHue[k] = -1;
         partLayer[k] = 0;
         partAlpha[k] = 1;
+        partClipFixed[k] = false;
         partScale[k] = 1;
+    }
+
+    /** Swings the last part about the level line through its pivot (a lid opening back). */
+    void swingLastPart(float scaleY) {
+        if (partCount > 0) {
+            partScaleY[partCount - 1] = scaleY;
+        }
     }
 
     /** Turns the last part about the vertical line through its pivot, as seen from the front. */

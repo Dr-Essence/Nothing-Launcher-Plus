@@ -353,7 +353,7 @@ EFFECT_EXACT = {
     "airplane arrival": "SMOKE:0.04,0.2,-1,-0.3", "face exhaling": "SMOKE:0.1,0.8,-1,0.1",
     "pile of poo": "SMOKE:0.35,0.02,-0.2,-1,0.62,0.02,0.2,-1", "volcano": "FLAME",
     "tornado": "GLOBE",
-    "alarm clock": "RING",
+    "alarm clock": "RING", "toolbox": "TOOLBOX:0.15,0.55",
     "moon viewing ceremony": "GLOW", "comet": "TWINKLE", "alien": "BLINK", "zombie": "BLINK",
     "man zombie": "BLINK", "woman zombie": "BLINK", "vampire": "BLINK", "man vampire": "BLINK",
     "woman vampire": "BLINK", "skull": "SHINE", "skull and crossbones": "SHINE",
@@ -489,7 +489,7 @@ EFFECT_EXACT.update(EFFECT_FIXES)
 # Objects doing what the real thing does (see anim/ObjectEffects.java); anchors are fractions of
 # the emoji's drawn bounds in Noto Color Emoji.
 EFFECT_OBJECTS = {
-    "video game": "CONTROLLER", "joystick": "JOYSTICK:0.5,0.574,0.25,-0.05,0.75,0.444",
+    "video game": "CONTROLLER", "joystick": "JOYSTICK:0.5,0.6,0.3,195,0.52",
     "camera": "CAMERA:0.59,0.18,0.056,-0.03,0.37,0.09",
     "camera with flash": "CAMERA:0.61,0.21,0.056,0.135,0.37,0.19",
     "video camera": "RECORD:0.256,0.364", "movie camera": "FILM_CAMERA:0.453,0.785,0.39,0.295,0.26,0.83,0.374,0.18",
@@ -575,7 +575,7 @@ EFFECT_REVIEW = {
     "airplane arrival": "SMOKE:0.04,0.2,-1,-0.3", "face exhaling": "SMOKE:0.1,0.8,-1,0.1",
     "pile of poo": "SMOKE:0.35,0.02,-0.2,-1,0.62,0.02,0.2,-1", "volcano": "FLAME",
     "tornado": "GLOBE",
-    "alarm clock": "RING",
+    "alarm clock": "RING", "toolbox": "TOOLBOX:0.15,0.55",
     "moon viewing ceremony": "GLOW", "comet": "TWINKLE", "alien": "BLINK", "zombie": "BLINK",
     "man zombie": "BLINK", "woman zombie": "BLINK", "vampire": "BLINK", "man vampire": "BLINK",
     "woman vampire": "BLINK", "skull": "SHINE", "skull and crossbones": "SHINE",
