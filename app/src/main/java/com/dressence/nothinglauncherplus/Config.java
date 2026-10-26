@@ -49,6 +49,8 @@ public final class Config {
 
     /** Broadcast sent to the launcher after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
+    /** Sent when the system font choice changes, for system_server to rebuild its font map. */
+    public static final String ACTION_FONT = MODULE_PKG + ".SYSTEM_FONT";
 
     /** Prefix of the category keys we inject into the Smart drawer. */
     public static final String CATEGORY_PREFIX = "nlplus:";

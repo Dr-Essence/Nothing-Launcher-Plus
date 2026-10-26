@@ -3,6 +3,7 @@
     <string-array name="xposed_scope">
         <item>com.nothing.launcher</item>
         <item>com.android.systemui</item>
+        <item>android</item>
         <item>com.nothing.hearthstone</item>
         <item>com.nothing.cardservice</item>
     </string-array>

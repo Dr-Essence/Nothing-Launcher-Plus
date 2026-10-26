@@ -30,6 +30,12 @@ public class LauncherHook implements IXposedHookLoadPackage {
                     "isModuleActive", XC_MethodReplacement.returnConstant(true));
             return;
         }
+        if ("android".equals(lpparam.packageName)) {
+            // System Framework: the font map every app receives.
+            ClassLoader system = lpparam.classLoader;
+            Hooks.install("system fonts", () -> SystemFonts.install(system, new ConfigStore()));
+            return;
+        }
         if (!lpparam.isFirstApplication) {
             return;
         }

@@ -114,10 +114,11 @@ plus your folders.
   glow, on any wallpaper. Another option puts the date before the time. Restart System UI
   (or the phone) after switching either.
 - **System font**: choose any of Nothing's fonts already on the phone (NDot, NType, and the
-  ones inside Nothing's widgets app). No reboot: every app the module is enabled for in
-  LSPosed draws its text in it from its next start, and System UI and the launcher are
-  restarted at once (just those two). With root it is also set up as a font module, so after
-  any later reboot every app has it; Phone default undoes both.
+  ones inside Nothing's widgets app). It is applied the way Android applies its own fonts:
+  with System Framework in the module's LSPosed scope (one reboot to load it into the
+  system, once), the system's font map that every app receives is rebuilt with the chosen
+  font as soon as you pick it, so every app opened from then on uses it, no reboot; System
+  UI and the launcher are restarted at once. Phone default undoes it.
 - **Animation test**: in the module's settings, play any emoji's animation on a big dot
   screen without making a folder for it: step through emoji one by one, replay its reaction,
   slow it to half or a quarter speed, and compare the dots with the plain emoji.

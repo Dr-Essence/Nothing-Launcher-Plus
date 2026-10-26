@@ -431,6 +431,8 @@ public class MainActivity extends Activity {
         store.config.systemFont = choice == null ? ""
                 : choice.path != null ? "file:" + choice.path : "res:" + choice.title;
         store.save(this);
+        // The system rebuilds the font map every app is given (with System Framework in scope).
+        sendBroadcast(new android.content.Intent(Config.ACTION_FONT).setPackage("android"));
         new Thread(() -> {
             String error = SystemFont.apply(this, choice, false);
             boolean restarted = SystemFont.restartSystemUi();
