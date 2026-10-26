@@ -441,6 +441,30 @@ final class Scene {
         }
     }
 
+    /**
+     * A solid ball at resting (x, y), {@code radius} dots, its edge anti-aliased; when
+     * {@code behind}, only where nothing else is drawn, as if passing behind it.
+     */
+    void ball(float x, float y, float radius, int color, boolean behind) {
+        float ox = outX(x, y);
+        float oy = outY(x, y);
+        int x0 = Math.max(0, (int) Math.floor(ox - radius - 1));
+        int x1 = Math.min(size - 1, (int) Math.floor(ox + radius + 1));
+        int y0 = Math.max(0, (int) Math.floor(oy - radius - 1));
+        int y1 = Math.min(size - 1, (int) Math.floor(oy + radius + 1));
+        for (int py = y0; py <= y1; py++) {
+            for (int px = x0; px <= x1; px++) {
+                int i = py * size + px;
+                if (behind && (dots[i] >>> 24) > 0) {
+                    continue;
+                }
+                float dx = px + 0.5f - ox;
+                float dy = py + 0.5f - oy;
+                light(i, color, coverage((float) Math.sqrt(dx * dx + dy * dy), radius - 0.5f));
+            }
+        }
+    }
+
     /** A heart at resting (x, y), {@code size} dots across, its edge anti-aliased. */
     void heart(float x, float y, float across, int color, float strength) {
         float ox = outX(x, y);

@@ -370,7 +370,7 @@
 👩‍🍼	1	NOD	BLINK	woman feeding baby
 👨‍🍼	1	NOD	BLINK	man feeding baby
 🧑‍🍼	1	NOD	BLINK	person feeding baby
-👼	1	FLOAT	TWINKLE	baby angel
+👼	1	FLOAT	HALO	baby angel
 🎅	1	FLOAT	SNOW	Santa Claus
 🤶	1	FLOAT	SNOW	Mrs. Claus
 🧑‍🎄	1	FLOAT	SNOW	Mx Claus
@@ -499,9 +499,9 @@
 🤾	1	RUN	SHINE	person playing handball
 🤾‍♂️	1	RUN	SHINE	man playing handball
 🤾‍♀️	1	RUN	SHINE	woman playing handball
-🤹	1	RUN	SHINE	person juggling
-🤹‍♂️	1	RUN	SHINE	man juggling
-🤹‍♀️	1	RUN	SHINE	woman juggling
+🤹	1	RUN	JUGGLE	person juggling
+🤹‍♂️	1	RUN	JUGGLE	man juggling
+🤹‍♀️	1	RUN	JUGGLE	woman juggling
 🧘	1	BREATHE	GLOW	person in lotus position
 🧘‍♂️	1	BREATHE	GLOW	man in lotus position
 🧘‍♀️	1	BREATHE	GLOW	woman in lotus position

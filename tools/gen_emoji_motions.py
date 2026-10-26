@@ -599,7 +599,8 @@ EFFECT_REVIEW = {
     "smiling face with horns": "GLEAM", "angry face with horns": "GLEAM",
     "face with steam from nose": "HUFF", "kissing cat": "KISS:0.6,0.68",
     "anger symbol": "HEARTBEAT", "right anger bubble": "HEARTBEAT",
-    "face with monocle": "GLEAM",
+    "face with monocle": "GLEAM", "baby angel": "HALO", "person juggling": "JUGGLE",
+    "man juggling": "JUGGLE", "woman juggling": "JUGGLE",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 

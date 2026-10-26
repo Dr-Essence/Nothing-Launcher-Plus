@@ -156,6 +156,17 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * Juggling: the balls in the air (small, brightly coloured) loop up from one hand, over
+     * the head to the other, and pass back behind the juggler.
+     */
+    JUGGLE {
+        @Override
+        void apply(Scene s) {
+            juggle(s);
+        }
+    },
+
     /** A halo: it hovers, rising and settling over the head, light gliding round it. */
     HALO {
         @Override
@@ -304,7 +315,9 @@ public enum DotEffect {
             float h = Math.max(1, r.maxY - r.minY);
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
-                if (ri >= 0 && r.ink[ri] && !r.eyes[ri] && r.luma[ri] > 0.3f) {
+                // Only warm skin flushes: not a shirt, not hair.
+                if (ri >= 0 && r.ink[ri] && !r.eyes[ri] && r.luma[ri] > 0.3f
+                        && (r.hue[ri] < 55 || r.hue[ri] > 340) && r.sat[ri] > 0.3f) {
                     float up = Math.max(0, Math.min(1, (r.maxY - ri / r.size) / h));
                     float w = k * (1 - 0.6f * up * up);
                     s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFE5322D, w), s.dots[i] >>> 24);
@@ -2177,6 +2190,161 @@ public enum DotEffect {
             }
         }
         return java.util.Arrays.copyOf(out, k);
+    }
+
+    private static void juggle(Scene s) {
+        Regions r = s.regions;
+        int[][] balls = (int[][]) r.memo.get("balls");
+        if (balls == null) {
+            balls = findBalls(r);
+            r.memo.put("balls", balls);
+        }
+        if (balls.length < 2) {
+            SHINE.apply(s);
+            return;
+        }
+        // Take the balls out of the picture: what they hid is open air.
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri >= 0 && balls[0][ri] >= 0) {
+                s.dots[i] = 0;
+            }
+        }
+        int count = balls.length - 1;
+        float top = r.size;
+        float low = 0;
+        for (int k = 1; k <= count; k++) {
+            top = Math.min(top, balls[k][1] / 10f);
+            low = Math.max(low, balls[k][1] / 10f);
+        }
+        float cx = (r.minX + r.maxX + 1) / 2f;
+        float rx = (r.maxX - r.minX + 1) / 2f - 2.5f;
+        float cy = (top + low + 3) / 2;
+        float ry = Math.max(3, (low + 3 - top) / 2);
+        float turn = (s.t / (2.4f / (1 + 0.8f * s.boost))) % 1;
+        for (int k = 1; k <= count; k++) {
+            float a = (float) (Math.PI * 2 * (turn + (k - 1f) / count));
+            // Up the right, over the top, down the left: counter-clockwise on screen.
+            float x = cx + rx * (float) Math.cos(a);
+            float y = cy - ry * (float) Math.sin(a);
+            boolean behind = Math.sin(a) < 0;
+            float radius = balls[k][2] / 10f;
+            s.ball(x, y, radius, balls[k][3], behind);
+            if (!behind) {
+                // The shine on it, up and to the left.
+                s.ball(x - radius * 0.35f, y - radius * 0.35f, 0.6f, 0xFFFFFFFF, false);
+            }
+        }
+        s.busy = true;
+    }
+
+    /**
+     * The balls in the air: small, saturated, not skin-coloured blobs. Row 0: per dot, which
+     * ball it is (or -1); then per ball: x, y (tenths of a dot), radius (tenths), colour.
+     */
+    private static int[][] findBalls(Regions r) {
+        int n = r.size * r.size;
+        int[] owner = new int[n];
+        java.util.Arrays.fill(owner, -1);
+        boolean[] seen = new boolean[n];
+        java.util.List<int[]> found = new java.util.ArrayList<>();
+        for (int start = 0; start < n; start++) {
+            if (seen[start] || !ballDot(r, start)) {
+                continue;
+            }
+            java.util.List<Integer> comp = new java.util.ArrayList<>();
+            java.util.ArrayDeque<Integer> queue = new java.util.ArrayDeque<>();
+            queue.add(start);
+            seen[start] = true;
+            while (!queue.isEmpty()) {
+                int i = queue.poll();
+                comp.add(i);
+                for (int j : around(r, i)) {
+                    if (!seen[j] && ballDot(r, j)
+                            && Math.abs(r.hue[j] - r.hue[start]) < 30) {
+                        seen[j] = true;
+                        queue.add(j);
+                    }
+                }
+            }
+            if (comp.size() < 3 || comp.size() > 16) {
+                continue;
+            }
+            float sx = 0, sy = 0;
+            int best = comp.get(0);
+            for (int i : comp) {
+                sx += i % r.size + 0.5f;
+                sy += i / r.size + 0.5f;
+                if (r.sat[i] * (1 - Math.abs(r.luma[i] - 0.5f)) > r.sat[best]
+                        * (1 - Math.abs(r.luma[best] - 0.5f))) {
+                    best = i;
+                }
+            }
+            int k = found.size() + 1;
+            for (int i : comp) {
+                owner[i] = k - 1;
+            }
+            // Its own pure colour (not the highlight), a radius from its area.
+            found.add(new int[] {Math.round(sx / comp.size() * 10), Math.round(sy / comp.size()
+                    * 10), Math.round((float) Math.sqrt(comp.size() / Math.PI) * 10 + 2),
+                    r.rest[best] | 0xFF000000});
+        }
+        // The rim and shine round each ball go with it: whatever touches a ball and is not
+        // part of the juggler (the largest piece of the picture without the balls).
+        int[] body = new int[n];
+        int biggest = 0;
+        int label = 0;
+        int bodyLabel = -1;
+        for (int start = 0; start < n; start++) {
+            if (body[start] != 0 || !r.ink[start] || owner[start] >= 0) {
+                continue;
+            }
+            label++;
+            int size = 0;
+            java.util.ArrayDeque<Integer> queue = new java.util.ArrayDeque<>();
+            queue.add(start);
+            body[start] = label;
+            while (!queue.isEmpty()) {
+                int i = queue.poll();
+                size++;
+                for (int j : around(r, i)) {
+                    if (body[j] == 0 && r.ink[j] && owner[j] < 0) {
+                        body[j] = label;
+                        queue.add(j);
+                    }
+                }
+            }
+            if (size > biggest) {
+                biggest = size;
+                bodyLabel = label;
+            }
+        }
+        for (int pass = 0; pass < 2; pass++) {
+            int[] was = owner.clone();
+            for (int i = 0; i < n; i++) {
+                if (was[i] >= 0 || !r.ink[i] || body[i] == bodyLabel) {
+                    continue;
+                }
+                for (int j : around(r, i)) {
+                    if (was[j] >= 0) {
+                        owner[i] = was[j];
+                        break;
+                    }
+                }
+            }
+        }
+        int[][] out = new int[found.size() + 1][];
+        out[0] = owner;
+        for (int k = 0; k < found.size(); k++) {
+            out[k + 1] = found.get(k);
+        }
+        // Ball k's dots carry owner k - 1; rows from 1 on are balls in the same order.
+        return out;
+    }
+
+    private static boolean ballDot(Regions r, int i) {
+        return r.ink[i] && r.sat[i] > 0.45f && (r.hue[i] < 25 || r.hue[i] > 65)
+                && r.luma[i] > 0.15f;
     }
 
     /** Light running down large water (small drops get their own shine as they slide). */
