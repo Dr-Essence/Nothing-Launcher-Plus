@@ -648,6 +648,7 @@ EFFECT_REVIEW = {
     "tent": "SHINE", "playground slide": "SHINE", "roller coaster": "SHINE",
     "sunrise": "GLOW", "sunrise over mountains": "GLOW", "sunset": "GLOW",
     "fog": "FOG", "foggy": "FOG",
+    "cigarette": "WISP:0.04,0.82,0.74",
     "person walking": "STRIDE:0.5,0.56,14,1.1",
     "man walking": "STRIDE:0.5,0.56,14,1.1",
     "woman walking": "STRIDE:0.5,0.56,14,1.1",

@@ -435,6 +435,45 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * A cigarette: its drawn wisp of smoke wavers as it rises, more the higher it goes, and
+     * the ember at its tip glows and dims. Anchors: the ember (x, y) and the row the smoke
+     * starts from, as fractions of the emoji.
+     */
+    WISP {
+        @Override
+        void apply(Scene s) {
+            Regions r = s.regions;
+            float[] a = s.anchor;
+            if (a == null || a.length < 3) {
+                return;
+            }
+            float root = MusicEffects.ay(s, 2);
+            int[] src = s.dots.clone();
+            for (int i = 0; i < s.dots.length; i++) {
+                int y = i / s.size;
+                int x = i % s.size;
+                if (y >= root) {
+                    continue;
+                }
+                float up = (root - y) / Math.max(1, root - r.minY);
+                float shift = (float) Math.sin(y * 0.55f - s.t * 2.6f) * 1.6f * up;
+                float sx = x - shift;
+                int x0 = (int) Math.floor(sx);
+                float f = sx - x0;
+                int c0 = x0 >= 0 && x0 < s.size ? src[y * s.size + x0] : 0;
+                int c1 = x0 + 1 >= 0 && x0 + 1 < s.size ? src[y * s.size + x0 + 1] : 0;
+                int alpha = Math.round((c0 >>> 24) * (1 - f) + (c1 >>> 24) * f);
+                int c = (c0 >>> 24) == 0 ? c1 : (c1 >>> 24) == 0 ? c0 : Scene.mix(c0, c1, f);
+                s.dots[i] = alpha < 60 ? 0 : Scene.alpha(c, alpha);
+            }
+            float glow = 0.55f + 0.45f * (float) Math.sin(s.t * 3.1f)
+                    * (float) Math.sin(s.t * 1.3f + 1);
+            s.blob(MusicEffects.ax(s, 0), MusicEffects.ay(s, 1), 1.3f, 0xFFFF5A1E, glow);
+            s.busy = true;
+        }
+    },
+
     /** Fizzy drinks: tiny bubbles stream up through the drink and burst at its top. */
     FIZZ {
         @Override

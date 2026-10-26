@@ -1403,7 +1403,7 @@
 🧽	6	SETTLE	SHINE	sponge
 🧯	6	PULSE	SMOKE	fire extinguisher
 🛒	6	SETTLE	WHEELS	shopping cart
-🚬	6	PULSE	SHINE	cigarette
+🚬	6	PULSE	WISP:0.04,0.82,0.74	cigarette
 ⚰️	6	PULSE	SHINE	coffin
 🪦	6	PULSE	SHINE	headstone
 ⚱️	6	PULSE	SHINE	funeral urn
