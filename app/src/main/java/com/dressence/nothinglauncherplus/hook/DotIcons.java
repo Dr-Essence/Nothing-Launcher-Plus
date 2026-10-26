@@ -46,15 +46,15 @@ final class DotIcons {
     /** Dot diameter relative to the pitch. */
     private static final float DOT = 0.8f;
     /** Below this coverage a cell stays dark; above it, one of these opacities. */
-    private static final float OFF_BELOW = 0.3f;
+    private static final float OFF_BELOW = 0.55f;
     private static final int[] LEVEL_ALPHA = {150, 200, 235, 255};
     /** An icon not drawn for this long powers on again when it next appears. */
     private static final long ASLEEP_MS = 800;
     private static final float POWER_ON_MS = 560;
     private static final long MAX_STAGGER_MS = 110;
     private static final int GLOW_SCALE = 4;
-    /** The dark glass behind the dots, like the screen of a Nothing dot display. */
-    private static final int PLATE = 0xFF0C0C0C;
+    /** How bright the icon shows between its dots: an LED panel's unlit dots. */
+    private static final float PLATE_DIM = 0.32f;
 
     /** Marks an icon that could not be converted. */
     private static final Dots FAILED = new Dots();
@@ -337,6 +337,102 @@ final class DotIcons {
     }
 
     /**
+     * An app with an old-style icon is drawn by the launcher shrunk onto a white plate. As dots
+     * that would be a small icon in a field of white dots, so the plate is taken away (the
+     * white joined to the plate's edge, not white inside the icon itself) and the icon scaled
+     * up to fill the space. Any other icon is returned as it is.
+     */
+    private static Bitmap withoutWhitePlate(Bitmap icon) {
+        int w = icon.getWidth();
+        int h = icon.getHeight();
+        int n = w * h;
+        int[] px = new int[n];
+        icon.getPixels(px, 0, w, 0, 0, w, h);
+        // The plate's edge: solid pixels next to clear ones. A white plate is white all round.
+        int edge = 0;
+        int white = 0;
+        for (int y = 1; y < h - 1; y++) {
+            for (int x = 1; x < w - 1; x++) {
+                int i = y * w + x;
+                if ((px[i] >>> 24) < 200) {
+                    continue;
+                }
+                if ((px[i - 1] >>> 24) < 100 || (px[i + 1] >>> 24) < 100
+                        || (px[i - w] >>> 24) < 100 || (px[i + w] >>> 24) < 100) {
+                    edge++;
+                    if (nearWhite(px[i])) {
+                        white++;
+                    }
+                }
+            }
+        }
+        if (edge < w || white < edge * 0.85f) {
+            return icon;
+        }
+        // The plate: near-white joined to the edge.
+        boolean[] plate = new boolean[n];
+        java.util.ArrayDeque<Integer> queue = new java.util.ArrayDeque<>();
+        for (int i = 0; i < n; i++) {
+            int x = i % w;
+            int y = i / w;
+            boolean border = x == 0 || y == 0 || x == w - 1 || y == h - 1
+                    || (px[i - 1] >>> 24) < 100 || (px[i + 1] >>> 24) < 100
+                    || (px[i - w] >>> 24) < 100 || (px[i + w] >>> 24) < 100;
+            if (border && (px[i] >>> 24) >= 100 && nearWhite(px[i])) {
+                plate[i] = true;
+                queue.add(i);
+            }
+        }
+        while (!queue.isEmpty()) {
+            int i = queue.poll();
+            int x = i % w;
+            int[] next = {x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i - w, i + w};
+            for (int j : next) {
+                if (j >= 0 && j < n && !plate[j] && (px[j] >>> 24) >= 100 && nearWhite(px[j])) {
+                    plate[j] = true;
+                    queue.add(j);
+                }
+            }
+        }
+        int x0 = w, y0 = h, x1 = -1, y1 = -1;
+        for (int i = 0; i < n; i++) {
+            if (plate[i] || (px[i] >>> 24) < 100) {
+                px[i] = plate[i] ? 0 : px[i];
+                continue;
+            }
+            x0 = Math.min(x0, i % w);
+            x1 = Math.max(x1, i % w);
+            y0 = Math.min(y0, i / w);
+            y1 = Math.max(y1, i / w);
+        }
+        if (x1 < 0 || Math.max(x1 - x0, y1 - y0) > w * 0.85f) {
+            return icon;
+        }
+        // The plate's soft edge: whatever is left outside the icon's own box goes too.
+        for (int i = 0; i < n; i++) {
+            int x = i % w;
+            int y = i / w;
+            if (x < x0 || x > x1 || y < y0 || y > y1) {
+                px[i] = 0;
+            }
+        }
+        Bitmap bare = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888);
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        float fit = 0.9f * Math.min(w / (float) (x1 - x0 + 1), h / (float) (y1 - y0 + 1));
+        float cw = (x1 - x0 + 1) * fit;
+        float ch = (y1 - y0 + 1) * fit;
+        new Canvas(out).drawBitmap(bare, new Rect(x0, y0, x1 + 1, y1 + 1),
+                new android.graphics.RectF((w - cw) / 2, (h - ch) / 2, (w + cw) / 2,
+                        (h + ch) / 2), new Paint(Paint.FILTER_BITMAP_FLAG));
+        bare.recycle();
+        return out;
+    }
+
+    private static boolean nearWhite(int c) {
+        return ((c >> 16) & 0xFF) > 228 && ((c >> 8) & 0xFF) > 228 && (c & 0xFF) > 228;
+    }
+
+    /**
      * Samples the icon onto a GRID x GRID panel (average colour and coverage per cell, coverage
      * snapped to a few LED levels) and draws each lit cell as a round dot over a soft halo.
      */
@@ -344,6 +440,7 @@ final class DotIcons {
         if (icon.getConfig() == Bitmap.Config.HARDWARE) {
             icon = icon.copy(Bitmap.Config.ARGB_8888, false); // Pixels can't be read on the GPU.
         }
+        icon = withoutWhitePlate(icon);
         int w = icon.getWidth();
         int h = icon.getHeight();
         int[] px = new int[w * h];
@@ -416,12 +513,13 @@ final class DotIcons {
                     new float[] {0, 0.5f, 1}, Shader.TileMode.CLAMP));
             glow.drawCircle(cx, cy, halo, paint);
         }
-        // The dark glass in the icon's own shape, so the icon is solid and the wallpaper never
-        // shows between its dots.
+        // Behind the dots, the icon itself, dimmed, as an LED panel's unlit dots show: the icon
+        // stays solid and its own size, and the wallpaper never shows through it.
         Bitmap plateBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Paint platePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
-        platePaint.setColorFilter(new android.graphics.PorterDuffColorFilter(PLATE,
-                android.graphics.PorterDuff.Mode.SRC_IN));
+        android.graphics.ColorMatrix dim = new android.graphics.ColorMatrix();
+        dim.setScale(PLATE_DIM, PLATE_DIM, PLATE_DIM, 1);
+        platePaint.setColorFilter(new android.graphics.ColorMatrixColorFilter(dim));
         new Canvas(plateBitmap).drawBitmap(icon, 0, 0, platePaint);
         Bitmap fullBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas full = new Canvas(fullBitmap);
@@ -433,6 +531,16 @@ final class DotIcons {
             paint.setColor(dots.color[i]);
             full.drawCircle(dots.x[i], dots.y[i], dots.radius, paint);
         }
+        // Nothing outside the icon's own shape: no dot or glow spills past its edge, however
+        // the launcher scales it (opening an app zooms the icon up).
+        Paint mask = new Paint(Paint.FILTER_BITMAP_FLAG);
+        mask.setXfermode(new android.graphics.PorterDuffXfermode(
+                android.graphics.PorterDuff.Mode.DST_IN));
+        full.drawBitmap(icon, 0, 0, mask);
+        new Canvas(glowBitmap).drawBitmap(icon, null,
+                new Rect(0, 0, glowBitmap.getWidth(), glowBitmap.getHeight()), mask);
+        new Canvas(glowBitmap).drawBitmap(icon, null,
+                new Rect(0, 0, glowBitmap.getWidth(), glowBitmap.getHeight()), mask);
         // Kept on the GPU: no upload when drawn, and off the app's Java heap.
         dots.full = toHardware(fullBitmap);
         dots.plate = toHardware(plateBitmap);

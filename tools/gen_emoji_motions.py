@@ -614,7 +614,7 @@ EFFECT_REVIEW = {
     "ribbon": "SHINE", "reminder ribbon": "SHINE", "admission tickets": "SHINE",
     "ticket": "SHINE", "mirror ball": "TWINKLE", "yo-yo": "SHINE", "kite": "SHINE",
     "recycling symbol": "SHINE", "empty nest": "SHINE", "nest with eggs": "SHINE",
-    "chart increasing with yen": "SHINE", "leaf fluttering in wind": "SWAY", "hot pepper": "SHINE", "wind chime": "SWAY:1", "carp streamer": "FLAG:0.1,0,0.62",
+    "chart increasing with yen": "SHINE", "mate": "SHINE", "mate": "SHINE", "leaf fluttering in wind": "SWAY", "hot pepper": "SHINE", "wind chime": "SWAY:1", "carp streamer": "FLAG:0.1,0,0.62",
     "bouquet": "SWAY",
     "cherry blossom": "SWAY",
     "white flower": "SWAY",
