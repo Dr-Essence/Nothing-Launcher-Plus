@@ -286,8 +286,8 @@ EFFECT_EXACT = {
     "face with steam from nose": "STEAM", "smiling face with horns": "FLAME",
     "angry face with horns": "FLAME", "exploding head": "FIREWORKS",
     "face exhaling": "SMOKE", "face in clouds": "SMOKE", "partying face": "CONFETTI",
-    "cold face": "SNOW", "shaking face": "ZAP", "face with spiral eyes": "TWINKLE",
-    "dizzy face": "TWINKLE", "face with crossed-out eyes": "TWINKLE",
+    "cold face": "SNOW", "shaking face": "ZAP", "face with spiral eyes": "DIZZY",
+    "dizzy face": "DIZZY", "face with crossed-out eyes": "DIZZY",
     "money-mouth face": "SHINE", "smiling face with sunglasses": "SHINE",
     "face with peeking eye": "LOOK", "face with rolling eyes": "LOOK",
     "face with monocle": "LOOK", "dotted line face": "GHOSTLY", "ghost": "GHOSTLY",
@@ -329,7 +329,22 @@ EFFECT_EXACT = {
     "bell": "SOUND", "bellhop bell": "SOUND", "loudspeaker": "SOUND", "megaphone": "SOUND",
     "postal horn": "NOTES", "speaker high volume": "SOUND", "speaker medium volume": "SOUND",
     "speaker low volume": "SOUND", "studio microphone": "NOTES", "microphone": "NOTES",
-    "headphone": "NOTES", "musical note": "NOTES", "musical notes": "NOTES",
+    "headphone": "NOTES",
+    # Screens, buttons and signals.
+    "alien monster": "INVADER", "robot": "DIGITAL", "repeat button": "SPIN:0.5,0.5,0.4,-120",
+    "repeat single button": "SPIN:0.5,0.5,0.4,-120", "antenna bars": "SEQUENCE",
+    "wireless": "SEQUENCE", "dim button": "GLOW", "bright button": "GLOW",
+    "vibration mode": "RING", "pager": "SCREEN", "fax machine": "PRINT",
+    "left speech bubble": "SHINE", "cinema": "PRESS", "police car light": "BEACON",
+    "umbrella": "RAIN:1", "umbrella with rain drops": "RAIN:1",
+    "telephone": "RING:-0.02,-0.02,1.02,0.42", "telephone receiver": "RING",
+    "bellhop bell": "DING:0.38,-0.02,0.62,0.22",
+    "stop sign": "GLOW", "warning": "GLOW", "radioactive": "GLOW", "biohazard": "GLOW",
+    "red exclamation mark": "GLOW", "double exclamation mark": "GLOW",
+    "exclamation question mark": "GLOW",
+    # Emergency vehicles flash their roof lights; a saucer's rim lights run round.
+    "police car": "SIREN", "oncoming police car": "SIREN", "ambulance": "SIREN",
+    "fire engine": "SIREN:0.22,0.14", "flying saucer": "CHASE", "musical note": "NOTES", "musical notes": "NOTES",
     "musical score": "NOTES", "alarm clock": "CLOCK", "stopwatch": "CLOCK",
     "timer clock": "CLOCK", "mantelpiece clock": "CLOCK", "hourglass done": "CLOCK",
     "hourglass not done": "CLOCK", "watch": "CLOCK",
@@ -394,7 +409,7 @@ EFFECT_MUSIC = {
     "headphone": "EQUALIZER:0.33,0.35,0.67,0.95", "radio": "EQUALIZER:0.5,0.48,0.885,0.65",
     "level slider": "EQUALIZER:0.42,0.08,0.58,0.92", "control knobs": "KNOBS",
     "microphone": "MIC:0.78,0.2,0.25", "studio microphone": "MIC:0.5,0.4,0.5",
-    "saxophone": "WIND:0.12,0.3,-0.3,-0.95", "trumpet": "WIND:0.1,0.85,-0.2,-1",
+    "saxophone": "WIND:0.12,0.3,-0.3,-0.95", "trumpet": "WIND:0.12,0.62,0.05,-1",
     "postal horn": "WIND:0.8,0.4,-0.2,-1", "flute": "WIND:0.75,0.3,0.2,-1",
     "guitar": "STRUM:0.3,0.72,0.92,0.08", "violin": "STRUM:0.35,0.65,0.85,0.12",
     "banjo": "STRUM:0.22,0.75,0.9,0.08", "harp": "GLISS",
@@ -485,6 +500,53 @@ EFFECT_OBJECTS.update({
 })
 EFFECT_EXACT.update(EFFECT_OBJECTS)
 
+# Second pass, emoji by emoji: what each one would really do.
+EFFECT_REVIEW = {
+    # A mooncake does not glow; a meditating figure breathes rather than snores.
+    "moon cake": "SHINE",
+    "person in lotus position": "GLOW", "man in lotus position": "GLOW",
+    "woman in lotus position": "GLOW",
+    # Magic people sparkle; the swirl belongs to crystal balls and the like.
+    "mage": "TWINKLE", "man mage": "TWINKLE", "woman mage": "TWINKLE",
+    "fairy": "TWINKLE", "man fairy": "TWINKLE", "woman fairy": "TWINKLE",
+    "elf": "TWINKLE", "man elf": "TWINKLE", "woman elf": "TWINKLE",
+    "genie": "TWINKLE", "man genie": "TWINKLE", "woman genie": "TWINKLE",
+    "superhero": "TWINKLE", "man superhero": "TWINKLE", "woman superhero": "TWINKLE",
+    "supervillain": "TWINKLE", "man supervillain": "TWINKLE",
+    "woman supervillain": "TWINKLE", "baby angel": "TWINKLE", "troll": "BLINK",
+    # Things that turn.
+    "yin yang": "SPIN:0.5,0.51,0.41,40", "wheel of dharma": "SPIN:0.5,0.5,0.43,30",
+    "ferris wheel": "SPIN:0.47,0.47,0.52,22,255,8", "videocassette": "SHINE", "cyclone": "GLOBE:1", "dna": "GLOBE", "game die": "GLOBE:1",
+    # Faces and people are not struck by lightning or swept by sirens.
+    "shaking face": "BLINK", "electric plug": "SPARK:0.1,0.31,0.33,0.08",
+    "atom symbol": "ATOM:0.5,0.5,0.36,0.13", "magnet": "TWINKLE", "brain": "TWINKLE", "red question mark": "GLOW",
+    "police officer": "BLINK", "man police officer": "BLINK",
+    "woman police officer": "BLINK",
+    # A rainbow keeps its colours; light runs over it.
+    "rainbow": "SPARKLE",
+    # Mailboxes are not flags.
+    "closed mailbox with raised flag": "SHINE", "closed mailbox with lowered flag": "SHINE",
+    "open mailbox with raised flag": "SHINE", "open mailbox with lowered flag": "SHINE",
+    # Music you listen to: notes rise from the headphones.
+    "headphone": "NOTES",
+    # Screens, buttons and signals.
+    "alien monster": "INVADER", "robot": "DIGITAL", "repeat button": "SPIN:0.5,0.5,0.4,-120",
+    "repeat single button": "SPIN:0.5,0.5,0.4,-120", "antenna bars": "SEQUENCE",
+    "wireless": "SEQUENCE", "dim button": "GLOW", "bright button": "GLOW",
+    "vibration mode": "RING", "pager": "SCREEN", "fax machine": "PRINT",
+    "left speech bubble": "SHINE", "cinema": "PRESS", "police car light": "BEACON",
+    "umbrella": "RAIN:1", "umbrella with rain drops": "RAIN:1",
+    "telephone": "RING:-0.02,-0.02,1.02,0.42", "telephone receiver": "RING",
+    "bellhop bell": "DING:0.38,-0.02,0.62,0.22",
+    "stop sign": "GLOW", "warning": "GLOW", "radioactive": "GLOW", "biohazard": "GLOW",
+    "red exclamation mark": "GLOW", "double exclamation mark": "GLOW",
+    "exclamation question mark": "GLOW",
+    # Emergency vehicles flash their roof lights; a saucer's rim lights run round.
+    "police car": "SIREN", "oncoming police car": "SIREN", "ambulance": "SIREN",
+    "fire engine": "SIREN:0.22,0.14", "flying saucer": "CHASE",
+}
+EFFECT_EXACT.update(EFFECT_REVIEW)
+
 # Name keywords, tried in order when there is no exact entry.
 EFFECT_RULES = [
     (r"\bflag\b", "FLAG"),
@@ -543,14 +605,14 @@ EFFECT_SUBGROUP = {
     "transport-air": "SMOKE", "hotel": "SHINE", "time": "CLOCK", "sky-weather": "GLOW",
     "event": "CONFETTI", "award-medal": "SPARKLE", "sport": "SHINE", "game": "SPARKLE",
     "arts-crafts": "SPARKLE", "clothing": "SHINE", "sound": "SOUND", "music": "NOTES",
-    "musical-instrument": "NOTES", "phone": "SCREEN", "computer": "DIGITAL",
+    "musical-instrument": "NOTES", "phone": "SCREEN", "computer": "SHINE",
     "light-video": "GLOW", "book-paper": "SHINE", "money": "SHINE", "mail": "SHINE",
     "writing": "SHINE", "office": "SHINE", "lock": "SHINE", "tool": "SHINE",
-    "science": "ZAP", "medical": "HEARTBEAT", "household": "SHINE", "other-object": "SHINE",
-    "transport-sign": "GLOW", "warning": "BEACON", "arrow": "SHINE", "religion": "GLOW",
-    "zodiac": "TWINKLE", "av-symbol": "DIGITAL", "gender": "SHINE", "math": "DIGITAL",
-    "punctuation": "BEACON", "currency": "SHINE", "other-symbol": "SHINE", "keycap": "DIGITAL",
-    "alphanum": "DIGITAL", "geometric": "GLOW", "flag": "FLAG", "country-flag": "FLAG",
+    "science": "SHINE", "medical": "HEARTBEAT", "household": "SHINE", "other-object": "SHINE",
+    "transport-sign": "GLOW", "warning": "GLOW", "arrow": "SHINE", "religion": "GLOW",
+    "zodiac": "TWINKLE", "av-symbol": "PRESS", "gender": "SHINE", "math": "SHINE",
+    "punctuation": "GLOW", "currency": "SHINE", "other-symbol": "SHINE", "keycap": "PRESS",
+    "alphanum": "PRESS", "geometric": "GLOW", "flag": "FLAG", "country-flag": "FLAG",
     "subdivision-flag": "FLAG",
 }
 

@@ -25,7 +25,7 @@ final class Scene {
     // (a joystick's stick, a compass needle), so they move as smoothly as the whole emoji.
     // -------------------------------------------------------------------------------------
 
-    static final int MAX_PARTS = 4;
+    static final int MAX_PARTS = 6;
     int partCount;
     /** Per part: the region it is cut from (resting grid units: x0, y0, x1, y1). */
     final float[] partRect = new float[MAX_PARTS * 4];
@@ -50,6 +50,8 @@ final class Scene {
      */
     final int[] partLayer = new int[MAX_PARTS];
     final float[] partAlpha = new float[MAX_PARTS];
+    /** Per layer part: its size about its pivot (a heart beating). */
+    final float[] partScale = new float[MAX_PARTS];
     /** Set by {@link #detach}: the board's centre, radius (grid units) and the directions. */
     boolean detached;
     final float[] detachSpec = new float[5];
@@ -90,6 +92,21 @@ final class Scene {
             partRect[k * 4 + 1] = y0;
             partRect[k * 4 + 2] = x1;
             partRect[k * 4 + 3] = y1;
+        }
+    }
+
+    /**
+     * Shows the part of layer {@code layer} inside x0, y0, x1, y1 scaled by {@code scale}
+     * about (pivotX, pivotY): a heart of the drawing beating.
+     */
+    void scaleLayerPiece(int layer, float x0, float y0, float x1, float y1, float pivotX,
+            float pivotY, float scale) {
+        addLayerPiece(layer, x0, y0, x1, y1, 0, 0);
+        if (partCount > 0 && partLayer[partCount - 1] == layer) {
+            int k = partCount - 1;
+            partPivot[k * 2] = pivotX;
+            partPivot[k * 2 + 1] = pivotY;
+            partScale[k] = scale;
         }
     }
 
@@ -149,6 +166,7 @@ final class Scene {
         partKeepHue[k] = -1;
         partLayer[k] = 0;
         partAlpha[k] = 1;
+        partScale[k] = 1;
     }
 
     /** Turns the last part about the vertical line through its pivot, as seen from the front. */
@@ -253,6 +271,157 @@ final class Scene {
         if ((dots[i] >>> 24) < (color >>> 24)) {
             dots[i] = color;
         }
+    }
+
+    // -------------------------------------------------------------------------------------
+    // Particles: soft, anti-aliased, placed between dots, so they glide rather than jump from
+    // dot to dot. Positions are on the resting emoji (they follow its pose), sizes in dots.
+    // -------------------------------------------------------------------------------------
+
+    /** Where resting point (x, y) shows now, in output dots (centre-based). */
+    private float outX(float x, float y) {
+        return a * (x + 0.5f) + b * (y + 0.5f) + c;
+    }
+
+    private float outY(float x, float y) {
+        return d * (x + 0.5f) + e * (y + 0.5f) + f;
+    }
+
+    /**
+     * Adds light: output dot {@code i} moves toward {@code color} by {@code w} (0..1); a dark
+     * dot lights up in it, as faint as {@code w}.
+     */
+    void light(int i, int color, float w) {
+        if (w <= 0.004f) {
+            return;
+        }
+        w = Math.min(1, w);
+        int dot = dots[i];
+        int alpha = dot >>> 24;
+        int lit = Math.round(255 * w);
+        if (alpha == 0) {
+            dots[i] = (color & 0xFFFFFF) | lit << 24;
+        } else {
+            dots[i] = (mix(dot, color, w) & 0xFFFFFF) | Math.max(alpha, lit) << 24;
+        }
+    }
+
+    /** A soft round glow at resting (x, y): {@code radius} dots, fading smoothly to its edge. */
+    void blob(float x, float y, float radius, int color, float strength) {
+        float ox = outX(x, y);
+        float oy = outY(x, y);
+        float reach = radius + 0.5f;
+        int x0 = Math.max(0, (int) Math.floor(ox - reach));
+        int x1 = Math.min(size - 1, (int) Math.floor(ox + reach));
+        int y0 = Math.max(0, (int) Math.floor(oy - reach));
+        int y1 = Math.min(size - 1, (int) Math.floor(oy + reach));
+        for (int py = y0; py <= y1; py++) {
+            for (int px = x0; px <= x1; px++) {
+                float dx = px + 0.5f - ox;
+                float dy = py + 0.5f - oy;
+                float k = 1 - (dx * dx + dy * dy) / (reach * reach);
+                if (k > 0) {
+                    light(py * size + px, color, strength * k * k);
+                }
+            }
+        }
+    }
+
+    /** A thin ring (a bubble) at resting (x, y): radius and line width in dots. */
+    void ring(float x, float y, float radius, float width, int color, float strength) {
+        float ox = outX(x, y);
+        float oy = outY(x, y);
+        float reach = radius + width + 0.5f;
+        int x0 = Math.max(0, (int) Math.floor(ox - reach));
+        int x1 = Math.min(size - 1, (int) Math.floor(ox + reach));
+        int y0 = Math.max(0, (int) Math.floor(oy - reach));
+        int y1 = Math.min(size - 1, (int) Math.floor(oy + reach));
+        for (int py = y0; py <= y1; py++) {
+            for (int px = x0; px <= x1; px++) {
+                float dx = px + 0.5f - ox;
+                float dy = py + 0.5f - oy;
+                float off = Math.abs((float) Math.sqrt(dx * dx + dy * dy) - radius);
+                light(py * size + px, color, strength * coverage(off, width / 2 + 0.35f));
+            }
+        }
+    }
+
+    /** A heart at resting (x, y), {@code size} dots across, its edge anti-aliased. */
+    void heart(float x, float y, float across, int color, float strength) {
+        float ox = outX(x, y);
+        float oy = outY(x, y);
+        float half = across / 2;
+        int x0 = Math.max(0, (int) Math.floor(ox - half - 1));
+        int x1 = Math.min(size - 1, (int) Math.floor(ox + half + 1));
+        int y0 = Math.max(0, (int) Math.floor(oy - half - 1));
+        int y1 = Math.min(size - 1, (int) Math.floor(oy + half + 1));
+        for (int py = y0; py <= y1; py++) {
+            for (int px = x0; px <= x1; px++) {
+                int inside = 0;
+                for (int sy = 0; sy < 4; sy++) {
+                    for (int sx = 0; sx < 4; sx++) {
+                        // The classic heart curve, y up, about 2.3 units across.
+                        float u = (px + (sx + 0.5f) / 4 - ox) / half * 1.2f;
+                        float v = -(py + (sy + 0.5f) / 4 - oy) / half * 1.2f + 0.15f;
+                        float q = u * u + v * v - 1;
+                        if (q * q * q - u * u * v * v * v <= 0) {
+                            inside++;
+                        }
+                    }
+                }
+                if (inside > 0) {
+                    light(py * size + px, color, strength * inside / 16f);
+                }
+            }
+        }
+    }
+
+    /**
+     * A star glint at resting (x, y): a bright core and four soft rays {@code reach} dots
+     * long, like light catching a point.
+     */
+    void glint(float x, float y, float reach, int color, float strength) {
+        float ox = outX(x, y);
+        float oy = outY(x, y);
+        int r = (int) Math.ceil(reach) + 1;
+        int cx = (int) Math.floor(ox);
+        int cy = (int) Math.floor(oy);
+        for (int py = Math.max(0, cy - r); py <= Math.min(size - 1, cy + r); py++) {
+            for (int px = Math.max(0, cx - r); px <= Math.min(size - 1, cx + r); px++) {
+                float dx = Math.abs(px + 0.5f - ox);
+                float dy = Math.abs(py + 0.5f - oy);
+                float core = Math.max(0, 1 - (dx * dx + dy * dy) / 1.1f);
+                // Each ray: thin across, tapering along.
+                float h = coverage(dy, 0.45f) * Math.max(0, 1 - dx / (reach + 0.5f));
+                float v = coverage(dx, 0.45f) * Math.max(0, 1 - dy / (reach + 0.5f));
+                light(py * size + px, color, strength * Math.min(1, core + 0.85f * Math.max(h, v)));
+            }
+        }
+    }
+
+    /** A small strip (confetti) at resting (x, y), w x h dots, turned {@code radians}. */
+    void strip(float x, float y, float w, float h, float radians, int color, float strength) {
+        float ox = outX(x, y);
+        float oy = outY(x, y);
+        float cos = (float) Math.cos(radians);
+        float sin = (float) Math.sin(radians);
+        float reach = (w + h) / 2 + 1;
+        for (int py = Math.max(0, (int) (oy - reach)); py <= Math.min(size - 1, (int) (oy + reach)); py++) {
+            for (int px = Math.max(0, (int) (ox - reach)); px <= Math.min(size - 1, (int) (ox + reach)); px++) {
+                float dx = px + 0.5f - ox;
+                float dy = py + 0.5f - oy;
+                float u = Math.abs(dx * cos + dy * sin);
+                float v = Math.abs(-dx * sin + dy * cos);
+                light(py * size + px, color,
+                        strength * coverage(u, w / 2 + 0.3f) * coverage(v, h / 2 + 0.3f));
+            }
+        }
+    }
+
+    /** How much of a dot at {@code distance} from a shape's middle line of half-width {@code half} it covers. */
+    private static float coverage(float distance, float half) {
+        float k = half + 0.5f - distance;
+        return k <= 0 ? 0 : Math.min(1, k);
     }
 
     // -------------------------------------------------------------------------------------

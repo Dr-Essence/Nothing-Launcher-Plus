@@ -285,6 +285,11 @@ final class DotMatrix {
                         scene.partShift[k * 2 + 1] * SUPERSAMPLE);
                 c.rotate(scene.partAngle[k], scene.partPivot[k * 2] * SUPERSAMPLE,
                         scene.partPivot[k * 2 + 1] * SUPERSAMPLE);
+                if (scene.partScale[k] != 1) {
+                    c.scale(scene.partScale[k], scene.partScale[k],
+                            scene.partPivot[k * 2] * SUPERSAMPLE,
+                            scene.partPivot[k * 2 + 1] * SUPERSAMPLE);
+                }
                 clipPart(c, k, false);
                 // A shadow only darkens what is there: it never falls on thin air.
                 Paint paint = scene.partLayer[k] == 2 ? shadowPaint : glyphPaint;

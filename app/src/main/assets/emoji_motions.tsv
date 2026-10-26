@@ -49,7 +49,7 @@
 😬	0	SHIVER	BLINK	grimacing face
 😮‍💨	0	WHOOSH	SMOKE	face exhaling
 🤥	0	PULSE	BLINK	lying face
-🫨	0	BUZZ	ZAP	shaking face
+🫨	0	BUZZ	BLINK	shaking face
 🙂‍↔️	0	NO	BLINK	head shaking horizontally
 🙂‍↕️	0	NOD	BLINK	head shaking vertically
 😌	0	BREATHE	BLINK	relieved face
@@ -67,8 +67,8 @@
 🥵	0	MELT	SWEAT	hot face
 🥶	0	SHIVER	SNOW	cold face
 🥴	0	WOOZY	BLINK	woozy face
-😵	0	DIZZY	TWINKLE	face with crossed-out eyes
-😵‍💫	0	DIZZY	TWINKLE	face with spiral eyes
+😵	0	DIZZY	DIZZY	face with crossed-out eyes
+😵‍💫	0	DIZZY	DIZZY	face with spiral eyes
 🤯	0	EXPLODE	FIREWORKS	exploding head
 🤠	0	TILT	BLINK	cowboy hat face
 🥳	0	PARTY	CONFETTI	partying face
@@ -116,7 +116,7 @@
 👺	0	RAGE	ANGRY	goblin
 👻	0	GHOST	GHOSTLY	ghost
 👽️	0	FLOAT	GHOSTLY	alien
-👾	0	ROBOT	DIGITAL	alien monster
+👾	0	ROBOT	INVADER	alien monster
 🤖	0	ROBOT	DIGITAL	robot
 😺	0	HAPPY	BLINK	grinning cat
 😸	0	GIGGLE	BLINK	grinning cat with smiling eyes
@@ -165,7 +165,7 @@
 🕳️	0	PULSE	MAGIC	hole
 💬	0	FLOAT	TYPING_DOTS	speech balloon
 👁️‍🗨️	0	BLINK	LOOK	eye in speech bubble
-🗨️	0	FLOAT	DIGITAL	left speech bubble
+🗨️	0	FLOAT	SHINE	left speech bubble
 🗯️	0	RAGE	ANGRY	right anger bubble
 💭	0	FLOAT	MAGIC	thought balloon
 💤	0	SLEEP	SLEEPY	ZZZ
@@ -220,7 +220,7 @@
 👂️	1	PULSE	SHINE	ear
 🦻	1	PULSE	SHINE	ear with hearing aid
 👃	1	PULSE	SHINE	nose
-🧠	1	PULSE	ZAP	brain
+🧠	1	PULSE	TWINKLE	brain
 🫀	1	HEARTBEAT	HEARTBEAT	anatomical heart
 🫁	1	BREATHE	HEARTBEAT	lungs
 🦷	1	PULSE	SHINE	tooth
@@ -336,9 +336,9 @@
 🧑‍🚒	1	NOD	BLINK	firefighter
 👨‍🚒	1	NOD	BLINK	man firefighter
 👩‍🚒	1	NOD	BLINK	woman firefighter
-👮	1	NOD	BEACON	police officer
-👮‍♂️	1	NOD	BEACON	man police officer
-👮‍♀️	1	NOD	BEACON	woman police officer
+👮	1	NOD	BLINK	police officer
+👮‍♂️	1	NOD	BLINK	man police officer
+👮‍♀️	1	NOD	BLINK	woman police officer
 🕵️	1	NOD	BLINK	detective
 🕵️‍♂️	1	NOD	BLINK	man detective
 🕵️‍♀️	1	NOD	BLINK	woman detective
@@ -370,38 +370,38 @@
 👩‍🍼	1	NOD	BLINK	woman feeding baby
 👨‍🍼	1	NOD	BLINK	man feeding baby
 🧑‍🍼	1	NOD	BLINK	person feeding baby
-👼	1	FLOAT	MAGIC	baby angel
+👼	1	FLOAT	TWINKLE	baby angel
 🎅	1	FLOAT	SNOW	Santa Claus
 🤶	1	FLOAT	SNOW	Mrs. Claus
 🧑‍🎄	1	FLOAT	SNOW	Mx Claus
-🦸	1	FLOAT	MAGIC	superhero
-🦸‍♂️	1	FLOAT	MAGIC	man superhero
-🦸‍♀️	1	FLOAT	MAGIC	woman superhero
-🦹	1	FLOAT	MAGIC	supervillain
-🦹‍♂️	1	FLOAT	MAGIC	man supervillain
-🦹‍♀️	1	FLOAT	MAGIC	woman supervillain
-🧙	1	FLOAT	MAGIC	mage
-🧙‍♂️	1	FLOAT	MAGIC	man mage
-🧙‍♀️	1	FLOAT	MAGIC	woman mage
-🧚	1	FLOAT	MAGIC	fairy
-🧚‍♂️	1	FLOAT	MAGIC	man fairy
-🧚‍♀️	1	FLOAT	MAGIC	woman fairy
+🦸	1	FLOAT	TWINKLE	superhero
+🦸‍♂️	1	FLOAT	TWINKLE	man superhero
+🦸‍♀️	1	FLOAT	TWINKLE	woman superhero
+🦹	1	FLOAT	TWINKLE	supervillain
+🦹‍♂️	1	FLOAT	TWINKLE	man supervillain
+🦹‍♀️	1	FLOAT	TWINKLE	woman supervillain
+🧙	1	FLOAT	TWINKLE	mage
+🧙‍♂️	1	FLOAT	TWINKLE	man mage
+🧙‍♀️	1	FLOAT	TWINKLE	woman mage
+🧚	1	FLOAT	TWINKLE	fairy
+🧚‍♂️	1	FLOAT	TWINKLE	man fairy
+🧚‍♀️	1	FLOAT	TWINKLE	woman fairy
 🧛	1	FLOAT	GHOSTLY	vampire
 🧛‍♂️	1	FLOAT	GHOSTLY	man vampire
 🧛‍♀️	1	FLOAT	GHOSTLY	woman vampire
 🧜	1	FLOAT	BUBBLES	merperson
 🧜‍♂️	1	FLOAT	BUBBLES	merman
 🧜‍♀️	1	FLOAT	BUBBLES	mermaid
-🧝	1	FLOAT	MAGIC	elf
-🧝‍♂️	1	FLOAT	MAGIC	man elf
-🧝‍♀️	1	FLOAT	MAGIC	woman elf
-🧞	1	FLOAT	MAGIC	genie
-🧞‍♂️	1	FLOAT	MAGIC	man genie
-🧞‍♀️	1	FLOAT	MAGIC	woman genie
+🧝	1	FLOAT	TWINKLE	elf
+🧝‍♂️	1	FLOAT	TWINKLE	man elf
+🧝‍♀️	1	FLOAT	TWINKLE	woman elf
+🧞	1	FLOAT	TWINKLE	genie
+🧞‍♂️	1	FLOAT	TWINKLE	man genie
+🧞‍♀️	1	FLOAT	TWINKLE	woman genie
 🧟	1	FLOAT	GHOSTLY	zombie
 🧟‍♂️	1	FLOAT	GHOSTLY	man zombie
 🧟‍♀️	1	FLOAT	GHOSTLY	woman zombie
-🧌	1	FLOAT	MAGIC	troll
+🧌	1	FLOAT	BLINK	troll
 💆	1	BREATHE	SHINE	person getting massage
 💆‍♂️	1	BREATHE	SHINE	man getting massage
 💆‍♀️	1	BREATHE	SHINE	woman getting massage
@@ -502,9 +502,9 @@
 🤹	1	RUN	SHINE	person juggling
 🤹‍♂️	1	RUN	SHINE	man juggling
 🤹‍♀️	1	RUN	SHINE	woman juggling
-🧘	1	BREATHE	SLEEPY	person in lotus position
-🧘‍♂️	1	BREATHE	SLEEPY	man in lotus position
-🧘‍♀️	1	BREATHE	SLEEPY	woman in lotus position
+🧘	1	BREATHE	GLOW	person in lotus position
+🧘‍♂️	1	BREATHE	GLOW	man in lotus position
+🧘‍♀️	1	BREATHE	GLOW	woman in lotus position
 🛀	1	BREATHE	SLEEPY	person taking bath
 🛌	1	BREATHE	SLEEPY	person in bed
 🧑‍🤝‍🧑	1	BOB	HEARTS	people holding hands
@@ -799,7 +799,7 @@
 🍣	3	JELLY	SHINE	sushi
 🍤	3	SWIM	STEAM	fried shrimp
 🍥	3	SWIM	BUBBLES	fish cake with swirl
-🥮	3	JELLY	GLOW	moon cake
+🥮	3	JELLY	SHINE	moon cake
 🍡	3	JELLY	SHINE	dango
 🥟	3	JELLY	STEAM	dumpling
 🥠	3	JELLY	SPARKLE	fortune cookie
@@ -907,7 +907,7 @@
 ♨️	4	SETTLE	STEAM	hot springs
 🎠	4	HOP	NOTES	carousel horse
 🛝	4	SETTLE	TWINKLE	playground slide
-🎡	4	BOB	CHASE:0.49,0.45	ferris wheel
+🎡	4	BOB	SPIN:0.47,0.47,0.52,22,255,8	ferris wheel
 🎢	4	SETTLE	TWINKLE	roller coaster
 💈	4	SETTLE	POLE:0.17,0.27,0.83,0.73	barber pole
 🎪	4	SETTLE	CONFETTI	circus tent
@@ -927,10 +927,10 @@
 🚍️	4	DRIVE	WHEELS	oncoming bus
 🚎	4	FLOAT	WHEELS	trolleybus
 🚐	4	DRIVE	WHEELS	minibus
-🚑️	4	DRIVE	BEACON	ambulance
-🚒	4	DRIVE	FLAME	fire engine
-🚓	4	DRIVE	BEACON	police car
-🚔️	4	DRIVE	BEACON	oncoming police car
+🚑️	4	DRIVE	SIREN	ambulance
+🚒	4	DRIVE	SIREN:0.22,0.14	fire engine
+🚓	4	DRIVE	SIREN	police car
+🚔️	4	DRIVE	SIREN	oncoming police car
 🚕	4	DRIVE	WHEELS	taxi
 🚖	4	DRIVE	WHEELS	oncoming taxi
 🚗	4	DRIVE	WHEELS	automobile
@@ -959,7 +959,7 @@
 🚨	4	ALERT	BEACON	police car light
 🚥	4	FLASH	TRAFFIC	horizontal traffic light
 🚦	4	FLASH	TRAFFIC	vertical traffic light
-🛑	4	DRIVE	BEACON	stop sign
+🛑	4	DRIVE	GLOW	stop sign
 🚧	4	NOD	BEACON	construction
 ⚓️	4	ROCK	RIPPLE	anchor
 🛟	4	ROCK	RIPPLE	ring buoy
@@ -982,8 +982,8 @@
 🚡	4	FLY	SWAY	aerial tramway
 🛰️	4	FLY	TWINKLE	satellite
 🚀	4	LAUNCH	FLAME	rocket
-🛸	4	FLY	BEACON	flying saucer
-🛎️	4	RING	BELL:0.5,0.05	bellhop bell
+🛸	4	FLY	CHASE	flying saucer
+🛎️	4	RING	DING:0.38,-0.02,0.62,0.22	bellhop bell
 🧳	4	RATTLE	SHINE	luggage
 ⌛️	4	FLIP	HOURGLASS	hourglass done
 ⏳️	4	FLIP	HOURGLASS	hourglass not done
@@ -1049,11 +1049,11 @@
 🌪️	4	SPIN	SMOKE	tornado
 🌫️	4	FLOAT	SMOKE	fog
 🌬️	4	WHOOSH	SMOKE	wind face
-🌀	4	SPIN	MAGIC	cyclone
-🌈	4	FLOAT	RAINBOW	rainbow
+🌀	4	SPIN	GLOBE:1	cyclone
+🌈	4	FLOAT	SPARKLE	rainbow
 🌂	4	ROCK	SHINE	closed umbrella
-☂️	4	ROCK	RAIN	umbrella
-☔️	4	ROCK	RAIN	umbrella with rain drops
+☂️	4	ROCK	RAIN:1	umbrella
+☔️	4	ROCK	RAIN:1	umbrella with rain drops
 ⛱️	4	ROCK	GLOW	umbrella on ground
 ⚡️	4	FLASH	ZAP	high voltage
 ❄️	4	SPIN	SNOW	snowflake
@@ -1127,7 +1127,7 @@
 🎮️	5	BUZZ	CONTROLLER	video game
 🕹️	5	SETTLE	JOYSTICK:0.5,0.574,0.25,-0.05,0.75,0.444	joystick
 🎰	5	RATTLE	SLOTS:0.15,0.48,0.92,0.7	slot machine
-🎲	5	RATTLE	DICE	game die
+🎲	5	RATTLE	GLOBE:1	game die
 🧩	5	RATTLE	SPARKLE	puzzle piece
 🧸	5	ROCK	SPARKLE	teddy bear
 🪅	5	ROCK	SPARKLE	piñata
@@ -1211,13 +1211,13 @@
 🎚️	6	GROOVE	EQUALIZER:0.42,0.08,0.58,0.92	level slider
 🎛️	6	GROOVE	KNOBS	control knobs
 🎤	6	GROOVE	MIC:0.78,0.2,0.25	microphone
-🎧️	6	GROOVE	EQUALIZER:0.33,0.35,0.67,0.95	headphone
+🎧️	6	GROOVE	NOTES	headphone
 📻️	6	GROOVE	EQUALIZER:0.5,0.48,0.885,0.65	radio
 🎷	6	GROOVE	WIND:0.12,0.3,-0.3,-0.95	saxophone
 🪗	6	GROOVE	GLISS	accordion
 🎸	6	GROOVE	STRUM:0.3,0.72,0.92,0.08	guitar
 🎹	6	GROOVE	KEYS	musical keyboard
-🎺	6	GROOVE	WIND:0.1,0.85,-0.2,-1	trumpet
+🎺	6	GROOVE	WIND:0.12,0.62,0.05,-1	trumpet
 🎻	6	GROOVE	STRUM:0.35,0.65,0.85,0.12	violin
 🪕	6	GROOVE	STRUM:0.22,0.75,0.9,0.08	banjo
 🥁	6	DRUM	DRUM	drum
@@ -1227,24 +1227,24 @@
 🪉	6	GROOVE	GLISS	harp
 📱	6	BUZZ	SCREEN	mobile phone
 📲	6	BUZZ	SCREEN	mobile phone with arrow
-☎️	6	BUZZ	BELL:0.5,0.5	telephone
-📞	6	BUZZ	BELL:0.5,0.5	telephone receiver
-📟️	6	BUZZ	DIGITAL	pager
-📠	6	BUZZ	DIGITAL	fax machine
+☎️	6	BUZZ	RING:-0.02,-0.02,1.02,0.42	telephone
+📞	6	BUZZ	RING	telephone receiver
+📟️	6	BUZZ	SCREEN	pager
+📠	6	BUZZ	PRINT	fax machine
 🔋	6	PULSE	BATTERY	battery
 🪫	6	PULSE	BATTERY	low battery
-🔌	6	PULSE	ZAP	electric plug
+🔌	6	PULSE	SPARK:0.1,0.31,0.33,0.08	electric plug
 💻️	6	TYPE	SCREEN	laptop
 🖥️	6	TYPE	SCREEN	desktop computer
 🖨️	6	TYPE	PRINT	printer
 ⌨️	6	TYPE	TYPING	keyboard
 🖱️	6	TYPE	CLICK	computer mouse
-🖲️	6	TYPE	DIGITAL	trackball
+🖲️	6	TYPE	SHINE	trackball
 💽	6	SETTLE	SHINE	computer disk
 💾	6	TYPE	DIGITAL	floppy disk
 💿️	6	SPIN	SHINE	optical disk
 📀	6	SPIN	SHINE	dvd
-🧮	6	TYPE	DIGITAL	abacus
+🧮	6	TYPE	SHINE	abacus
 🎥	6	FLASH	FILM_CAMERA:0.453,0.785,0.39,0.295,0.26,0.83,0.374,0.18	movie camera
 🎞️	6	FLASH	GLOW	film frames
 📽️	6	FLASH	REELS:0.219,0.365,0.215,0.727,0.241,0.215,200,6	film projector
@@ -1253,7 +1253,7 @@
 📷️	6	FLASH	CAMERA:0.59,0.18,0.056,-0.03,0.37,0.09	camera
 📸	6	FLASH	CAMERA:0.61,0.21,0.056,0.135,0.37,0.19	camera with flash
 📹️	6	FLASH	RECORD:0.256,0.364	video camera
-📼	6	FLASH	STATIC	videocassette
+📼	6	FLASH	SHINE	videocassette
 🔍️	6	SEARCH	SHINE	magnifying glass tilted left
 🔎	6	SEARCH	SHINE	magnifying glass tilted right
 🕯️	6	FLICKER	FLAME	candle
@@ -1295,10 +1295,10 @@
 📤️	6	SEND	SHINE	outbox tray
 📥️	6	SEND	SHINE	inbox tray
 📦️	6	SEND	SHINE	package
-📫️	6	SEND	FLAG	closed mailbox with raised flag
-📪️	6	SEND	FLAG	closed mailbox with lowered flag
-📬️	6	SEND	FLAG	open mailbox with raised flag
-📭️	6	SEND	FLAG	open mailbox with lowered flag
+📫️	6	SEND	SHINE	closed mailbox with raised flag
+📪️	6	SEND	SHINE	closed mailbox with lowered flag
+📬️	6	SEND	SHINE	open mailbox with raised flag
+📭️	6	SEND	SHINE	open mailbox with lowered flag
 📮	6	SEND	SHINE	postbox
 🗳️	6	SEND	SHINE	ballot box with ballot
 ✏️	6	WRITE	SHINE	pencil
@@ -1361,13 +1361,13 @@
 ⛓️	6	HAMMER	SHINE	chains
 🪝	6	HAMMER	SHINE	hook
 🧰	6	HAMMER	SHINE	toolbox
-🧲	6	PULSE	ZAP	magnet
+🧲	6	PULSE	TWINKLE	magnet
 🪜	6	HAMMER	SHINE	ladder
 🪏	6	HAMMER	SHINE	shovel
 ⚗️	6	PULSE	BUBBLES	alembic
 🧪	6	PULSE	BUBBLES	test tube
 🧫	6	PULSE	BUBBLES	petri dish
-🧬	6	PULSE	ZAP	dna
+🧬	6	PULSE	GLOBE	dna
 🔬	6	PULSE	SHINE	microscope
 🔭	6	PULSE	TWINKLE	telescope
 📡	6	FLY	SIGNAL:0.8,0.05	satellite antenna
@@ -1425,8 +1425,8 @@
 🛃	7	PULSE	GLOW	customs
 🛄	7	PULSE	GLOW	baggage claim
 🛅	7	PULSE	GLOW	left luggage
-⚠️	7	ALERT	BEACON	warning
-🚸	7	ALERT	BEACON	children crossing
+⚠️	7	ALERT	GLOW	warning
+🚸	7	ALERT	GLOW	children crossing
 ⛔️	7	NO	MUTED	no entry
 🚫	7	NO	MUTED	prohibited
 🚳	7	NO	MUTED	no bicycles
@@ -1436,8 +1436,8 @@
 🚷	7	NO	MUTED	no pedestrians
 📵	7	NO	MUTED	no mobile phones
 🔞	7	NO	MUTED	no one under eighteen
-☢️	7	ALERT	BEACON	radioactive
-☣️	7	ALERT	BEACON	biohazard
+☢️	7	ALERT	GLOW	radioactive
+☣️	7	ALERT	GLOW	biohazard
 ⬆️	7	POINT_UP	SHINE	up arrow
 ↗️	7	POINT_RIGHT	SHINE	up-right arrow
 ➡️	7	POINT_RIGHT	SHINE	right arrow
@@ -1460,11 +1460,11 @@
 🔜	7	POINT_RIGHT	SHINE	SOON arrow
 🔝	7	POINT_UP	SHINE	TOP arrow
 🛐	7	ROCK	GLOW	place of worship
-⚛️	7	PULSE	ZAP	atom symbol
+⚛️	7	PULSE	ATOM:0.5,0.5,0.36,0.13	atom symbol
 🕉️	7	PULSE	GLOW	om
 ✡️	7	TWINKLE	TWINKLE	star of David
-☸️	7	PULSE	MAGIC	wheel of dharma
-☯️	7	PULSE	MAGIC	yin yang
+☸️	7	PULSE	SPIN:0.5,0.5,0.43,30	wheel of dharma
+☯️	7	PULSE	SPIN:0.5,0.51,0.41,40	yin yang
 ✝️	7	PULSE	GLOW	latin cross
 ☦️	7	PULSE	GLOW	orthodox cross
 ☪️	7	TWINKLE	TWINKLE	star and crescent
@@ -1485,46 +1485,46 @@
 ♒️	7	TWINKLE	TWINKLE	Aquarius
 ♓️	7	TWINKLE	TWINKLE	Pisces
 ⛎️	7	TWINKLE	TWINKLE	Ophiuchus
-🔀	7	PULSE	DIGITAL	shuffle tracks button
-🔁	7	SPIN	DIGITAL	repeat button
-🔂	7	PULSE	DIGITAL	repeat single button
-▶️	7	PULSE	DIGITAL	play button
-⏩️	7	PULSE	DIGITAL	fast-forward button
-⏭️	7	PULSE	DIGITAL	next track button
-⏯️	7	PULSE	DIGITAL	play or pause button
-◀️	7	PULSE	DIGITAL	reverse button
-⏪️	7	PULSE	DIGITAL	fast reverse button
-⏮️	7	PULSE	DIGITAL	last track button
-🔼	7	POINT_UP	DIGITAL	upwards button
-⏫️	7	PULSE	DIGITAL	fast up button
-🔽	7	POINT_DOWN	DIGITAL	downwards button
-⏬️	7	PULSE	DIGITAL	fast down button
-⏸️	7	PULSE	DIGITAL	pause button
-⏹️	7	PULSE	DIGITAL	stop button
-⏺️	7	PULSE	DIGITAL	record button
-⏏️	7	PULSE	DIGITAL	eject button
-🎦	7	PULSE	DIGITAL	cinema
-🔅	7	PULSE	DIGITAL	dim button
-🔆	7	PULSE	DIGITAL	bright button
-📶	7	PULSE	DIGITAL	antenna bars
-🛜	7	PULSE	DIGITAL	wireless
-📳	7	BUZZ	DIGITAL	vibration mode
+🔀	7	PULSE	PRESS	shuffle tracks button
+🔁	7	SPIN	SPIN:0.5,0.5,0.4,-120	repeat button
+🔂	7	PULSE	SPIN:0.5,0.5,0.4,-120	repeat single button
+▶️	7	PULSE	PRESS	play button
+⏩️	7	PULSE	PRESS	fast-forward button
+⏭️	7	PULSE	PRESS	next track button
+⏯️	7	PULSE	PRESS	play or pause button
+◀️	7	PULSE	PRESS	reverse button
+⏪️	7	PULSE	PRESS	fast reverse button
+⏮️	7	PULSE	PRESS	last track button
+🔼	7	POINT_UP	PRESS	upwards button
+⏫️	7	PULSE	PRESS	fast up button
+🔽	7	POINT_DOWN	PRESS	downwards button
+⏬️	7	PULSE	PRESS	fast down button
+⏸️	7	PULSE	PRESS	pause button
+⏹️	7	PULSE	PRESS	stop button
+⏺️	7	PULSE	PRESS	record button
+⏏️	7	PULSE	PRESS	eject button
+🎦	7	PULSE	PRESS	cinema
+🔅	7	PULSE	GLOW	dim button
+🔆	7	PULSE	GLOW	bright button
+📶	7	PULSE	SEQUENCE	antenna bars
+🛜	7	PULSE	SEQUENCE	wireless
+📳	7	BUZZ	RING	vibration mode
 📴	7	BUZZ	MUTED	mobile phone off
 ♀️	7	PULSE	SHINE	female sign
 ♂️	7	PULSE	SHINE	male sign
 ⚧️	7	PULSE	SHINE	transgender symbol
-✖️	7	POP	DIGITAL	multiply
-➕️	7	POP	DIGITAL	plus
-➖️	7	POP	DIGITAL	minus
-➗️	7	POP	DIGITAL	divide
-🟰	7	POP	DIGITAL	heavy equals sign
+✖️	7	POP	SHINE	multiply
+➕️	7	POP	SHINE	plus
+➖️	7	POP	SHINE	minus
+➗️	7	POP	SHINE	divide
+🟰	7	POP	SHINE	heavy equals sign
 ♾️	7	POP	MAGIC	infinity
-‼️	7	ALERT	BEACON	double exclamation mark
-⁉️	7	ALERT	BEACON	exclamation question mark
-❓️	7	WONDER	ZAP	red question mark
-❔️	7	WONDER	BEACON	white question mark
-❕️	7	ALERT	BEACON	white exclamation mark
-❗️	7	ALERT	BEACON	red exclamation mark
+‼️	7	ALERT	GLOW	double exclamation mark
+⁉️	7	ALERT	GLOW	exclamation question mark
+❓️	7	WONDER	GLOW	red question mark
+❔️	7	WONDER	GLOW	white question mark
+❕️	7	ALERT	GLOW	white exclamation mark
+❗️	7	ALERT	GLOW	red exclamation mark
 〰️	7	WHOOSH	SHINE	wavy dash
 💱	7	COIN	SHINE	currency exchange
 💲	7	COIN	SHINE	heavy dollar sign
@@ -1550,58 +1550,58 @@
 ®️	7	POP	SHINE	registered
 ™️	7	POP	SHINE	trade mark
 🫟	7	POP	SHINE	splatter
-#️⃣	7	POP	DIGITAL	keycap: #
-*️⃣	7	POP	DIGITAL	keycap: *
-0️⃣	7	POP	DIGITAL	keycap: 0
-1️⃣	7	POP	DIGITAL	keycap: 1
-2️⃣	7	POP	DIGITAL	keycap: 2
-3️⃣	7	POP	DIGITAL	keycap: 3
-4️⃣	7	POP	DIGITAL	keycap: 4
-5️⃣	7	POP	DIGITAL	keycap: 5
-6️⃣	7	POP	DIGITAL	keycap: 6
-7️⃣	7	POP	DIGITAL	keycap: 7
-8️⃣	7	POP	DIGITAL	keycap: 8
-9️⃣	7	POP	DIGITAL	keycap: 9
-🔟	7	POP	DIGITAL	keycap: 10
+#️⃣	7	POP	PRESS	keycap: #
+*️⃣	7	POP	PRESS	keycap: *
+0️⃣	7	POP	PRESS	keycap: 0
+1️⃣	7	POP	PRESS	keycap: 1
+2️⃣	7	POP	PRESS	keycap: 2
+3️⃣	7	POP	PRESS	keycap: 3
+4️⃣	7	POP	PRESS	keycap: 4
+5️⃣	7	POP	PRESS	keycap: 5
+6️⃣	7	POP	PRESS	keycap: 6
+7️⃣	7	POP	PRESS	keycap: 7
+8️⃣	7	POP	PRESS	keycap: 8
+9️⃣	7	POP	PRESS	keycap: 9
+🔟	7	POP	PRESS	keycap: 10
 🔠	7	POP	DIGITAL	input latin uppercase
 🔡	7	POP	DIGITAL	input latin lowercase
 🔢	7	POP	DIGITAL	input numbers
 🔣	7	POP	DIGITAL	input symbols
 🔤	7	POP	DIGITAL	input latin letters
-🅰️	7	POP	DIGITAL	A button (blood type)
-🆎	7	POP	DIGITAL	AB button (blood type)
-🅱️	7	POP	DIGITAL	B button (blood type)
-🆑	7	POP	DIGITAL	CL button
-🆒	7	POP	DIGITAL	COOL button
-🆓	7	POP	DIGITAL	FREE button
-ℹ️	7	POP	DIGITAL	information
+🅰️	7	POP	PRESS	A button (blood type)
+🆎	7	POP	PRESS	AB button (blood type)
+🅱️	7	POP	PRESS	B button (blood type)
+🆑	7	POP	PRESS	CL button
+🆒	7	POP	PRESS	COOL button
+🆓	7	POP	PRESS	FREE button
+ℹ️	7	POP	PRESS	information
 🆔	7	POP	DIGITAL	ID button
-Ⓜ️	7	POP	DIGITAL	circled M
-🆕	7	POP	DIGITAL	NEW button
-🆖	7	POP	DIGITAL	NG button
-🅾️	7	POP	DIGITAL	O button (blood type)
-🆗	7	POP	DIGITAL	OK button
-🅿️	7	POP	DIGITAL	P button
-🆘	7	POP	DIGITAL	SOS button
-🆙	7	POP	DIGITAL	UP! button
-🆚	7	POP	DIGITAL	VS button
-🈁	7	POP	DIGITAL	Japanese “here” button
-🈂️	7	POP	DIGITAL	Japanese “service charge” button
-🈷️	7	POP	DIGITAL	Japanese “monthly amount” button
-🈶	7	POP	DIGITAL	Japanese “not free of charge” button
-🈯️	7	POP	DIGITAL	Japanese “reserved” button
-🉐	7	POP	DIGITAL	Japanese “bargain” button
-🈹	7	POP	DIGITAL	Japanese “discount” button
-🈚️	7	POP	DIGITAL	Japanese “free of charge” button
-🈲	7	NO	DIGITAL	Japanese “prohibited” button
-🉑	7	POP	DIGITAL	Japanese “acceptable” button
-🈸	7	POP	DIGITAL	Japanese “application” button
-🈴	7	POP	DIGITAL	Japanese “passing grade” button
-🈳	7	POP	DIGITAL	Japanese “vacancy” button
-㊗️	7	POP	DIGITAL	Japanese “congratulations” button
-㊙️	7	POP	DIGITAL	Japanese “secret” button
-🈺	7	POP	DIGITAL	Japanese “open for business” button
-🈵	7	NO	DIGITAL	Japanese “no vacancy” button
+Ⓜ️	7	POP	PRESS	circled M
+🆕	7	POP	PRESS	NEW button
+🆖	7	POP	PRESS	NG button
+🅾️	7	POP	PRESS	O button (blood type)
+🆗	7	POP	PRESS	OK button
+🅿️	7	POP	PRESS	P button
+🆘	7	POP	PRESS	SOS button
+🆙	7	POP	PRESS	UP! button
+🆚	7	POP	PRESS	VS button
+🈁	7	POP	PRESS	Japanese “here” button
+🈂️	7	POP	PRESS	Japanese “service charge” button
+🈷️	7	POP	PRESS	Japanese “monthly amount” button
+🈶	7	POP	PRESS	Japanese “not free of charge” button
+🈯️	7	POP	PRESS	Japanese “reserved” button
+🉐	7	POP	PRESS	Japanese “bargain” button
+🈹	7	POP	PRESS	Japanese “discount” button
+🈚️	7	POP	PRESS	Japanese “free of charge” button
+🈲	7	NO	PRESS	Japanese “prohibited” button
+🉑	7	POP	PRESS	Japanese “acceptable” button
+🈸	7	POP	PRESS	Japanese “application” button
+🈴	7	POP	PRESS	Japanese “passing grade” button
+🈳	7	POP	PRESS	Japanese “vacancy” button
+㊗️	7	POP	PRESS	Japanese “congratulations” button
+㊙️	7	POP	PRESS	Japanese “secret” button
+🈺	7	POP	PRESS	Japanese “open for business” button
+🈵	7	NO	PRESS	Japanese “no vacancy” button
 🔴	7	PULSE	GLOW	red circle
 🟠	7	PULSE	GLOW	orange circle
 🟡	7	PULSE	GLOW	yellow circle

@@ -614,6 +614,38 @@ final class ObjectEffects {
                 s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 0.28f), s.dots[i] >>> 24);
             }
         }
+        // The lit lamp's light falls softly on the housing round it.
+        float[][] centres = lampCentres(r, lamp);
+        float[] c = centres[lit];
+        if (c != null) {
+            int colour = lit == 0 ? 0xFFFF5A4A : lit == 1 ? 0xFFFFC24A : 0xFF5AE68A;
+            s.blob(c[0], c[1], c[2] + 1.6f, colour, 0.35f);
+        }
+    }
+
+    /** Per lamp colour, the centre and radius of its lamps together (null if none). */
+    private static float[][] lampCentres(Regions r, int[] lamp) {
+        Object cached = r.memo.get("lampCentres");
+        if (cached != null) {
+            return (float[][]) cached;
+        }
+        float[][] out = new float[3][];
+        for (int k = 0; k < 3; k++) {
+            float sx = 0, sy = 0;
+            int n = 0;
+            for (int i = 0; i < lamp.length; i++) {
+                if (lamp[i] == k) {
+                    sx += i % r.size;
+                    sy += i / r.size;
+                    n++;
+                }
+            }
+            if (n > 0) {
+                out[k] = new float[] {sx / n, sy / n, (float) Math.sqrt(n / Math.PI)};
+            }
+        }
+        r.memo.put("lampCentres", out);
+        return out;
     }
 
     /** Each dot's lamp colour: 0 red, 1 amber, 2 green, -1 not a lamp. */
@@ -630,6 +662,31 @@ final class ObjectEffects {
             }
             float h = r.hue[i];
             out[i] = h < 22 || h > 330 ? 0 : h < 70 ? 1 : h < 170 ? 2 : -1;
+        }
+        // A lamp's pale highlight belongs to it: a bright dot mostly ringed by one lamp.
+        for (int pass = 0; pass < 2; pass++) {
+            int[] next = out.clone();
+            for (int i = 0; i < out.length; i++) {
+                if (out[i] >= 0 || !r.ink[i] || r.luma[i] < 0.5f) {
+                    continue;
+                }
+                int x = i % r.size;
+                int y = i / r.size;
+                int[] votes = new int[3];
+                for (int oy = -1; oy <= 1; oy++) {
+                    for (int ox = -1; ox <= 1; ox++) {
+                        if (r.in(x + ox, y + oy) && out[(y + oy) * r.size + x + ox] >= 0) {
+                            votes[out[(y + oy) * r.size + x + ox]]++;
+                        }
+                    }
+                }
+                for (int k = 0; k < 3; k++) {
+                    if (votes[k] >= 4) {
+                        next[i] = k;
+                    }
+                }
+            }
+            out = next;
         }
         r.memo.put("lamps", out);
         return out;
@@ -953,7 +1010,7 @@ final class ObjectEffects {
     }
 
     // -------------------------------------------------------------------------------------
-    // Compass, dice, slot machine: 🧭 🎲 🎰
+    // Compass, slot machine: 🧭 🎰
     // -------------------------------------------------------------------------------------
 
     /**
@@ -1035,25 +1092,6 @@ final class ObjectEffects {
         }
         r.memo.put("needle", needle);
         return needle;
-    }
-
-    /** The die is rolled: its pips flicker through other faces for a moment, then land. */
-    static void dice(Scene s) {
-        Regions r = s.regions;
-        float period = 3.2f;
-        float t = s.since < period ? s.since : s.t % period;
-        if (t > 0.55f) {
-            return;
-        }
-        boolean[] pips = pips(r);
-        int face = tubeColour(r);
-        int frame = (int) (s.t * 12);
-        for (int i = 0; i < s.dots.length; i++) {
-            int ri = s.restIndex(i);
-            if (ri >= 0 && pips[ri] && Scene.hash(ri / 3, frame, s.seed) < 0.5f) {
-                s.dots[i] = Scene.alpha(face, s.dots[i] >>> 24);
-            }
-        }
     }
 
     private static boolean[] pips(Regions r) {
@@ -1183,25 +1221,192 @@ final class ObjectEffects {
         }
     }
 
-    /** A ferris wheel's lights chase round the rim ({@code anchor}: hub x, y). */
+    /**
+     * Lights round a rim (a flying saucer's) blink on in turn, one after another round the
+     * edge, each with a soft glow: the lights are the small bright pieces of the emoji's most
+     * vivid colour.
+     */
     static void chase(Scene s) {
         Regions r = s.regions;
-        float cx = MusicEffects.ax(s, 0);
-        float cy = MusicEffects.ay(s, 1);
-        float turn = s.t * (1.4f + 2 * s.boost);
+        List<float[]> lights = lights(r);
+        if (lights.isEmpty()) {
+            return;
+        }
+        float step = 0.16f - 0.06f * s.boost;
+        float pos = (s.t / step) % lights.size();
+        int[] which = lightOf(r, lights);
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
-            if (ri < 0 || !r.ink[ri] || r.sat[ri] < 0.3f) {
+            if (ri < 0 || which[ri] < 0) {
                 continue;
             }
-            float a = (float) Math.atan2(ri / r.size - cy, ri % r.size - cx);
-            float v = (float) Math.cos(4 * (a - turn));
-            if (v > 0.45f) {
-                MusicEffects.lighten(s, i, 0.75f * (v - 0.45f) / 0.55f);
+            float d = Math.abs(which[ri] - pos);
+            d = Math.min(d, lights.size() - d);
+            float on = Math.max(0, 1 - d / 1.5f);
+            if (on > 0) {
+                MusicEffects.lighten(s, i, 0.6f * on);
+            } else {
+                s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 0.45f), s.dots[i] >>> 24);
+            }
+        }
+        float[] lit = lights.get(Math.round(pos) % lights.size());
+        s.blob(lit[0], lit[1], 2.2f, (int) lit[3], 0.45f);
+    }
+
+    /** The small vivid lights: per light its centre x, y, size and colour, left to right. */
+    @SuppressWarnings("unchecked")
+    private static List<float[]> lights(Regions r) {
+        Object cached = r.memo.get("lights");
+        if (cached != null) {
+            return (List<float[]>) cached;
+        }
+        boolean[] vivid = new boolean[r.size * r.size];
+        for (int i = 0; i < vivid.length; i++) {
+            vivid[i] = r.ink[i] && r.sat[i] > 0.4f && r.luma[i] > 0.45f;
+        }
+        List<float[]> out = new ArrayList<>();
+        for (int[] c : MusicEffects.components(r, vivid, false)) {
+            if (c.length >= 1 && c.length <= 12) {
+                out.add(new float[] {MusicEffects.cx(r, c), MusicEffects.cy(r, c), c.length,
+                        r.rest[c[0]] | 0xFF000000});
+            }
+        }
+        out.sort((a, b) -> Float.compare(a[0], b[0]));
+        r.memo.put("lights", out);
+        return out;
+    }
+
+    /** For each dot, the index of the light it belongs to, or -1. */
+    private static int[] lightOf(Regions r, List<float[]> lights) {
+        Object cached = r.memo.get("lightOf");
+        if (cached != null) {
+            return (int[]) cached;
+        }
+        int[] out = new int[r.size * r.size];
+        java.util.Arrays.fill(out, -1);
+        for (int i = 0; i < out.length; i++) {
+            if (!r.ink[i] || r.sat[i] <= 0.4f || r.luma[i] <= 0.45f) {
+                continue;
+            }
+            for (int k = 0; k < lights.size(); k++) {
+                float[] l = lights.get(k);
+                float dx = i % r.size - l[0];
+                float dy = i / r.size - l[1];
+                if (dx * dx + dy * dy <= l[2] + 1) {
+                    out[i] = k;
+                }
+            }
+        }
+        r.memo.put("lightOf", out);
+        return out;
+    }
+
+    /**
+     * Emergency lights on a vehicle's roof flash wig-wag: the blue ones twice, then the red
+     * ones twice, each throwing its colour round it, while the others go dim.
+     */
+    static void siren(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor != null && s.anchor.length >= 2) {
+            // A lamp joined to the bodywork (a fire engine's): it flashes where it is told.
+            float t = s.t % 0.8f;
+            float k = t < 0.1f || (t > 0.2f && t < 0.3f) ? 1 : 0;
+            for (int j = 0; j + 1 < s.anchor.length; j += 2) {
+                float x = edgeX(r, s.anchor[j]);
+                float y = edgeY(r, s.anchor[j + 1]);
+                s.blob(x, y, 1.3f, 0xFFFFE0E0, 0.9f * k);
+                s.blob(x, y, 3.2f, 0xFFFF3B3B, 0.45f * k);
+            }
+            s.busy = true;
+            return;
+        }
+        int[] side = sirenSide(r);
+        float[][] centres = sirenCentres(r, side);
+        float t = s.t % 0.8f;
+        // Two quick flashes per side, a side per 0.4 s.
+        int on = t < 0.4f ? 0 : 1;
+        float local = t % 0.4f;
+        float flash = local < 0.09f || (local > 0.17f && local < 0.26f) ? 1 : 0;
+        if (centres[0] == null) {
+            on = 1; // Red lights only: they flash on their own.
+        }
+        if (centres[1] == null) {
+            on = 0;
+        }
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0 || side[ri] < 0) {
+                continue;
+            }
+            if (side[ri] == on && flash > 0) {
+                s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFFFFFFF, 0.45f), s.dots[i] >>> 24);
             } else {
                 s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 0.5f), s.dots[i] >>> 24);
             }
         }
+        float[] c = centres[on];
+        if (c != null && flash > 0) {
+            s.blob(c[0], c[1], c[2] + 2.5f, on == 0 ? 0xFF4D8CFF : 0xFFFF3B3B, 0.5f);
+        }
+        s.busy = true;
+    }
+
+    /** Per dot of the roof lights: 0 blue, 1 red, -1 not a roof light. */
+    private static int[] sirenSide(Regions r) {
+        Object cached = r.memo.get("sirenSide");
+        if (cached != null) {
+            return (int[]) cached;
+        }
+        int[] out = new int[r.size * r.size];
+        float roof = r.minY + (r.maxY - r.minY) * 0.3f;
+        for (int i = 0; i < out.length; i++) {
+            out[i] = -1;
+            if (!r.ink[i] || i / r.size > roof || r.sat[i] < 0.5f || r.luma[i] < 0.25f) {
+                continue;
+            }
+            float h = r.hue[i];
+            out[i] = h > 195 && h < 255 ? 0 : h < 15 || h > 340 ? 1 : -1;
+        }
+        // Only small pieces are lamps: a red cab or body is not.
+        for (int k = 0; k < 2; k++) {
+            boolean[] mask = new boolean[out.length];
+            for (int i = 0; i < out.length; i++) {
+                mask[i] = out[i] == k;
+            }
+            for (int[] c : MusicEffects.components(r, mask, true)) {
+                if (c.length > 14) {
+                    for (int i : c) {
+                        out[i] = -1;
+                    }
+                }
+            }
+        }
+        r.memo.put("sirenSide", out);
+        return out;
+    }
+
+    private static float[][] sirenCentres(Regions r, int[] side) {
+        Object cached = r.memo.get("sirenCentres");
+        if (cached != null) {
+            return (float[][]) cached;
+        }
+        float[][] out = new float[2][];
+        for (int k = 0; k < 2; k++) {
+            float sx = 0, sy = 0;
+            int n = 0;
+            for (int i = 0; i < side.length; i++) {
+                if (side[i] == k) {
+                    sx += i % r.size;
+                    sy += i / r.size;
+                    n++;
+                }
+            }
+            if (n > 0) {
+                out[k] = new float[] {sx / n, sy / n, (float) Math.sqrt(n / Math.PI)};
+            }
+        }
+        r.memo.put("sirenCentres", out);
+        return out;
     }
 
     // -------------------------------------------------------------------------------------
@@ -1406,6 +1611,226 @@ final class ObjectEffects {
         float shade = alpha * (1 - height) * (1 - height);
         s.addLayer(2, cx, cy, wobble * 0.6f, sx, sy, shade);
         s.addLayer(1, cx, cy, wobble, dx, dy, alpha);
+    }
+
+    /**
+     * A round symbol on its tile turns ({@code anchor}: the disc's x, y, radius as a fraction of
+     * the width, then degrees a second): the tile stays, only the disc turns. Two more values
+     * (hue, symmetry) keep what of that hue stands in front still (a big wheel's legs).
+     */
+    static void spinPose(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 4) {
+            return;
+        }
+        float rad = s.anchor[2] * (r.maxX - r.minX + 1);
+        float degrees = s.t * s.anchor[3] + 360 * easeOut(Math.min(1, s.since / 1.4f));
+        s.addDisc(edgeX(r, s.anchor[0]), edgeY(r, s.anchor[1]), rad, degrees);
+        if (s.anchor.length >= 6) {
+            s.keepOnLastPart(Math.round(s.anchor[4]), Math.round(s.anchor[5]));
+        }
+        s.busy = true;
+    }
+
+    /**
+     * Sparks at the points in {@code anchor} (x, y pairs): now and then a burst of crackling
+     * blue-white flashes at each, and an arc flickering between the first two.
+     */
+    static void spark(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 2) {
+            return;
+        }
+        float period = 2.6f;
+        float t = s.since < 0.6f ? s.since : (s.t + Scene.hash(s.seed, 5, 5) * period) % period;
+        if (t > 0.6f) {
+            return;
+        }
+        s.busy = true;
+        int flick = (int) (s.t * 30);
+        int colour = 0xFFC8ECFF;
+        for (int k = 0; k + 1 < s.anchor.length; k += 2) {
+            float h = Scene.hash(flick, k, s.seed);
+            if (h < 0.35f) {
+                continue; // Sparks come and go between frames.
+            }
+            float jx = (Scene.hash(flick, k + 7, s.seed) - 0.5f) * 1.6f;
+            float jy = (Scene.hash(flick, k + 9, s.seed) - 0.5f) * 1.6f;
+            s.glint(edgeX(r, s.anchor[k]) + jx, edgeY(r, s.anchor[k + 1]) + jy, 0.8f + 1.2f * h,
+                    colour, h);
+        }
+        if (s.anchor.length >= 4 && Scene.hash(flick, 3, s.seed) > 0.4f) {
+            // The arc: a jagged line of light between the pins.
+            float x0 = edgeX(r, s.anchor[0]);
+            float y0 = edgeY(r, s.anchor[1]);
+            float x1 = edgeX(r, s.anchor[2]);
+            float y1 = edgeY(r, s.anchor[3]);
+            float len = (float) Math.hypot(x1 - x0, y1 - y0);
+            float nx = -(y1 - y0) / Math.max(1, len);
+            float ny = (x1 - x0) / Math.max(1, len);
+            int steps = Math.max(4, Math.round(len * 1.5f));
+            for (int j = 0; j <= steps; j++) {
+                float f = j / (float) steps;
+                // Pulled away from the straight line, most in the middle, new every flicker.
+                float off = (Scene.hash(flick, j + 20, s.seed) - 0.5f) * 1.6f
+                        * (float) Math.sin(Math.PI * f);
+                s.blob(x0 + (x1 - x0) * f + nx * off, y0 + (y1 - y0) * f + ny * off, 0.45f,
+                        colour, 0.7f + 0.3f * Scene.hash(flick, j, 4));
+            }
+        }
+    }
+
+    /**
+     * Electrons race round the atom's three orbits ({@code anchor}: centre x, y, then each
+     * orbit's long and short radius as fractions of the width), each trailing a little light.
+     */
+    static void atom(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 4) {
+            return;
+        }
+        float cx = edgeX(r, s.anchor[0]);
+        float cy = edgeY(r, s.anchor[1]);
+        float w = r.maxX - r.minX + 1;
+        float a = s.anchor[2] * w;
+        float b = s.anchor[3] * w;
+        float speed = 2.6f + 3 * s.boost;
+        for (int k = 0; k < 3; k++) {
+            double tilt = Math.toRadians(90 + k * 60);
+            float ct = (float) Math.cos(tilt);
+            float st = (float) Math.sin(tilt);
+            for (int j = 0; j < 4; j++) {
+                // The electron, then its fading trail.
+                double ang = s.t * speed + k * 2.1 - j * 0.16;
+                float ex = (float) Math.cos(ang) * a;
+                float ey = (float) Math.sin(ang) * b;
+                float x = cx + ex * ct - ey * st;
+                float y = cy + ex * st + ey * ct;
+                if (j == 0) {
+                    s.glint(x, y, 1.2f, 0xFF3FE0FF, 1);
+                } else {
+                    s.blob(x, y, 0.7f, 0xFF3FE0FF, 0.6f * (1 - j / 4f));
+                }
+            }
+        }
+        s.busy = true;
+    }
+
+    /** Rings come in pairs, a beat apart, then a pause: true while one is sounding. */
+    private static float ringing(Scene s) {
+        float t = s.since < 1.2f ? s.since : s.t % 3.2f;
+        return t < 0.45f || (t > 0.7f && t < 1.15f) ? 1 : 0;
+    }
+
+    /**
+     * A ringing phone: the handset ({@code anchor}: the cut x0, y0, x1, y1; none for the whole
+     * emoji) rattles on its cradle, ring, ring, then rests.
+     */
+    static void ringPose(Scene s) {
+        Regions r = s.regions;
+        if (ringing(s) == 0) {
+            return;
+        }
+        float x0 = r.minX - 1, y0 = r.minY - 1, x1 = r.maxX + 2, y1 = r.maxY + 2;
+        if (s.anchor != null && s.anchor.length >= 4) {
+            x0 = edgeX(r, s.anchor[0]);
+            y0 = edgeY(r, s.anchor[1]);
+            x1 = edgeX(r, s.anchor[2]);
+            y1 = edgeY(r, s.anchor[3]);
+        }
+        // The striker beats about twenty times a second: hop and rock.
+        float buzz = (float) Math.sin(s.t * Math.PI * 2 * 18);
+        s.addPart(x0, y0, x1, y1, (x0 + x1) / 2, y1, 2.5f * buzz, 0,
+                -0.35f - 0.35f * Math.abs(buzz));
+        s.busy = true;
+    }
+
+    /**
+     * A service bell is struck: the plunger ({@code anchor}: the cut x0, y0, x1, y1) is pushed
+     * down and springs back, and the dome shines as it rings.
+     */
+    static void dingPose(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 4) {
+            return;
+        }
+        float t = s.since < 1f ? s.since : s.t % 2.6f;
+        float press = t < 0.08f ? t / 0.08f : t < 0.5f ? 1 - spring((t - 0.08f) / 0.42f) : 0;
+        if (press <= 0 && t > 0.5f) {
+            return;
+        }
+        s.addPart(edgeX(r, s.anchor[0]), edgeY(r, s.anchor[1]), edgeX(r, s.anchor[2]),
+                edgeY(r, s.anchor[3]), 0, 0, 0, 0, 1.2f * press);
+        s.busy = true;
+    }
+
+    static void ding(Scene s) {
+        float t = s.since < 1f ? s.since : s.t % 2.6f;
+        if (t > 0.06f && t < 0.9f) {
+            DotEffect.glow(s, 1 - (t - 0.06f) / 0.84f);
+        }
+    }
+
+    /**
+     * The emoji's bright pieces (signal bars, wi-fi arcs) light one after another from the
+     * first (left, or bottom) to the last, hold, and start again, the rest dimmed meanwhile.
+     */
+    static void sequence(Scene s) {
+        Regions r = s.regions;
+        List<int[]> pieces = brightPieces(r);
+        if (pieces.size() < 2) {
+            return;
+        }
+        float step = 0.32f;
+        float pos = (s.t / step) % (pieces.size() + 3);
+        int[] which = pieceOf(r, pieces);
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0 || which[ri] < 0) {
+                continue;
+            }
+            float on = Math.max(0, Math.min(1, (pos - which[ri]) * 2));
+            s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 0.3f + 0.7f * on), s.dots[i] >>> 24);
+        }
+    }
+
+    /** Bright, pale pieces of the emoji, ordered from the bottom left up. */
+    @SuppressWarnings("unchecked")
+    private static List<int[]> brightPieces(Regions r) {
+        Object cached = r.memo.get("brightPieces");
+        if (cached != null) {
+            return (List<int[]>) cached;
+        }
+        boolean[] mask = new boolean[r.size * r.size];
+        for (int i = 0; i < mask.length; i++) {
+            mask[i] = r.ink[i] && r.luma[i] > 0.7f && r.sat[i] < 0.3f;
+        }
+        List<int[]> out = new ArrayList<>();
+        for (int[] c : MusicEffects.components(r, mask, false)) {
+            if (c.length >= 2) {
+                out.add(c);
+            }
+        }
+        out.sort((a, b) -> Float.compare(MusicEffects.cx(r, a) - MusicEffects.cy(r, a),
+                MusicEffects.cx(r, b) - MusicEffects.cy(r, b)));
+        r.memo.put("brightPieces", out);
+        return out;
+    }
+
+    private static int[] pieceOf(Regions r, List<int[]> pieces) {
+        Object cached = r.memo.get("pieceOf");
+        if (cached != null) {
+            return (int[]) cached;
+        }
+        int[] out = new int[r.size * r.size];
+        java.util.Arrays.fill(out, -1);
+        for (int k = 0; k < pieces.size(); k++) {
+            for (int i : pieces.get(k)) {
+                out[i] = k;
+            }
+        }
+        r.memo.put("pieceOf", out);
+        return out;
     }
 
     // -------------------------------------------------------------------------------------

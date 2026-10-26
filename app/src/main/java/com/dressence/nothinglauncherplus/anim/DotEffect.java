@@ -1,5 +1,7 @@
 package com.dressence.nothinglauncherplus.anim;
 
+import java.util.List;
+
 /**
  * What happens inside an emoji's dots, on top of its motion: the TV's screen fills with static,
  * a crystal ball swirls with magic, faces blink, fire flickers, clouds rain, coffee steams. Each
@@ -23,18 +25,19 @@ public enum DotEffect {
         }
     },
 
-    /** Love: blink, and little hearts float up and fade. */
+    /**
+     * Love: the emoji's own hearts beat, lub-dub, one after another (heart eyes throb, a kiss
+     * heart pulses), and the eyes blink.
+     */
     HEARTS {
+        @Override
+        void pose(Scene s) {
+            heartbeat(s);
+        }
+
         @Override
         void apply(Scene s) {
             blink(s);
-            Regions r = s.regions;
-            for (int k = 0; k < 2 + Math.round(s.boost * 2); k++) {
-                float life = cycle(s, 2.2f, k * 0.5f);
-                float x = r.maxX - 1 - k * 3 + (float) Math.sin(life * 6 + k) * 1.2f;
-                float y = r.minY + 3 - life * 9;
-                sprite(s, HEART, x, y, Scene.alpha(0xFFFF5C8A, Math.round(255 * fade(life))));
-            }
         }
     },
 
@@ -81,13 +84,46 @@ public enum DotEffect {
     /** Sleeping: Zs drift up and away. */
     SLEEPY {
         @Override
+        void pose(Scene s) {
+            snoreBubble(s);
+        }
+
+        @Override
         void apply(Scene s) {
             Regions r = s.regions;
-            for (int k = 0; k < 2; k++) {
-                float life = cycle(s, 3f, k * 1.5f);
-                float x = r.maxX - 2 + life * 5;
-                float y = r.minY + 2 - life * 6;
-                sprite(s, ZED, x, y, Scene.alpha(0xFFBFD8FF, Math.round(255 * fade(life))));
+            List<int[]> zs = drawnZs(r);
+            if (zs.size() >= 2 && !hasBubble(r)) {
+                // Its own Zs come one after another, z, zZ, zZZ, then fade together.
+                float step = 0.5f;
+                float pos = (s.t / step) % (zs.size() + 2.5f);
+                int[] which = zOf(r, zs);
+                for (int i = 0; i < s.dots.length; i++) {
+                    int ri = s.restIndex(i);
+                    if (ri < 0 || which[ri] < 0) {
+                        continue;
+                    }
+                    float on = Math.max(0, Math.min(1, pos - which[ri]));
+                    if (pos > zs.size() + 1) {
+                        on *= Math.max(0, 1 - (pos - zs.size() - 1) / 1.2f);
+                    }
+                    s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 0.25f + 0.85f * on),
+                            s.dots[i] >>> 24);
+                }
+                return;
+            }
+            if (hasBubble(r)) {
+                return; // The bubble breathes (see pose).
+            }
+            float w = r.maxX - r.minX;
+            float h = r.maxY - r.minY;
+            for (int k = 0; k < 3; k++) {
+                float life = cycle(s, 3.6f, k * 1.2f);
+                float p = ObjectEffects.easeOut(life);
+                // Up and out toward the corner, swaying, each one bigger than it started.
+                float x = r.minX + w * (0.6f + 0.25f * p) + (float) Math.sin(life * 5) * 0.6f;
+                float y = r.minY + h * (0.32f - 0.24f * p);
+                float env = Math.min(1, life / 0.15f) * (life < 0.6f ? 1 : (1 - life) / 0.4f);
+                zed(s, x, y, 2.2f + 2.2f * p, 0xFFCFE2FF, env);
             }
         }
     },
@@ -269,23 +305,20 @@ public enum DotEffect {
         }
     },
 
-    /** Stars, sparkles, gems, money: dots catch the light and flash white; sparkles around. */
+    /** Stars, night skies, magic: light catches points of the emoji and glints. */
     TWINKLE {
         @Override
         void apply(Scene s) {
-            Regions r = s.regions;
-            float rate = 2.5f + 4 * s.boost;
-            for (int i = 0; i < s.dots.length; i++) {
-                int ri = s.restIndex(i);
-                if (ri < 0 || !r.ink[ri]) {
-                    continue;
-                }
-                float phase = Scene.hash(ri, 7, s.seed) * 40;
-                if (Math.sin(s.t * rate + phase) > 0.96f - 0.1f * s.boost) {
-                    s.dots[i] = 0xFFFFFFFF;
-                }
-            }
-            twinkleAround(s, 2 + Math.round(3 * s.boost));
+            glints(s, 2 + Math.round(2 * s.boost));
+            twinkleAround(s, 1 + Math.round(2 * s.boost));
+        }
+    },
+
+    /** Dizzy: little stars circle round the head. */
+    DIZZY {
+        @Override
+        void apply(Scene s) {
+            dizzy(s);
         }
     },
 
@@ -323,11 +356,12 @@ public enum DotEffect {
         }
     },
 
-    /** Hearts, lamps, bulbs: a warm glow pulses, with a halo when it peaks. */
+    /** Lamps, signs, the moon: a soft glow breathes round it, its bright parts lifting. */
     GLOW {
         @Override
         void apply(Scene s) {
-            glow(s, (float) Math.max(0, Math.sin(s.t * 2.2f)));
+            float k = 0.5f - 0.5f * (float) Math.cos(s.t * 1.9f);
+            glow(s, k * k);
         }
     },
 
@@ -342,51 +376,31 @@ public enum DotEffect {
         }
     },
 
-    /** Rain clouds, umbrellas, showers: drops fall from beneath. */
+    /** Rain clouds, umbrellas, showers: streaks of rain fall from beneath. */
     RAIN {
         @Override
         void apply(Scene s) {
-            Regions r = s.regions;
-            int drops = 6 + Math.round(6 * s.boost);
-            for (int k = 0; k < drops; k++) {
-                float life = cycle(s, 0.9f, k * 0.29f);
-                int cyc = (int) ((s.t + k * 0.29f) / 0.9f);
-                int x = r.minX + 1 + (int) (Scene.hash(k, cyc, s.seed) * Math.max(1, r.maxX - r.minX - 1));
-                int from = r.bottom[x] >= 0 ? r.bottom[x] + 1 : r.maxY + 1;
-                float y = from + life * (r.size - from);
-                s.plotRest(x, y, 0xC07FC8FF);
+            if (s.anchor != null && s.anchor.length > 0 && s.anchor[0] == 1) {
+                rainOn(s, 8 + Math.round(6 * s.boost));
+            } else {
+                rain(s, 7 + Math.round(6 * s.boost));
             }
         }
     },
 
-    /** Snow: flakes drift down, swaying. */
+    /** Snow: soft flakes drift down, swaying. */
     SNOW {
         @Override
         void apply(Scene s) {
-            for (int k = 0; k < 9; k++) {
-                float life = cycle(s, 3.2f, k * 0.36f);
-                int cyc = (int) ((s.t + k * 0.36f) / 3.2f);
-                float x = Scene.hash(k, cyc, s.seed) * s.size + (float) Math.sin(s.t * 1.5f + k) * 1.5f;
-                s.plotRest(x, -1 + life * (s.size + 1), 0xE0FFFFFF);
-            }
-            TWINKLE.apply(s);
+            snow(s, 9 + Math.round(5 * s.boost));
         }
     },
 
-    /** Hot drinks and food: wisps of steam rise, wavering, and fade. */
+    /** Hot drinks and food: soft wisps of steam rise, curling, widening and fading. */
     STEAM {
         @Override
         void apply(Scene s) {
-            Regions r = s.regions;
-            float cx = (r.minX + r.maxX) / 2f;
-            for (int k = 0; k < 3; k++) {
-                for (int j = 0; j < 3; j++) {
-                    float life = cycle(s, 2.4f, k * 0.8f + j * 0.12f);
-                    float x = cx + (k - 1) * 3 + (float) Math.sin(s.t * 2 + k + life * 5) * 1.2f;
-                    s.plotRest(x, r.minY - 1 - life * 8,
-                            Scene.alpha(0xFFF2F2F2, Math.round(235 * fade(life))));
-                }
-            }
+            steam(s);
         }
     },
 
@@ -397,15 +411,15 @@ public enum DotEffect {
             Regions r = s.regions;
             // Notes in soft, changing colours rise from either side and sway as they go.
             float base = Scene.hash(s.seed, 3, 3) * 360;
-            float start = r.minY + (r.maxY - r.minY) * 0.55f;
+            float start = r.minY + (r.maxY - r.minY) * 0.6f;
             for (int k = 0; k < 3 + Math.round(2 * s.boost); k++) {
-                float life = cycle(s, 2.4f, k * 0.83f);
+                float life = cycle(s, 2.6f, k * 0.87f);
                 boolean right = k % 2 == 0;
-                float x = (right ? r.maxX - 3 : r.minX + 1)
-                        + (float) Math.sin(life * 6 + k) * 1.5f;
-                int color = Scene.hsv(base + k * 72 + s.t * 20, 0.45f, 1);
-                sprite(s, NOTE, x, start - life * 12,
-                        Scene.alpha(color, Math.round(255 * fade(life))));
+                float x = (right ? r.maxX - 2.5f : r.minX + 1.5f)
+                        + (float) Math.sin(life * 5 + k) * 1.3f;
+                int color = Scene.hsv(base + k * 72 + s.t * 20, 0.35f, 1);
+                float y = start - ObjectEffects.easeOut(life) * (start - 3);
+                MusicEffects.note(s, x, y, color, Math.min(1, 1.4f * fade(life)));
             }
         }
     },
@@ -525,8 +539,12 @@ public enum DotEffect {
     /** Maracas: the beads rattle as they are shaken. */
     MARACAS {
         @Override
+        void pose(Scene s) {
+            MusicEffects.maracasPose(s);
+        }
+
+        @Override
         void apply(Scene s) {
-            MusicEffects.maracas(s);
         }
     },
 
@@ -623,23 +641,49 @@ public enum DotEffect {
         }
     },
 
-    /** Lightning and power: a white flash with a crackle at the edges. */
+    /**
+     * Lightning: the bolt flashes white twice, lighting what is round it (a storm cloud from
+     * within), with a glow.
+     */
     ZAP {
         @Override
         void apply(Scene s) {
             Regions r = s.regions;
-            float p = s.t % (3.2f + Scene.hash(s.seed, 2, 2));
-            boolean flash = p < 0.08f || (p > 0.16f && p < 0.22f) || s.boost > 0.6f;
-            if (!flash) {
+            float period = 3.2f + Scene.hash(s.seed, 2, 2);
+            float p = s.since < 0.4f ? s.since : s.t % period;
+            // Two strikes, the second fainter, each a quick flare and fall.
+            float k = p < 0.12f ? 1 - p / 0.12f : p > 0.18f && p < 0.3f
+                    ? 0.7f * (1 - (p - 0.18f) / 0.12f) : 0;
+            if (k <= 0) {
                 return;
             }
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
-                if (ri >= 0 && r.ink[ri]) {
-                    s.dots[i] = Scene.mix(s.dots[i], 0xFFFFFFE0, 0.7f);
+                if (ri < 0 || !r.ink[ri]) {
+                    continue;
                 }
+                float h = r.hue[ri];
+                boolean bolt = r.sat[ri] > 0.5f && r.luma[ri] > 0.45f && h > 38 && h < 66;
+                s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFFFFFF0, (bolt ? 0.8f : 0.3f) * k),
+                        s.dots[i] >>> 24);
             }
-            twinkleAround(s, 4);
+            glow(s, k);
+        }
+    },
+
+    /** A plug: blue-white sparks crackle at its pins and an arc jumps between them. */
+    SPARK {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.spark(s);
+        }
+    },
+
+    /** An atom: electrons race round its orbits, trailing light. */
+    ATOM {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.atom(s);
         }
     },
 
@@ -707,18 +751,11 @@ public enum DotEffect {
         }
     },
 
-    /** Bubbles, fish, soap: little bubbles rise and sway. */
+    /** Water and drinks: bubbles rise, wobbling, growing, and pop at the surface. */
     BUBBLES {
         @Override
         void apply(Scene s) {
-            Regions r = s.regions;
-            for (int k = 0; k < 4 + Math.round(3 * s.boost); k++) {
-                float life = cycle(s, 2.2f, k * 0.55f);
-                int cyc = (int) ((s.t + k * 0.55f) / 2.2f);
-                float x = r.minX + Scene.hash(k, cyc, s.seed) * (r.maxX - r.minX)
-                        + (float) Math.sin(s.t * 3 + k) * 0.8f;
-                s.plotRest(x, r.maxY - life * (r.maxY + 2), Scene.alpha(0xFFBFF4FF, Math.round(200 * fade(life))));
-            }
+            bubbles(s, 5 + Math.round(3 * s.boost));
             RIPPLE.apply(s);
         }
     },
@@ -742,71 +779,104 @@ public enum DotEffect {
         }
     },
 
-    /** Robots, aliens, games: a scan line sweeps down; eyes glow. */
+    /** Robots: their eyes glow like LEDs, breathing. */
     DIGITAL {
         @Override
         void apply(Scene s) {
             Regions r = s.regions;
-            float line = r.minY + (s.t * (8 + 8 * s.boost)) % (r.maxY - r.minY + 6) - 2;
+            float g = 0.5f + 0.5f * (float) Math.sin(s.t * 3);
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
-                if (ri < 0 || !r.ink[ri]) {
-                    continue;
-                }
-                if (r.eyes[ri]) {
-                    float g = 0.5f + 0.5f * (float) Math.sin(s.t * 4);
-                    s.dots[i] = Scene.mix(0xFF00E5FF, 0xFFFFFFFF, g * 0.5f);
-                } else if (Math.abs(ri / r.size - line) < 0.8f) {
-                    s.dots[i] = Scene.mix(s.dots[i], 0xFF9CFFE8, 0.6f);
+                if (ri >= 0 && r.eyes[ri]) {
+                    s.dots[i] = Scene.mix(0xFF00D8FF, 0xFFE8FFFF, 0.25f + 0.5f * g);
                 }
             }
         }
     },
 
-    /** Parties: confetti tumbles down around. */
+    /** 👾: the classic two-step march, legs in, legs out, like the arcade sprite. */
+    INVADER {
+        @Override
+        void apply(Scene s) {
+            Regions r = s.regions;
+            if (((int) (s.t / 0.5f)) % 2 == 0) {
+                return;
+            }
+            float mid = (r.minX + r.maxX) / 2f;
+            float legs = r.minY + (r.maxY - r.minY) * 0.68f;
+            float ears = r.minY + (r.maxY - r.minY) * 0.18f;
+            int[] out = s.dots.clone();
+            for (int i = 0; i < s.dots.length; i++) {
+                int y = i / s.size;
+                int x = i % s.size;
+                if (y < legs && y > ears) {
+                    continue;
+                }
+                // Legs step in toward the middle, the antennae lean out.
+                int dir = (x < mid ? 1 : -1) * (y >= legs ? -1 : 1);
+                int sx = x + dir;
+                out[i] = sx >= 0 && sx < s.size ? s.dots[y * s.size + sx] : 0;
+            }
+            System.arraycopy(out, 0, s.dots, 0, out.length);
+        }
+    },
+
+    /** Buttons and keys: tapped now and then, the tile presses in and springs back. */
+    PRESS {
+        @Override
+        void pose(Scene s) {
+            float depth = press(s);
+            if (depth > 0) {
+                Regions r = s.regions;
+                s.addPart(0, 0, r.size, r.size, 0, 0, 0, 0, 0.7f * depth);
+                s.busy = true;
+            }
+        }
+
+        @Override
+        void apply(Scene s) {
+            float depth = press(s);
+            if (depth <= 0) {
+                return;
+            }
+            for (int i = 0; i < s.dots.length; i++) {
+                if ((s.dots[i] >>> 24) > 0) {
+                    s.dots[i] = Scene.alpha(Scene.scale(s.dots[i], 1 - 0.18f * depth),
+                            s.dots[i] >>> 24);
+                }
+            }
+        }
+    },
+
+    /** Signal bars and wi-fi: the bars fill up one after another, as signal comes in. */
+    SEQUENCE {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.sequence(s);
+        }
+    },
+
+    /** Parties: confetti strips tumble down, flashing as they turn. */
     CONFETTI {
         @Override
         void apply(Scene s) {
-            for (int k = 0; k < 9 + Math.round(9 * s.boost); k++) {
-                float life = cycle(s, 2.4f, k * 0.27f);
-                int cyc = (int) ((s.t + k * 0.27f) / 2.4f);
-                float x = Scene.hash(k, cyc, s.seed) * s.size + (float) Math.sin(s.t * 4 + k) * 1.2f;
-                s.plotRest(x, -1 + life * (s.size + 1), Scene.hsv(Scene.hash(cyc, k, 5) * 360, 0.8f, 1));
-            }
+            confetti(s, 10 + Math.round(8 * s.boost));
         }
     },
 
-    /** Fireworks: bursts bloom into rings of colour and fade. */
+    /** Fireworks: a flash, then sparks burst outward, fall and fade. */
     FIREWORKS {
         @Override
         void apply(Scene s) {
-            Regions r = s.regions;
-            for (int k = 0; k < 2; k++) {
-                float life = cycle(s, 1.8f, k * 0.9f);
-                int cyc = (int) ((s.t + k * 0.9f) / 1.8f);
-                float cx = r.minX + Scene.hash(k, cyc, s.seed) * (r.maxX - r.minX);
-                float cy = r.minY + Scene.hash(cyc, k, s.seed) * (r.maxY - r.minY) * 0.6f;
-                int color = Scene.alpha(Scene.hsv(Scene.hash(cyc, 3, k) * 360, 0.7f, 1),
-                        Math.round(255 * fade(life)));
-                for (int ray = 0; ray < 8; ray++) {
-                    double a = ray * Math.PI / 4;
-                    s.plotRest(cx + (float) Math.cos(a) * life * 6, cy + (float) Math.sin(a) * life * 6, color);
-                }
-            }
+            fireworks(s);
         }
     },
 
-    /** Smoke and wind: grey wisps drift away. */
+    /** Smoke and wind: soft grey puffs drift away, growing and thinning. */
     SMOKE {
         @Override
         void apply(Scene s) {
-            Regions r = s.regions;
-            for (int k = 0; k < 4; k++) {
-                float life = cycle(s, 2.8f, k * 0.7f);
-                float x = r.minX - 1 - life * 6 + (float) Math.sin(life * 6 + k) * 1.4f;
-                float y = (r.minY + r.maxY) / 2f + (k - 1.5f) * 3 - life * 2;
-                s.plotRest(x, y, Scene.alpha(0xFFDADADA, Math.round(230 * fade(life))));
-            }
+            smoke(s);
         }
     },
 
@@ -1014,14 +1084,6 @@ public enum DotEffect {
         }
     },
 
-    /** Dice: rolled, the pips flicker and land. */
-    DICE {
-        @Override
-        void apply(Scene s) {
-            ObjectEffects.dice(s);
-        }
-    },
-
     /** Slot machines: the reels spin and stop one by one. */
     SLOTS {
         @Override
@@ -1046,7 +1108,7 @@ public enum DotEffect {
         }
     },
 
-    /** Ferris wheels: lights chase round the rim. */
+    /** Flying saucers: the lights round the rim blink on in turn. */
     CHASE {
         @Override
         void apply(Scene s) {
@@ -1059,6 +1121,51 @@ public enum DotEffect {
         @Override
         void apply(Scene s) {
             ObjectEffects.pole(s);
+        }
+    },
+
+    /** Round symbols on a tile (☯️ ☸️): the symbol turns, the tile stays. */
+    SPIN {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.spinPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
+    /** Police cars, ambulances, fire engines: the roof lights flash wig-wag. */
+    SIREN {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.siren(s);
+        }
+    },
+
+    /** Phones: the handset rattles on its cradle, ring, ring. */
+    RING {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.ringPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
+    /** A service bell: the plunger is struck and the dome shines. */
+    DING {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.dingPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.ding(s);
         }
     },
 
@@ -1378,10 +1485,6 @@ public enum DotEffect {
     // -------------------------------------------------------------------------------------
 
     private static final String[] HEART = {"x.x", "xxx", ".x."};
-    private static final String[] ZED = {"xxx", ".x.", "xxx"};
-    private static final String[] SPECK = {"x"};
-    static final String[] NOTE = {"..xx", "..x.", "..x.", "xxx.", "xx.."};
-    private static final String[] CROSS = {".x.", "xxx", ".x."};
 
     /** Position in a repeating life cycle of {@code period} seconds, 0..1. */
     static float cycle(Scene s, float period, float offset) {
@@ -1578,48 +1681,501 @@ public enum DotEffect {
         }
     }
 
+    /**
+     * A soft halo of the emoji's own light round its outline, and its bright parts lifted a
+     * little, by {@code k} (0..1); nothing is washed out.
+     */
     static void glow(Scene s, float k) {
         Regions r = s.regions;
         k = Math.min(1, k + s.boost);
-        int halo = Scene.alpha(r.accent != 0 ? r.accent : r.brightest, Math.round(110 * k));
+        // Its own light: the brightest colour it has, lifted toward white.
+        int light = Scene.mix(r.brightest != 0 ? r.brightest : 0xFFFFFFFF, 0xFFFFFFFF, 0.25f);
+        float[] near = haloDistance(r);
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
-            if (ri >= 0 && r.ink[ri]) {
-                s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], r.brightest, 0.35f * k), s.dots[i] >>> 24);
+            if (ri < 0) {
+                continue;
+            }
+            if (r.ink[ri]) {
+                if (r.luma[ri] > 0.55f) {
+                    s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFFFFFFF, 0.14f * k),
+                            s.dots[i] >>> 24);
+                }
+            } else if (near[ri] < 2.6f) {
+                float f = 1 - near[ri] / 2.6f;
+                s.light(i, light, 0.42f * k * f * f);
             }
         }
-        if (k > 0.5f) {
-            for (int y = 0; y < r.size; y++) {
-                for (int x = 0; x < r.size; x++) {
-                    if (!r.ink[y * r.size + x] && touchesInk(r, x, y)) {
-                        s.plotRest(x, y, halo);
+    }
+
+    /** Per resting dot: how far it is from the nearest inked dot (up to 3). */
+    private static float[] haloDistance(Regions r) {
+        float[] cached = (float[]) r.memo.get("haloDistance");
+        if (cached != null) {
+            return cached;
+        }
+        int n = r.size * r.size;
+        float[] d = new float[n];
+        for (int i = 0; i < n; i++) {
+            if (r.ink[i]) {
+                continue;
+            }
+            float best = 9;
+            int x = i % r.size;
+            int y = i / r.size;
+            for (int oy = -3; oy <= 3; oy++) {
+                for (int ox = -3; ox <= 3; ox++) {
+                    if (r.in(x + ox, y + oy) && r.ink[(y + oy) * r.size + x + ox]) {
+                        best = Math.min(best, (float) Math.sqrt(ox * ox + oy * oy));
                     }
                 }
             }
+            d[i] = best;
+        }
+        r.memo.put("haloDistance", d);
+        return d;
+    }
+
+    /** Star glints just outside the emoji's outline, fading in and out. */
+    static void twinkleAround(Scene s, int count) {
+        Regions r = s.regions;
+        int color = r.brightest != 0 ? Scene.mix(r.brightest, 0xFFFFFFFF, 0.6f) : 0xFFFFFFFF;
+        for (int k = 0; k < count; k++) {
+            float life = cycle(s, 1.9f, k * 0.71f);
+            int cyc = (int) ((s.t + k * 0.71f + (s.seed & 0xFF) * 0.013f) / 1.9f);
+            float angle = Scene.hash(k, cyc, s.seed) * (float) (Math.PI * 2);
+            float rx = (r.maxX - r.minX) / 2f + 1.5f;
+            float ry = (r.maxY - r.minY) / 2f + 1.5f;
+            float x = (r.minX + r.maxX) / 2f + (float) Math.cos(angle) * rx;
+            float y = (r.minY + r.maxY) / 2f + (float) Math.sin(angle) * ry;
+            float env = (float) Math.sin(life * Math.PI);
+            env *= env;
+            s.glint(x, y, 0.6f + 1.4f * env, color, env);
         }
     }
 
-    private static boolean touchesInk(Regions r, int x, int y) {
-        return (r.in(x + 1, y) && r.ink[y * r.size + x + 1])
-                || (r.in(x - 1, y) && r.ink[y * r.size + x - 1])
-                || (r.in(x, y + 1) && r.ink[(y + 1) * r.size + x])
-                || (r.in(x, y - 1) && r.ink[(y - 1) * r.size + x]);
+    /** Glints on the emoji itself, where light would catch it: its brightest points. */
+    static void glints(Scene s, int count) {
+        Regions r = s.regions;
+        int[] spots = glintSpots(r);
+        if (spots.length == 0) {
+            return;
+        }
+        for (int k = 0; k < count; k++) {
+            float life = cycle(s, 1.6f, k * 0.83f);
+            int cyc = (int) ((s.t + k * 0.83f + (s.seed & 0xFF) * 0.013f) / 1.6f);
+            int spot = spots[(int) (Scene.hash(k, cyc, s.seed) * spots.length)];
+            float env = (float) Math.sin(life * Math.PI);
+            env *= env;
+            s.glint(spot % r.size, spot / r.size, 0.5f + 1.6f * env, 0xFFFFFFFF, env);
+        }
     }
 
-    /** Small four-point sparkles appearing just outside the emoji's outline. */
-    static void twinkleAround(Scene s, int count) {
+    /** The emoji's highlights: its brightest inked dots, at most one per 3 x 3 block. */
+    private static int[] glintSpots(Regions r) {
+        int[] cached = (int[]) r.memo.get("glintSpots");
+        if (cached != null) {
+            return cached;
+        }
+        java.util.ArrayList<Integer> list = new java.util.ArrayList<>();
+        for (int by = 0; by < r.size; by += 3) {
+            for (int bx = 0; bx < r.size; bx += 3) {
+                int best = -1;
+                float bestLuma = 0.6f;
+                for (int y = by; y < Math.min(r.size, by + 3); y++) {
+                    for (int x = bx; x < Math.min(r.size, bx + 3); x++) {
+                        int i = y * r.size + x;
+                        if (r.ink[i] && r.luma[i] > bestLuma) {
+                            bestLuma = r.luma[i];
+                            best = i;
+                        }
+                    }
+                }
+                if (best >= 0) {
+                    list.add(best);
+                }
+            }
+        }
+        // Prefer the brightest third: the true highlights.
+        list.sort((p, q) -> Float.compare(r.luma[q], r.luma[p]));
+        int keep = Math.max(1, Math.min(list.size(), (list.size() + 2) / 3));
+        int[] spots = new int[list.isEmpty() ? 0 : keep];
+        for (int i = 0; i < spots.length; i++) {
+            spots[i] = list.get(i);
+        }
+        r.memo.put("glintSpots", spots);
+        return spots;
+    }
+
+    /** Pale blue pieces: a sleeper's drawn Zs, or the bubble at a sleepy nose. */
+    private static boolean sleepBlue(Regions r, int i) {
+        return r.ink[i] && r.sat[i] > 0.2f && r.hue[i] > 185 && r.hue[i] < 260;
+    }
+
+    /** The drawn Zs, smallest first (they grow as they rise). */
+    @SuppressWarnings("unchecked")
+    private static List<int[]> drawnZs(Regions r) {
+        Object cached = r.memo.get("drawnZs");
+        if (cached != null) {
+            return (List<int[]>) cached;
+        }
+        boolean[] mask = new boolean[r.size * r.size];
+        for (int i = 0; i < mask.length; i++) {
+            mask[i] = sleepBlue(r, i);
+        }
+        List<int[]> zs = new java.util.ArrayList<>();
+        for (int[] c : MusicEffects.components(r, mask, true)) {
+            if (c.length >= 2) {
+                zs.add(c);
+            }
+        }
+        zs.sort((a, b) -> a.length - b.length);
+        r.memo.put("drawnZs", zs);
+        return zs;
+    }
+
+    private static int[] zOf(Regions r, List<int[]> zs) {
+        Object cached = r.memo.get("zOf");
+        if (cached != null) {
+            return (int[]) cached;
+        }
+        int[] out = new int[r.size * r.size];
+        java.util.Arrays.fill(out, -1);
+        for (int k = 0; k < zs.size(); k++) {
+            for (int i : zs.get(k)) {
+                out[i] = k;
+            }
+        }
+        r.memo.put("zOf", out);
+        return out;
+    }
+
+    /** A sleepy face's bubble: one big round blue piece low on the face. */
+    private static boolean hasBubble(Regions r) {
+        List<int[]> zs = drawnZs(r);
+        if (zs.size() != 1) {
+            return false;
+        }
+        int[] c = zs.get(0);
+        int x0 = r.size, y0 = r.size, x1 = 0, y1 = 0;
+        for (int i : c) {
+            x0 = Math.min(x0, i % r.size);
+            x1 = Math.max(x1, i % r.size);
+            y0 = Math.min(y0, i / r.size);
+            y1 = Math.max(y1, i / r.size);
+        }
+        float w = x1 - x0 + 1;
+        float h = y1 - y0 + 1;
+        // Round, filled and small: not a blanket or a cap.
+        return c.length >= 12 && w / h > 0.6f && w / h < 1.7f && c.length > 0.55f * w * h
+                && w < (r.maxX - r.minX) * 0.5f && MusicEffects.cy(r, c) > (r.minY + r.maxY) / 2f;
+    }
+
+    /** The bubble at a sleeping nose swells and shrinks with each slow breath. */
+    static void snoreBubble(Scene s) {
         Regions r = s.regions;
-        int color = r.brightest != 0 ? Scene.mix(r.brightest, 0xFFFFFFFF, 0.5f) : 0xFFFFFFFF;
+        if (!hasBubble(r)) {
+            return;
+        }
+        int[] c = drawnZs(r).get(0);
+        int x0 = r.size, y0 = r.size, x1 = 0, y1 = 0;
+        for (int i : c) {
+            x0 = Math.min(x0, i % r.size);
+            x1 = Math.max(x1, i % r.size);
+            y0 = Math.min(y0, i / r.size);
+            y1 = Math.max(y1, i / r.size);
+        }
+        float breath = 0.5f - 0.5f * (float) Math.cos(s.t * Math.PI * 2 / 3.2f);
+        // It grows out of the nostril, at its upper inner corner.
+        s.liftHue(215);
+        s.scaleLayerPiece(1, x0 - 1, y0 - 1, x1 + 2, y1 + 2, x0 + 0.5f, y0 + 0.5f,
+                0.55f + 0.5f * breath);
+        s.busy = true;
+    }
+
+    /** How far a tapped button is pressed in (0..1): quick down, a held beat, a springy rise. */
+    static float press(Scene s) {
+        float period = 3.4f;
+        float t = s.since < 0.6f ? s.since
+                : (s.t + Scene.hash(s.seed, 8, 8) * period) % period;
+        if (t < 0.07f) {
+            return ObjectEffects.easeOut(t / 0.07f);
+        }
+        if (t < 0.14f) {
+            return 1;
+        }
+        return t < 0.6f ? 1 - ObjectEffects.spring((t - 0.14f) / 0.46f) : 0;
+    }
+
+    /** A letter Z, {@code size} dots tall, centred at resting (x, y). */
+    static void zed(Scene s, float x, float y, float size, int color, float strength) {
+        float half = size / 2;
+        s.strip(x, y - half, size, 0.6f, 0, color, strength);
+        s.strip(x, y + half, size, 0.6f, 0, color, strength);
+        s.strip(x, y, size * 1.3f, 0.6f, (float) (Math.PI * 0.75), color, strength);
+    }
+
+    /** The heart reds: a hue near red or pink, strongly coloured. */
+    private static boolean heartRed(Regions r, int i) {
+        float h = r.hue[i];
+        return r.ink[i] && r.sat[i] > 0.45f && r.luma[i] > 0.25f && (h > 318 || h < 18);
+    }
+
+    /** The emoji's hearts (red or pink pieces of a fair size): per heart x0, y0, x1, y1. */
+    private static float[][] heartBoxes(Regions r) {
+        float[][] cached = (float[][]) r.memo.get("heartBoxes");
+        if (cached != null) {
+            return cached;
+        }
+        boolean[] mask = new boolean[r.size * r.size];
+        for (int i = 0; i < mask.length; i++) {
+            mask[i] = heartRed(r, i);
+        }
+        java.util.List<float[]> boxes = new java.util.ArrayList<>();
+        for (int[] comp : MusicEffects.components(r, mask, true)) {
+            if (comp.length < 4) {
+                continue;
+            }
+            int x0 = r.size, y0 = r.size, x1 = 0, y1 = 0;
+            for (int i : comp) {
+                x0 = Math.min(x0, i % r.size);
+                x1 = Math.max(x1, i % r.size);
+                y0 = Math.min(y0, i / r.size);
+                y1 = Math.max(y1, i / r.size);
+            }
+            boxes.add(new float[] {x0 - 0.6f, y0 - 0.6f, x1 + 1.6f, y1 + 1.6f, comp.length});
+        }
+        // The biggest few, so every heart can beat as a part of its own.
+        boxes.sort((a, b) -> Float.compare(b[4], a[4]));
+        cached = boxes.subList(0, Math.min(Scene.MAX_PARTS - 1, boxes.size()))
+                .toArray(new float[0][]);
+        r.memo.put("heartBoxes", cached);
+        return cached;
+    }
+
+    /** One beat: a strong swell and a softer second, then rest (0..1). */
+    static float beat(float t) {
+        float lub = t < 0.14f ? (float) Math.sin(Math.PI * t / 0.14f) : 0;
+        float dub = t > 0.22f && t < 0.36f ? 0.6f * (float) Math.sin(Math.PI * (t - 0.22f) / 0.14f)
+                : 0;
+        return lub + dub;
+    }
+
+    /** The emoji's hearts beat, each a moment after the last. */
+    static void heartbeat(Scene s) {
+        Regions r = s.regions;
+        float[][] hearts = heartBoxes(r);
+        if (hearts.length == 0) {
+            return;
+        }
+        s.liftHue(350);
+        // Every red piece where it rests (small ones, lips), the beating hearts over them.
+        s.addLayer(1, 0, 0, 0, 0, 0, 1);
+        float period = 1.25f - 0.35f * s.boost;
+        for (int k = 0; k < hearts.length; k++) {
+            float[] h = hearts[k];
+            float t = (s.t + period - k * 0.12f) % period;
+            float swell = beat(t);
+            s.busy |= swell > 0;
+            s.scaleLayerPiece(1, h[0], h[1], h[2], h[3], (h[0] + h[2]) / 2, (h[1] + h[3]) / 2,
+                    1 + (0.22f + 0.1f * s.boost) * swell);
+        }
+    }
+
+    /** Hearts rising from beside the emoji: swaying, growing a little, fading at the top. */
+    static void hearts(Scene s, int count) {
+        Regions r = s.regions;
+        float w = r.maxX - r.minX;
         for (int k = 0; k < count; k++) {
-            float life = cycle(s, 1.6f, k * 0.53f);
-            int cyc = (int) ((s.t + k * 0.53f) / 1.6f);
-            float angle = Scene.hash(k, cyc, s.seed) * (float) (Math.PI * 2);
-            float rx = (r.maxX - r.minX) / 2f + 2;
-            float ry = (r.maxY - r.minY) / 2f + 2;
-            float x = (r.minX + r.maxX) / 2f + (float) Math.cos(angle) * rx;
-            float y = (r.minY + r.maxY) / 2f + (float) Math.sin(angle) * ry;
-            int a = Math.round(255 * (float) Math.sin(life * Math.PI));
-            sprite(s, life > 0.3f && life < 0.7f ? CROSS : SPECK, x, y, Scene.alpha(color, a));
+            float life = cycle(s, 3.2f, k * (3.2f / count));
+            int cyc = (int) ((s.t + k * (3.2f / count) + (s.seed & 0xFF) * 0.013f) / 3.2f);
+            float side = Scene.hash(k, cyc, s.seed);
+            float x0 = r.minX + w * (0.2f + 0.6f * side);
+            float rise = ObjectEffects.easeOut(life);
+            float x = x0 + (float) Math.sin(life * 6 + k * 2) * 1.1f * life;
+            // From the upper half up to the panel's top edge: always inside the screen.
+            float y0 = r.minY + (r.maxY - r.minY) * 0.62f;
+            float y = y0 - rise * (y0 - 2.5f);
+            float env = Math.min(1, life / 0.12f) * (life < 0.55f ? 1 : 1 - (life - 0.55f) / 0.45f);
+            s.heart(x, y, 3 + 1.8f * ObjectEffects.easeOut(Math.min(1, life * 2.5f)),
+                    0xFFFF3D68, env);
+        }
+    }
+
+    /** Stars circling round the head, brighter as they pass in front. */
+    static void dizzy(Scene s) {
+        Regions r = s.regions;
+        float cx = (r.minX + r.maxX + 1) / 2f;
+        float cy = r.minY + (r.maxY - r.minY) * 0.08f;
+        float rx = (r.maxX - r.minX) * 0.44f;
+        float ry = (r.maxY - r.minY) * 0.11f;
+        float speed = 2.2f + 2.5f * s.boost;
+        for (int k = 0; k < 3; k++) {
+            double a = s.t * speed + k * Math.PI * 2 / 3;
+            float front = 0.5f + 0.5f * (float) Math.sin(a);
+            s.glint(cx + (float) Math.cos(a) * rx, cy + (float) Math.sin(a) * ry,
+                    1 + 1.2f * front, 0xFFFFFFFF, 0.55f + 0.45f * front);
+        }
+    }
+
+    /** Streaks of rain falling from beneath the emoji's underside. */
+    static void rain(Scene s, int drops) {
+        Regions r = s.regions;
+        for (int k = 0; k < drops; k++) {
+            float period = 0.75f;
+            float life = cycle(s, period, k * (period / drops) * 1.7f);
+            int cyc = (int) ((s.t + k * (period / drops) * 1.7f + (s.seed & 0xFF) * 0.013f) / period);
+            float fx = r.minX + 1 + Scene.hash(k, cyc, s.seed) * Math.max(1, r.maxX - r.minX - 2);
+            int col = Math.max(0, Math.min(r.size - 1, Math.round(fx)));
+            float from = r.bottom[col] >= 0 ? r.bottom[col] + 1 : r.maxY + 1;
+            float y = from + life * (r.size + 2 - from);
+            float env = Math.min(1, life / 0.15f);
+            s.strip(fx - life * 0.6f, y, 1.9f, 0.45f, (float) Math.toRadians(80), 0xFF8FD3FF,
+                    0.85f * env);
+        }
+    }
+
+    /**
+     * Rain falling from above onto the emoji (an umbrella): each drop splashes where it meets
+     * the top of it, or falls on past its edge.
+     */
+    static void rainOn(Scene s, int drops) {
+        Regions r = s.regions;
+        for (int k = 0; k < drops; k++) {
+            float period = 0.7f;
+            float off = k * (period / drops) * 1.7f;
+            float life = cycle(s, period, off);
+            int cyc = (int) ((s.t + off + (s.seed & 0xFF) * 0.013f) / period);
+            float fx = Scene.hash(k, cyc, s.seed) * (s.size - 1);
+            int col = Math.max(0, Math.min(r.size - 1, Math.round(fx)));
+            float stop = r.top[col] >= 0 ? r.top[col] - 0.5f : s.size + 2;
+            float y = -2 + life * (s.size + 4);
+            if (y < stop) {
+                s.strip(fx, y, 1.9f, 0.45f, (float) Math.toRadians(82), 0xFF8FD3FF, 0.85f);
+            } else if (y < stop + 2.5f) {
+                // The splash: a little burst of spray, gone at once.
+                float k2 = (y - stop) / 2.5f;
+                s.blob(fx - 0.9f * k2, stop - 0.6f * k2, 0.45f, 0xFFCFEFFF, 0.8f * (1 - k2));
+                s.blob(fx + 0.9f * k2, stop - 0.6f * k2, 0.45f, 0xFFCFEFFF, 0.8f * (1 - k2));
+            }
+        }
+    }
+
+    /** Soft flakes drifting down over the whole panel. */
+    static void snow(Scene s, int flakes) {
+        for (int k = 0; k < flakes; k++) {
+            float period = 4f;
+            float life = cycle(s, period, k * (period / flakes));
+            int cyc = (int) ((s.t + k * (period / flakes) + (s.seed & 0xFF) * 0.013f) / period);
+            float x = Scene.hash(k, cyc, s.seed) * s.size
+                    + (float) Math.sin(s.t * 1.3f + k * 1.7f) * 1.3f;
+            float big = 0.45f + 0.35f * Scene.hash(cyc, k, s.seed);
+            s.blob(x, -1.5f + life * (s.size + 3), big + 0.4f, 0xFFFFFFFF,
+                    0.9f * Math.min(1, life * 6) * Math.min(1, (1 - life) * 6));
+        }
+    }
+
+    /** Steam: soft puffs rise from the top in curling strands, widening and thinning. */
+    static void steam(Scene s) {
+        Regions r = s.regions;
+        float cx = (r.minX + r.maxX + 1) / 2f;
+        float w = r.maxX - r.minX;
+        int strands = w > 14 ? 3 : 2;
+        float every = 0.3f;
+        float span = 2.1f;
+        for (int k = 0; k < strands; k++) {
+            float sx = cx + (k - (strands - 1) / 2f) * Math.min(4.5f, w * 0.22f);
+            int col = Math.max(0, Math.min(r.size - 1, Math.round(sx)));
+            float top = r.top[col] >= 0 ? r.top[col] : r.minY;
+            float phase = Scene.hash(k, 7, s.seed) * 6;
+            for (int j = 0; j * every < span; j++) {
+                float life = ((s.t + phase + j * every) % span) / span;
+                float y = top - 0.5f - ObjectEffects.easeOut(life) * 8;
+                float x = sx + (float) Math.sin(life * 4.5f + phase + s.t * 0.8f) * 1.6f * life;
+                float env = Math.min(1, life / 0.12f) * (1 - life);
+                s.blob(x, y, 0.7f + 1.5f * life, 0xFFFFFFFF, 0.7f * env);
+            }
+        }
+    }
+
+    /** Bubbles rising through and above the emoji, wobbling and growing, popping at the top. */
+    static void bubbles(Scene s, int count) {
+        Regions r = s.regions;
+        for (int k = 0; k < count; k++) {
+            float period = 2.6f;
+            float life = cycle(s, period, k * (period / count));
+            int cyc = (int) ((s.t + k * (period / count) + (s.seed & 0xFF) * 0.013f) / period);
+            float x0 = r.minX + 1 + Scene.hash(k, cyc, s.seed) * Math.max(1, r.maxX - r.minX - 2);
+            float y0 = r.maxY - (r.maxY - r.minY) * 0.3f * Scene.hash(cyc, k, s.seed);
+            float y = y0 - (y0 - r.minY + 3) * (float) Math.pow(life, 1.3);
+            float x = x0 + (float) Math.sin(life * 9 + k) * 0.6f;
+            float radius = 0.6f + 0.5f * life;
+            float env = Math.min(1, life / 0.1f);
+            if (life > 0.9f) {
+                // It pops: a quick swell, gone.
+                float pop = (life - 0.9f) / 0.1f;
+                radius += pop * 0.8f;
+                env *= 1 - pop;
+            }
+            s.ring(x, y, radius, 0.45f, 0xFFCFF6FF, 0.75f * env);
+            s.blob(x - radius * 0.45f, y - radius * 0.45f, 0.35f, 0xFFFFFFFF, 0.8f * env);
+        }
+    }
+
+    /** Confetti strips falling over the panel, each tumbling so it flashes wide and thin. */
+    static void confetti(Scene s, int count) {
+        for (int k = 0; k < count; k++) {
+            float period = 3f;
+            float life = cycle(s, period, k * (period / count));
+            int cyc = (int) ((s.t + k * (period / count) + (s.seed & 0xFF) * 0.013f) / period);
+            float x = Scene.hash(k, cyc, s.seed) * s.size
+                    + (float) Math.sin(s.t * 2.6f + k) * 1.4f;
+            float y = -2 + life * (s.size + 4);
+            float flip = (float) Math.abs(Math.cos(s.t * (5 + k % 3) + k));
+            int color = Scene.hsv(Scene.hash(cyc, k, 5) * 360, 0.75f, 1);
+            s.strip(x, y, 0.4f + 1.5f * flip, 0.7f, s.t * 2 + k, color,
+                    0.6f + 0.4f * flip);
+        }
+    }
+
+    /** Two bursts at a time: a flash, sparks flying out and falling, trailing, fading. */
+    static void fireworks(Scene s) {
+        Regions r = s.regions;
+        for (int k = 0; k < 2; k++) {
+            float period = 2f;
+            float life = cycle(s, period, k * period / 2);
+            int cyc = (int) ((s.t + k * period / 2 + (s.seed & 0xFF) * 0.013f) / period);
+            float cx = r.minX + 2 + Scene.hash(k, cyc, s.seed) * Math.max(1, r.maxX - r.minX - 4);
+            float cy = r.minY + 2 + Scene.hash(cyc, k, s.seed) * (r.maxY - r.minY) * 0.5f;
+            int color = Scene.hsv(Scene.hash(cyc, 3, k) * 360, 0.6f, 1);
+            if (life < 0.12f) {
+                s.blob(cx, cy, 1.8f, 0xFFFFFFFF, 1 - life / 0.12f);
+            }
+            float reach = 6 * ObjectEffects.easeOut(life);
+            float fall = 2.5f * life * life;
+            float env = (float) Math.pow(1 - life, 1.4);
+            for (int ray = 0; ray < 10; ray++) {
+                double a = ray * Math.PI / 5 + k;
+                float dx = (float) Math.cos(a);
+                float dy = (float) Math.sin(a);
+                s.blob(cx + dx * reach, cy + dy * reach + fall, 0.6f, color, env);
+                s.blob(cx + dx * reach * 0.7f, cy + dy * reach * 0.7f + fall * 0.6f, 0.45f,
+                        color, 0.45f * env);
+            }
+        }
+    }
+
+    /** Soft grey puffs drifting off to the left and up, growing and thinning. */
+    static void smoke(Scene s) {
+        Regions r = s.regions;
+        float mid = (r.minY + r.maxY) / 2f;
+        for (int k = 0; k < 5; k++) {
+            float period = 3f;
+            float life = cycle(s, period, k * period / 5);
+            float x = r.minX - 0.5f - ObjectEffects.easeOut(life) * 7;
+            float y = mid + (k % 3 - 1) * 2.5f - life * 3 + (float) Math.sin(life * 5 + k) * 0.8f;
+            float env = Math.min(1, life / 0.15f) * (1 - life);
+            s.blob(x, y, 0.9f + 1.4f * life, 0xFFD8D8D8, 0.55f * env);
         }
     }
 

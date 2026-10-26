@@ -202,6 +202,8 @@ final class MusicEffects {
                 lighten(s, i, k * edge);
             }
         }
+        // And the wave itself, travelling out through the air.
+        s.ring(x, y, rad, 0.45f, WHITE, 0.45f * k);
     }
 
     // -------------------------------------------------------------------------------------
@@ -231,17 +233,18 @@ final class MusicEffects {
                 lighten(s, i, 0.08f * k);
             }
         }
-        // The burst: a ring of dots leaving the head.
+        // The sound: a soft ring leaving the head as it is played.
         int[] h = heads.get(head);
-        float x = cx(r, h);
-        float y = cy(r, h);
         float life = phase(s);
-        float rad = 2.5f + life * 3;
-        int c = Scene.alpha(color, Math.round(220 * (1 - life)));
-        for (int a = 0; a < 8; a++) {
-            double ang = a * Math.PI / 4 + 0.39;
-            s.plotRest(x + (float) Math.cos(ang) * rad, y + (float) Math.sin(ang) * rad, c);
-        }
+        s.ring(cx(r, h), cy(r, h), 2.2f + life * 3.5f, 0.5f, color,
+                0.75f * (1 - life) * (1 - life));
+    }
+
+    /** A musical note (a quaver) at resting (x, y): its head there, stem and flag above. */
+    static void note(Scene s, float x, float y, int color, float strength) {
+        s.blob(x, y, 1.15f, color, strength);
+        s.strip(x + 0.75f, y - 1.6f, 3.2f, 0.55f, (float) (Math.PI / 2), color, strength);
+        s.strip(x + 1.35f, y - 2.7f, 1.4f, 0.55f, 0.9f, color, strength);
     }
 
     /** For each dot, which note head it belongs to (-1 for none); computed once. */
@@ -377,17 +380,15 @@ final class MusicEffects {
         float env = Scene.hash((int) (s.t / syllable), 9, s.seed) > 0.25f
                 ? (float) Math.sin(Math.PI * (s.t % syllable) / syllable) : 0;
         env = Math.max(env, s.boost);
-        int frame = (int) (s.t * 24);
+        // The grille breathes with the voice: brightest at its heart, softly to the rim.
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
-            if (ri < 0 || !r.ink[ri]
-                    || Math.hypot(ri % r.size - x, ri / r.size - y) > rad) {
+            if (ri < 0 || !r.ink[ri]) {
                 continue;
             }
-            if (Scene.hash(ri, frame, s.seed) < 0.3f * env) {
-                s.dots[i] = Scene.alpha(WHITE, s.dots[i] >>> 24);
-            } else {
-                lighten(s, i, 0.25f * env);
+            float d = (float) Math.hypot(ri % r.size - x, ri / r.size - y) / rad;
+            if (d < 1) {
+                lighten(s, i, 0.42f * env * (1 - 0.6f * d));
             }
         }
     }
@@ -420,18 +421,11 @@ final class MusicEffects {
         int b = beat(s);
         for (int n = 0; n < 3; n++) {
             float life = (phase(s) + n) / 3; // Each note lives three beats.
-            int color = Scene.hsv(base + (b - n) * 55, 0.5f, 1);
+            int color = Scene.hsv(base + (b - n) * 55, 0.35f, 1);
             float sway = (float) Math.sin(life * 7 + n) * 1.2f;
             float x = bx + dx * life * 9 + sway * -dy;
             float y = by + dy * life * 9 + sway * dx;
-            int c = Scene.alpha(color, Math.round(255 * DotEffect.fade(life)));
-            for (int j = 0; j < DotEffect.NOTE.length; j++) {
-                for (int i = 0; i < DotEffect.NOTE[j].length(); i++) {
-                    if (DotEffect.NOTE[j].charAt(i) == 'x') {
-                        s.paintRest(x + i - 1, y + j - 1, c);
-                    }
-                }
-            }
+            note(s, x, y, color, Math.min(1, 1.4f * DotEffect.fade(life)));
         }
     }
 
@@ -671,23 +665,20 @@ final class MusicEffects {
     }
 
     /** Maracas: shaken on every eighth, left and right in turn; the beads inside rattle. */
-    static void maracas(Scene s) {
+    /**
+     * Shaken on the eighths: the pair snaps one way and the other about the hands holding
+     * them, each shake easing off as the beads settle.
+     */
+    static void maracasPose(Scene s) {
         Regions r = s.regions;
         float eighth = BEAT / 2;
         int step = (int) (s.t / eighth);
-        float env = Math.min(1, (float) Math.exp(-(s.t % eighth) / eighth * 4) + 0.5f * s.boost);
-        float mid = (r.minX + r.maxX) / 2f;
-        boolean left = step % 2 == 0;
-        int frame = (int) (s.t * 24);
-        for (int i = 0; i < s.dots.length; i++) {
-            int ri = s.restIndex(i);
-            if (ri < 0 || !r.ink[ri] || r.sat[ri] < 0.45f || (ri % r.size < mid) != left) {
-                continue;
-            }
-            if (Scene.hash(ri, frame, s.seed) < 0.35f * env) {
-                s.dots[i] = Scene.alpha(WHITE, s.dots[i] >>> 24);
-            }
-        }
+        float k = (s.t % eighth) / eighth;
+        // A quick snap out and a damped return.
+        float swing = (float) (Math.sin(Math.PI * Math.min(1, k * 2.5f)) * Math.exp(-k * 2));
+        float degrees = (step % 2 == 0 ? 1 : -1) * (5 + 4 * s.boost) * swing;
+        s.addPart(0, 0, r.size, r.size, (r.minX + r.maxX + 1) / 2f, r.maxY + 1, degrees, 0, 0);
+        s.busy = true;
     }
 
     // -------------------------------------------------------------------------------------
