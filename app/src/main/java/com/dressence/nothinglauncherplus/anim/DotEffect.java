@@ -86,6 +86,76 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * Huffing: the clouds of steam blown from the nose (the emoji's own, lifted off) burst out
+     * with each snort and settle back.
+     */
+    HUFF {
+        @Override
+        void pose(Scene s) {
+            Regions r = s.regions;
+            float mid = (r.minX + r.maxX) / 2f;
+            float[] box = {r.size, r.size, -1, -1, r.size, r.size, -1, -1};
+            for (int i = 0; i < r.size * r.size; i++) {
+                int y = i / r.size;
+                if (!r.ink[i] || r.luma[i] < 0.8f || r.sat[i] > 0.2f
+                        || y < (r.minY + r.maxY) / 2) {
+                    continue;
+                }
+                int x = i % r.size;
+                int b = x < mid ? 0 : 4;
+                box[b] = Math.min(box[b], x);
+                box[b + 1] = Math.min(box[b + 1], y);
+                box[b + 2] = Math.max(box[b + 2], x + 1);
+                box[b + 3] = Math.max(box[b + 3], y + 1);
+            }
+            float t = (s.t + 0.3f) % 2.6f;
+            float puff = t < 0.18f ? ObjectEffects.easeOut(t / 0.18f)
+                    : t < 1.2f ? 1 - ObjectEffects.ease((t - 0.18f) / 1.02f) : 0;
+            if (box[2] < 0 || box[6] < 0) {
+                return;
+            }
+            s.liftHue(-1, 25, 0.15f);
+            for (int side = 0; side < 2; side++) {
+                int b = side * 4;
+                float out = side == 0 ? -1 : 1;
+                // Each grows from its inner top corner, where it leaves the nose.
+                s.scaleLayerPiece(1, box[b] - 1.5f, box[b + 1] - 1.5f, box[b + 2] + 1.5f,
+                        box[b + 3] + 1.5f, side == 0 ? box[2] : box[4], box[b + 1],
+                        1 + 0.18f * puff);
+                int k = s.partCount - 1;
+                if (k >= 0 && s.partLayer[k] == 1) {
+                    s.partShift[k * 2] = out * 0.8f * puff;
+                }
+            }
+            s.busy = true;
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
+    /** Wicked: now and then a glint flashes in the eye. */
+    GLEAM {
+        @Override
+        void apply(Scene s) {
+            blink(s);
+            Regions r = s.regions;
+            if (r.eyeCount == 0) {
+                return;
+            }
+            float t = (s.t + 1.7f) % 3.6f;
+            if (t > 0.6f) {
+                return;
+            }
+            float[][] eyes = eyeCentres(r);
+            float k = (float) Math.sin(t / 0.6f * Math.PI);
+            s.glint(eyes[1][0] + 1.2f, eyes[1][1] - 1.2f, 1.2f + 1.6f * k, 0xFFFFFFFF, k);
+            s.busy = true;
+        }
+    },
+
     /** A halo: it hovers, rising and settling over the head, light gliding round it. */
     HALO {
         @Override

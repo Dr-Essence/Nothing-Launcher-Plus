@@ -525,11 +525,6 @@ EFFECT_EXACT.update(EFFECT_OBJECTS)
 
 # Second pass, emoji by emoji: what each one would really do.
 EFFECT_REVIEW = {
-    "broken heart": "BREAK:0.8,0.3,0.5,0.97", "face holding back tears": "TEARS:1",
-    "smiling face with sunglasses": "SHINE:1", "disguised face": "SHINE",
-    "kissing face": "KISS:0.62,0.6", "kissing face with closed eyes": "KISS:0.62,0.6",
-    "kissing face with smiling eyes": "KISS:0.62,0.6", "smiling face with halo": "HALO",
-    "robot": "DIGITAL:0.5,0.04", "sad but relieved face": "SWEAT",
     # A mooncake does not glow; a meditating figure breathes rather than snores.
     "moon cake": "SHINE",
     "person in lotus position": "GLOW", "man in lotus position": "GLOW",
@@ -595,6 +590,14 @@ EFFECT_REVIEW = {
     # Emergency vehicles flash their roof lights; a saucer's rim lights run round.
     "police car": "SIREN", "oncoming police car": "SIREN", "ambulance": "SIREN",
     "fire engine": "SIREN:0.22,0.14", "flying saucer": "CHASE",
+    # Faces reviewed one by one.
+    "kissing face": "KISS:0.62,0.6", "kissing face with closed eyes": "KISS:0.62,0.6",
+    "kissing face with smiling eyes": "KISS:0.62,0.6", "smiling face with halo": "HALO",
+    "robot": "DIGITAL:0.5,0.04", "sad but relieved face": "SWEAT",
+    "smiling face with sunglasses": "SHINE:1", "disguised face": "SHINE",
+    "broken heart": "BREAK:0.8,0.3,0.5,0.97", "face holding back tears": "TEARS:1",
+    "smiling face with horns": "GLEAM", "angry face with horns": "GLEAM",
+    "face with steam from nose": "HUFF",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 

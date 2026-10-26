@@ -102,12 +102,12 @@
 😩	0	DROOP	BLINK	weary face
 😫	0	DROOP	BLINK	tired face
 🥱	0	SLEEP	SLEEPY	yawning face
-😤	0	RAGE	SMOKE:0.24,0.82,-1,0.25,0.76,0.82,1,0.25	face with steam from nose
+😤	0	RAGE	HUFF	face with steam from nose
 😡	0	RAGE	ANGRY	enraged face
 😠	0	RAGE	ANGRY	angry face
 🤬	0	RAGE	ANGRY	face with symbols on mouth
-😈	0	TILT	FLAME	smiling face with horns
-👿	0	RAGE	FLAME	angry face with horns
+😈	0	TILT	GLEAM	smiling face with horns
+👿	0	RAGE	GLEAM	angry face with horns
 💀	0	GHOST	SHINE	skull
 ☠️	0	GHOST	SHINE	skull and crossbones
 💩	0	JELLY	SMOKE:0.35,0.02,-0.2,-1,0.62,0.02,0.2,-1	pile of poo
@@ -117,7 +117,7 @@
 👻	0	GHOST	GHOSTLY	ghost
 👽️	0	FLOAT	BLINK	alien
 👾	0	ROBOT	INVADER	alien monster
-🤖	0	ROBOT	DIGITAL	robot
+🤖	0	ROBOT	DIGITAL:0.5,0.04	robot
 😺	0	HAPPY	BLINK	grinning cat
 😸	0	GIGGLE	BLINK	grinning cat with smiling eyes
 😹	0	LAUGH	TEARS	cat with tears of joy

@@ -60,6 +60,12 @@ final class Detach {
                 continue;
             }
             rgbToHsv(c, hsv);
+            if (hue < 0) {
+                // Clouds: white, and the pale blue they are edged in.
+                piece[i] = hsv[2] > 0.8f && (hsv[1] < 0.2f
+                        || Math.abs(hsv[0] - 205) < tolerance && hsv[1] > minSat);
+                continue;
+            }
             float d = Math.abs(hsv[0] - hue);
             piece[i] = hsv[1] > minSat && Math.min(d, 360 - d) < tolerance;
         }
