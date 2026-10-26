@@ -424,7 +424,7 @@ final class Detach {
         return new Detach(board, object);
     }
 
-    private static void rgbToHsv(int c, float[] hsv) {
+    static void rgbToHsv(int c, float[] hsv) {
         float r = ((c >> 16) & 0xFF) / 255f;
         float g = ((c >> 8) & 0xFF) / 255f;
         float b = (c & 0xFF) / 255f;

@@ -175,6 +175,32 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * Discs (💿 📀): spinning, a disc's rainbow stays where the light is, only shimmering as
+     * the grooves pass under it; so the disc holds still and its colours play.
+     */
+    DISC {
+        @Override
+        void apply(Scene s) {
+            Regions r = s.regions;
+            float[] hsv = new float[3];
+            for (int i = 0; i < s.dots.length; i++) {
+                int ri = s.restIndex(i);
+                if (ri < 0 || !r.ink[ri] || r.sat[ri] < 0.08f || r.luma[ri] < 0.45f) {
+                    continue;
+                }
+                int c = s.dots[i];
+                Detach.rgbToHsv(c, hsv);
+                // Each band of the rainbow drifts through the spectrum at its own pace.
+                float angle = (float) Math.atan2(ri / r.size - (r.minY + r.maxY) / 2f,
+                        ri % r.size - (r.minX + r.maxX) / 2f);
+                hsv[0] = (hsv[0] + 16 * (float) Math.sin(s.t * 1.3f + angle * 2) + 360) % 360;
+                s.dots[i] = (hsvToRgb(hsv) & 0xFFFFFF) | (c & 0xFF000000);
+            }
+            s.busy = true;
+        }
+    },
+
     /** A halo: it hovers, rising and settling over the head, light gliding round it. */
     HALO {
         @Override
@@ -2416,6 +2442,20 @@ public enum DotEffect {
     private static boolean ballDot(Regions r, int i) {
         return r.ink[i] && r.sat[i] > 0.45f && (r.hue[i] < 25 || r.hue[i] > 65)
                 && r.luma[i] > 0.15f;
+    }
+
+    static int hsvToRgb(float[] hsv) {
+        float h = hsv[0] / 60;
+        float c = hsv[2] * hsv[1];
+        float x = c * (1 - Math.abs(h % 2 - 1));
+        float m = hsv[2] - c;
+        float r, g, b;
+        int k = (int) h;
+        r = k == 0 || k == 5 ? c : k == 1 || k == 4 ? x : 0;
+        g = k == 1 || k == 2 ? c : k == 0 || k == 3 ? x : 0;
+        b = k == 3 || k == 4 ? c : k == 2 || k == 5 ? x : 0;
+        return 0xFF000000 | Math.round((r + m) * 255) << 16 | Math.round((g + m) * 255) << 8
+                | Math.round((b + m) * 255);
     }
 
     /** Light running down large water (small drops get their own shine as they slide). */

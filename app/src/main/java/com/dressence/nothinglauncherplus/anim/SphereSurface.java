@@ -329,6 +329,32 @@ final class SphereSurface {
                 known[i] = p[4];
             }
         }
+        // Shade falls from the side: it reaches the outline. A dark colour enclosed inside
+        // the ball (the black 8 in its white spot) is printed on it, not shadow.
+        boolean[] reach = new boolean[n];
+        java.util.ArrayDeque<Integer> queue = new java.util.ArrayDeque<>();
+        for (int i = 0; i < n; i++) {
+            if (known[i] == known[i] && known[i] < 1 && edge(i)) {
+                reach[i] = true;
+                queue.add(i);
+            }
+        }
+        while (!queue.isEmpty()) {
+            int i = queue.poll();
+            int x = i % size;
+            for (int j : new int[] {x > 0 ? i - 1 : -1, x < size - 1 ? i + 1 : -1, i - size,
+                    i + size}) {
+                if (j >= 0 && j < n && !reach[j] && known[j] == known[j] && known[j] < 1) {
+                    reach[j] = true;
+                    queue.add(j);
+                }
+            }
+        }
+        for (int i = 0; i < n; i++) {
+            if (known[i] == known[i] && known[i] < 1 && !reach[i]) {
+                known[i] = Float.NaN;
+            }
+        }
         float[] fill = known.clone();
         for (int pass = 0; pass < size; pass++) {
             boolean open = false;
@@ -372,6 +398,21 @@ final class SphereSurface {
         for (int i = 0; i < n; i++) {
             albedo[i] = lit(rest[i], 1 / shade[i], rest[i] >>> 24);
         }
+    }
+
+    /** On the solid's outline: next to a pixel that is not solid. */
+    private boolean edge(int i) {
+        int x = i % size;
+        int y = i / size;
+        for (int k = 0; k < 4; k++) {
+            int nx = x + (k == 0 ? -1 : k == 1 ? 1 : 0);
+            int ny = y + (k == 2 ? -1 : k == 3 ? 1 : 0);
+            if (nx < 0 || ny < 0 || nx >= size || ny >= size
+                    || (rest[ny * size + nx] >>> 24) < 250) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static float ratio(float dark, float lit) {

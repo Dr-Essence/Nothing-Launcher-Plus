@@ -1090,13 +1090,13 @@
 🥇	5	POP	SPARKLE	1st place medal
 🥈	5	POP	SPARKLE	2nd place medal
 🥉	5	POP	SPARKLE	3rd place medal
-⚽️	5	BOUNCE	GLOBE:1	soccer ball
-⚾️	5	BOUNCE	GLOBE:1	baseball
-🥎	5	BOUNCE	GLOBE:1	softball
-🏀	5	BOUNCE	GLOBE:1	basketball
-🏐	5	BOUNCE	GLOBE:1	volleyball
-🏈	5	BOUNCE	GLOBE:1	american football
-🏉	5	BOUNCE	GLOBE:1	rugby football
+⚽️	5	KICK	GLOBE:1	soccer ball
+⚾️	5	KICK	GLOBE:1	baseball
+🥎	5	KICK	GLOBE:1	softball
+🏀	5	KICK	GLOBE:1	basketball
+🏐	5	KICK	GLOBE:1	volleyball
+🏈	5	TOSS	SHINE	american football
+🏉	5	TOSS	SHINE	rugby football
 🎾	5	NONE	TENNIS:0.17,0.16,0.15,0.66,0.35	tennis
 🥏	5	BOUNCE	SHINE	flying disc
 🎳	5	BOUNCE	SHINE	bowling
@@ -1121,7 +1121,7 @@
 🪀	5	BOUNCE	SPARKLE	yo-yo
 🪁	5	FLY	SPARKLE	kite
 🔫	5	HAMMER	DRIP	water pistol
-🎱	5	BOUNCE	GLOBE:1	pool 8 ball
+🎱	5	NONE	GLOBE	pool 8 ball
 🔮	5	TWINKLE	MAGIC	crystal ball
 🪄	5	TWINKLE	TWINKLE	magic wand
 🎮️	5	BUZZ	CONTROLLER	video game
@@ -1242,8 +1242,8 @@
 🖲️	6	TYPE	SHINE	trackball
 💽	6	SETTLE	SHINE	computer disk
 💾	6	TYPE	SHINE	floppy disk
-💿️	6	SPIN	SHINE	optical disk
-📀	6	SPIN	SHINE	dvd
+💿️	6	NONE	DISC	optical disk
+📀	6	NONE	DISC	dvd
 🧮	6	TYPE	SHINE	abacus
 🎥	6	FLASH	FILM_CAMERA:0.453,0.785,0.39,0.295,0.26,0.83,0.374,0.18	movie camera
 🎞️	6	FLASH	GLOW	film frames

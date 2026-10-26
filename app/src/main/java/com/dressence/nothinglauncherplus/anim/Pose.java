@@ -18,6 +18,8 @@ public final class Pose {
     /** Whole turns around the vertical axis, like a flipping coin. */
     public float spinY;
     public float alpha;
+    /** Radians a ball's surface has rolled (see {@link Motion#KICK}); turned by its effect. */
+    public float roll;
     public float pivotX;
     public float pivotY;
 
@@ -35,6 +37,7 @@ public final class Pose {
         spin = 0;
         spinY = 0;
         alpha = 1;
+        roll = 0;
         pivotX = 0.5f;
         pivotY = 0.5f;
     }
@@ -42,7 +45,7 @@ public final class Pose {
     /** True if this is the resting pose (nothing moved, nothing faded). */
     boolean isRest() {
         return tx == 0 && ty == 0 && scaleX == 1 && scaleY == 1 && rotation == 0
-                && rotationY == 0 && spin == 0 && spinY == 0 && alpha == 1;
+                && rotationY == 0 && spin == 0 && spinY == 0 && alpha == 1 && roll == 0;
     }
 
     /** Scales every deviation from rest by {@code amount} (per-folder variation). */
@@ -53,6 +56,7 @@ public final class Pose {
         scaleY = 1 + (scaleY - 1) * amount;
         rotation *= amount;
         rotationY *= amount;
+        roll *= amount;
         alpha = Math.max(0, Math.min(1, 1 - (1 - alpha) * amount));
     }
 }

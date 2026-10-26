@@ -158,6 +158,16 @@ final class DotMatrix {
         sphereFrame = null;
         // The resting frame, once: what effects find their regions in and paint over.
         rasterize(null);
+        restBox[0] = restBox[1] = RENDER;
+        restBox[2] = restBox[3] = 0;
+        for (int i = 0; i < restDots.length; i++) {
+            if ((restDots[i] >>> 24) > 0) {
+                restBox[0] = Math.min(restBox[0], i % GRID * SUPERSAMPLE);
+                restBox[1] = Math.min(restBox[1], i / GRID * SUPERSAMPLE);
+                restBox[2] = Math.max(restBox[2], (i % GRID + 1) * SUPERSAMPLE);
+                restBox[3] = Math.max(restBox[3], (i / GRID + 1) * SUPERSAMPLE);
+            }
+        }
         System.arraycopy(dots, 0, restDots, 0, dots.length);
         // Analysed on first use: most views (picker cells, previews) never run an effect.
         scene.regions = null;
@@ -194,6 +204,7 @@ final class DotMatrix {
             scene.boost = boost;
             scene.since = since;
             scene.seed = seed;
+            scene.poseRoll = p.roll;
             effect.pose(scene);
         }
         boolean still = p.isRest() && scene.partCount == 0 && !scene.detached
@@ -222,6 +233,54 @@ final class DotMatrix {
         return true;
     }
 
+    /** Where the emoji's dots are at rest, in render pixels: left, top, right, bottom. */
+    private final float[] restBox = new float[4];
+    private final float[] corners = new float[8];
+
+    /**
+     * Keeps the posed emoji inside the panel: a hop or a lean that would carry it past the
+     * edge (most emoji fill the panel) is eased back, so it comes up to the edge smoothly
+     * instead of being cut off there.
+     */
+    private void keepInside(Matrix m) {
+        if (restBox[2] <= restBox[0]) {
+            return;
+        }
+        corners[0] = restBox[0];
+        corners[1] = restBox[1];
+        corners[2] = restBox[2];
+        corners[3] = restBox[1];
+        corners[4] = restBox[0];
+        corners[5] = restBox[3];
+        corners[6] = restBox[2];
+        corners[7] = restBox[3];
+        // Resting render pixels to the glyph, then posed.
+        restInverse.mapPoints(corners);
+        m.mapPoints(corners);
+        float x0 = Float.MAX_VALUE, y0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, y1 = -Float.MAX_VALUE;
+        for (int k = 0; k < 8; k += 2) {
+            x0 = Math.min(x0, corners[k]);
+            x1 = Math.max(x1, corners[k]);
+            y0 = Math.min(y0, corners[k + 1]);
+            y1 = Math.max(y1, corners[k + 1]);
+        }
+        m.postTranslate(inside(x0, x1), inside(y0, y1));
+    }
+
+    /** How far to move a span from lo to hi so it stays within the panel, softly. */
+    static float inside(float lo, float hi) {
+        if (-lo > 0 && hi - RENDER > 0) {
+            return 0; // Bigger than the panel: leave it centred where it is.
+        }
+        return soft(-lo) - soft(hi - RENDER);
+    }
+
+    /** How much of an overflow to take back: all of it, eased in from just before the edge. */
+    private static float soft(float over) {
+        final float k = SUPERSAMPLE * 0.6f;
+        return over > 8 * k ? over : k * (float) Math.log(1 + Math.exp(over / k));
+    }
+
     /** Draws the glyph posed by {@code p} (null: at rest) and samples it into the dots. */
     private void rasterize(Pose p) {
         if (render == null) {
@@ -239,6 +298,7 @@ final class DotMatrix {
                 pose.postScale(p.scaleX * turn, p.scaleY, px, py);
                 pose.postRotate(p.rotation + p.spin, px, py);
                 pose.postTranslate(p.tx * RENDER, p.ty * RENDER);
+                keepInside(pose);
             }
             glyphPaint.setAlpha(p == null ? 255 : Math.round(Math.min(1, p.alpha) * 255));
             if (p != null && scene.sphereTurn == scene.sphereTurn) {

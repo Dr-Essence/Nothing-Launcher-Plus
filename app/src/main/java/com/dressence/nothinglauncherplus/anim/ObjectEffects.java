@@ -1519,12 +1519,10 @@ final class ObjectEffects {
         float turn;
         boolean ball = s.anchor != null && s.anchor.length > 0 && s.anchor[0] == 1;
         if (ball) {
-            // A ball: rolls once, rests; a touch kicks it into a quick extra turn.
-            float roll = 2.4f;
-            float period = roll + 2.2f;
-            float t = s.t % period;
-            turn = full * ease(t / roll);
-            s.busy = t < roll;
+            // A ball: turned as far as its motion has rolled it (spinning while it is kicked
+            // up); a touch kicks it into a quick extra turn.
+            turn = s.poseRoll;
+            s.busy = turn != 0;
             if (s.since < 1.2f) {
                 turn += full * easeOut(s.since / 1.2f);
                 s.busy = true;

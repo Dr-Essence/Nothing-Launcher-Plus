@@ -211,6 +211,8 @@ final class Scene {
      * units, and the turn in radians; NaN when there is none this frame.
      */
     float sphereTurn = Float.NaN;
+    /** How far the emoji's motion has rolled it, in radians (see {@link Pose#roll}). */
+    float poseRoll;
     float sphereX;
     float sphereY;
     float sphereRadius;

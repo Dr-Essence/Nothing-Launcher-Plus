@@ -810,6 +810,28 @@ public enum Motion {
             hop(p, t - 1.0f, 0.06f, 0.24f);
         }
     },
+    /**
+     * A ball kicked up: it hops and lands with a little bounce, its surface turning one whole
+     * time while it is in the air (rolled by its effect, so its shading stays put).
+     */
+    KICK("Kick", 1.9f, 1.4f) {
+        @Override
+        void pose(float t, Pose p) {
+            hop(p, t, 0.14f, 0.40f);
+            hop(p, t - 1.0f, 0.06f, 0.24f);
+            p.roll = TAU * ease(Math.max(0, Math.min(1, (t - 0.12f) / 0.40f)));
+        }
+    },
+    /** A long ball tossed up: it turns end over end once in the air and lands. */
+    TOSS("Toss", 1.6f, 1.4f) {
+        @Override
+        void pose(float t, Pose p) {
+            hop(p, t, 0.15f, 0.48f);
+            // Turning about its middle, not the point it pushed off from.
+            p.pivotY = 0.5f;
+            p.spin = 360 * ease(Math.max(0, Math.min(1, (t - 0.12f) / 0.48f)));
+        }
+    },
     GROW("Grow", 1.4f, 1.6f) {
         @Override
         void pose(float t, Pose p) {

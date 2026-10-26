@@ -615,6 +615,8 @@ EFFECT_REVIEW = {
     "ticket": "SHINE", "mirror ball": "TWINKLE", "alembic": "SHINE", "test tube": "FIZZ",
     "petri dish": "FIZZ", "clockwise vertical arrows": "SPIN:0.5,0.5,0.4,-120",
     "counterclockwise arrows button": "SPIN:0.5,0.5,0.4,120", "nazar amulet": "GLOW",
+    "pool 8 ball": "GLOBE", "american football": "SHINE", "rugby football": "SHINE",
+    "optical disk": "DISC", "dvd": "DISC",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 
@@ -631,8 +633,15 @@ EXACT.update({name: "NONE" for name in [
     "horizontal traffic light", "vertical traffic light", "upwards button",
     "downwards button", "japanese “prohibited” button", "japanese “no vacancy” button",
     "joystick", "yin yang", "wheel of dharma", "ferris wheel", "atom symbol",
-    "electric plug", "bicycle", "dna",
+    "electric plug", "bicycle", "dna", "pool 8 ball", "optical disk", "dvd",
 ]})
+
+# Balls: round ones are kicked up and spin in the air (their effect turns the surface with the
+# motion, the light held still); long ones are tossed end over end.
+EXACT.update({
+    "soccer ball": "KICK", "baseball": "KICK", "softball": "KICK", "basketball": "KICK",
+    "volleyball": "KICK", "american football": "TOSS", "rugby football": "TOSS",
+})
 
 # Name keywords, tried in order when there is no exact entry.
 EFFECT_RULES = [
