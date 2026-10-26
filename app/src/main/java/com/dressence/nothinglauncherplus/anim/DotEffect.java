@@ -344,6 +344,36 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * Walking and running: the legs, cut at the hip into the one behind and the one in front,
+     * swing about the hip in opposite directions, so they scissor through each stride while
+     * the body rises a little at the middle of each step. Anchors: the hip (x, y, fractions of
+     * the emoji), how far each leg swings (degrees) and strides a second.
+     */
+    STRIDE {
+        @Override
+        void pose(Scene s) {
+            float[] a = s.anchor;
+            if (a == null || a.length < 4) {
+                return;
+            }
+            float hx = MusicEffects.ax(s, 0);
+            float hy = MusicEffects.ay(s, 1);
+            float phase = (float) (s.t * a[3] * Math.PI * 2);
+            float swing = a[2] * (float) Math.sin(phase);
+            // The body is highest as the legs pass each other, lowest at full stride.
+            float rise = -0.5f * (float) Math.abs(Math.cos(phase));
+            s.addPart(0, hy, hx, s.size, hx, hy, swing, 0, rise);
+            s.addPart(hx, hy, s.size, s.size, hx, hy, -swing, 0, rise);
+            s.addPart(0, 0, s.size, hy, hx, hy, 0, 0, rise);
+            s.busy = true;
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
     /** Fizzy drinks: tiny bubbles stream up through the drink and burst at its top. */
     FIZZ {
         @Override

@@ -637,6 +637,18 @@ EFFECT_REVIEW = {
     "person bouncing ball": "PADDLE:0.12,0.72,0.12,0.97,0.5,1,2",
     "man bouncing ball": "PADDLE:0.12,0.72,0.12,0.97,0.5,1,2",
     "woman bouncing ball": "PADDLE:0.16,0.75,0.16,0.97,0.5,1,2",
+    "person walking": "STRIDE:0.5,0.56,14,1.1",
+    "man walking": "STRIDE:0.5,0.56,14,1.1",
+    "woman walking": "STRIDE:0.5,0.56,14,1.1",
+    "person walking facing right": "STRIDE:0.5,0.56,14,1.1",
+    "woman walking facing right": "STRIDE:0.5,0.56,14,1.1",
+    "man walking facing right": "STRIDE:0.5,0.56,14,1.1",
+    "person running": "STRIDE:0.5,0.55,16,1.6",
+    "man running": "STRIDE:0.5,0.55,16,1.6",
+    "woman running": "STRIDE:0.5,0.55,16,1.6",
+    "person running facing right": "STRIDE:0.5,0.55,16,1.6",
+    "woman running facing right": "STRIDE:0.5,0.55,16,1.6",
+    "man running facing right": "STRIDE:0.5,0.55,16,1.6",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 
@@ -658,6 +670,7 @@ EXACT.update({name: "NONE" for name in [
     "cricket game", "field hockey", "ice hockey", "badminton", "ping pong", "lacrosse",
     "person golfing", "man golfing", "woman golfing", "person bouncing ball",
     "man bouncing ball", "woman bouncing ball",
+    "person walking", "man walking", "woman walking", "person walking facing right", "woman walking facing right", "man walking facing right", "person running", "man running", "woman running", "person running facing right", "woman running facing right", "man running facing right",
 ]})
 
 # Balls: round ones are kicked up and spin in the air (their effect turns the surface with the
