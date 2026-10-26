@@ -166,10 +166,12 @@ final class SystemFont {
             targets.addAll(otherModuleFonts());
             replaced = targets.size();
             for (String target : targets) {
-                String dest = target.startsWith("/product/") ? "$M/system" + target
-                        : "$M" + target;
-                script.append("cp \"$M/" + FONT_COPY + "\" '").append(dest)
-                        .append("' || echo \"could not write ").append(dest).append("\"\n");
+                // Full paths, no shell variables inside quotes: '$M' would not be expanded.
+                String dest = MODULE + (target.startsWith("/product/") ? "/system" + target
+                        : target);
+                script.append("cp '").append(MODULE).append("/").append(FONT_COPY)
+                        .append("' '").append(dest).append("' || echo 'could not write ")
+                        .append(dest).append("'\n");
             }
             script.append("chmod -R 0755 $M; chmod 0644 $M/system/fonts/* "
                     + "$M/system/product/fonts/* 2>/dev/null; chcon -R u:object_r:system_file:s0"
