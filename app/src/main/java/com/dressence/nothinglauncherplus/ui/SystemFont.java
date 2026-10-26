@@ -139,15 +139,14 @@ final class SystemFont {
                 }
                 return error;
             }
-            // The font, copied where the root shell can read it.
-            File font = new File(context.getCacheDir(), "nlplus_systemfont.ttf");
-            try (InputStream in = open(context, choice);
-                    OutputStream out = new FileOutputStream(font)) {
-                byte[] buf = new byte[65536];
-                int n;
-                while ((n = in.read(buf)) > 0) {
-                    out.write(buf, 0, n);
-                }
+            // The font itself, handed to the root shell in the script: the shell need not
+            // read this app's own storage (it may not be allowed to).
+            byte[] fontBytes;
+            try (InputStream in = open(context, choice)) {
+                fontBytes = in.readAllBytes();
+            }
+            if (fontBytes.length < 1024) {
+                return "the font could not be read";
             }
             StringBuilder script = new StringBuilder();
             script.append("M=").append(MODULE).append("\n")
@@ -156,7 +155,11 @@ final class SystemFont {
                             + "\\nversion=1\\nversionCode=1\\nauthor=Nothing Launcher+\\n"
                             + "description=")
                     .append(choice.title.replace("'", ""))
-                    .append(" as the system font\\n' > $M/module.prop\n");
+                    .append(" as the system font\\n' > $M/module.prop\n")
+                    .append("base64 -d > $M/" + FONT_COPY + " <<'NLPLUS_FONT'\n")
+                    .append(android.util.Base64.encodeToString(fontBytes,
+                            android.util.Base64.DEFAULT))
+                    .append("NLPLUS_FONT\n");
             Set<String> targets = defaultFontFiles();
             // Whatever another font module (one that worked, such as a zFont one) replaces,
             // this one replaces too.
@@ -165,13 +168,16 @@ final class SystemFont {
             for (String target : targets) {
                 String dest = target.startsWith("/product/") ? "$M/system" + target
                         : "$M" + target;
-                script.append("cp '").append(font.getAbsolutePath()).append("' '")
-                        .append(dest).append("'\n");
+                script.append("cp \"$M/" + FONT_COPY + "\" '").append(dest)
+                        .append("' || echo \"could not write ").append(dest).append("\"\n");
             }
             script.append("chmod -R 0755 $M; chmod 0644 $M/system/fonts/* "
                     + "$M/system/product/fonts/* 2>/dev/null; chcon -R u:object_r:system_file:s0"
                     + " $M/system 2>/dev/null; rmdir $M/system/product/fonts "
-                    + "$M/system/product 2>/dev/null; true\n");
+                    + "$M/system/product 2>/dev/null\n")
+                    // Nothing written means nothing to mount: say so rather than succeed.
+                    .append("n=$(find $M/system -type f | wc -l); if [ \"$n\" -lt 1 ]; then "
+                            + "echo \"no font files were written to the module\"; exit 1; fi\n");
             if (now) {
                 // The module's copy mounted over each file now, for every app to see.
                 StringBuilder mounts = new StringBuilder();
@@ -193,6 +199,9 @@ final class SystemFont {
             return e.getMessage();
         }
     }
+
+    /** The chosen font, kept in the module beside its system folder (for {@link #verify}). */
+    private static final String FONT_COPY = "nlplus_font.ttf";
 
     /** Restarts the phone's interface (not the phone): every app starts again, new fonts. */
     private static final String RESTART = "setprop ctl.restart zygote";
@@ -334,15 +343,15 @@ final class SystemFont {
      * line per file, for the report.
      */
     static String verify(Context context) {
-        File font = new File(context.getCacheDir(), "nlplus_systemfont.ttf");
+        String font = MODULE + "/" + FONT_COPY;
         StringBuilder script = new StringBuilder();
         for (String target : defaultFontFiles()) {
-            script.append("if cmp -s '").append(font.getAbsolutePath()).append("' '")
+            script.append("if cmp -s '").append(font).append("' '")
                     .append(target).append("'; then echo \"OK ").append(target)
                     .append("\"; else echo \"-- ").append(target).append("\"; fi\n");
         }
         for (String target : otherModuleFonts()) {
-            script.append("if cmp -s '").append(font.getAbsolutePath()).append("' '")
+            script.append("if cmp -s '").append(font).append("' '")
                     .append(target).append("'; then echo \"OK ").append(target)
                     .append("\"; else echo \"-- ").append(target).append("\"; fi\n");
         }
