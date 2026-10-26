@@ -52,8 +52,8 @@ final class DotIcons {
     private static final long MAX_STAGGER_MS = 110;
     private static final int GLOW_SCALE = 4;
     /** The glass between the dots, and an unlit dot on it. */
-    private static final int GLASS = 0xFF060606;
-    private static final int UNLIT = 0xFF1C1C1C;
+    private static final int GLASS = 0xFF050505;
+    private static final int UNLIT = 0xFF0D0D0D;
 
     /** Marks an icon that could not be converted. */
     private static final Dots FAILED = new Dots();
@@ -92,6 +92,8 @@ final class DotIcons {
         Bitmap glow;
         /** The dark glass the dots sit on, in the icon's own shape. */
         Bitmap plate;
+        /** The lit dots alone. */
+        Bitmap lit;
         float[] x;
         float[] y;
         int[] color;
@@ -215,7 +217,7 @@ final class DotIcons {
     private static final Paint SCAN = new Paint();
     static {
         SCAN.setXfermode(new android.graphics.PorterDuffXfermode(
-                android.graphics.PorterDuff.Mode.SRC_ATOP));
+                android.graphics.PorterDuff.Mode.SRC_IN));
     }
 
     /** One of an icon's quirks: how far through it is (0..1), or -1 if it is not on now. */
@@ -273,15 +275,17 @@ final class DotIcons {
             canvas.drawBitmap(dots.full, null, bounds, paint);
             canvas.restore();
         } else if (scan >= 0) {
+            canvas.drawBitmap(dots.full, null, bounds, paint);
+            // Only the lit dots take on the line's green, as on the emoji screens.
             int layer = canvas.saveLayer(bounds.left, bounds.top, bounds.right, bounds.bottom,
                     null);
-            canvas.drawBitmap(dots.full, null, bounds, paint);
+            canvas.drawBitmap(dots.lit, null, bounds, paint);
             // The line rolls from above the panel to below it, easing in and out.
             float band = bounds.height() * 0.22f;
             float e = scan * scan * (3 - 2 * scan);
             float y = bounds.top - band + e * (bounds.height() + band * 2);
             float fade = (float) Math.sin(scan * Math.PI);
-            int peak = Math.round(110 * fade) << 24 | SCAN_GREEN;
+            int peak = Math.round(150 * fade) << 24 | SCAN_GREEN;
             SCAN.setShader(new android.graphics.LinearGradient(0, y - band / 2, 0, y + band / 2,
                     new int[] {SCAN_GREEN, peak, SCAN_GREEN}, null,
                     android.graphics.Shader.TileMode.CLAMP));
@@ -674,31 +678,42 @@ final class DotIcons {
                         dots.radius, paint);
             }
         }
-        // The glow: light from the dots spreading into the glass, soft near and wide, as a
-        // bloom (the dots drawn small and stretched smoothly back up), brightest where the
-        // dots are brightest.
-        Bitmap near = bloom(dots, w, h, 5, pitch * 1.1f);
-        Bitmap wide = bloom(dots, w, h, 11, pitch * 1.6f);
+        // The glow: each dot's light falling dimly on the glass round it, and a faint wide
+        // bloom where many lit dots are together, as on a real dot display.
         Bitmap glowBitmap = Bitmap.createBitmap(Math.max(1, w / GLOW_SCALE),
                 Math.max(1, h / GLOW_SCALE), Bitmap.Config.ARGB_8888);
         Canvas glow = new Canvas(glowBitmap);
         Rect small = new Rect(0, 0, glowBitmap.getWidth(), glowBitmap.getHeight());
+        glow.save();
+        glow.scale(glowBitmap.getWidth() / (float) w, glowBitmap.getHeight() / (float) h);
+        Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
+        for (int i = 0; i < dots.x.length; i++) {
+            int rgb = dots.color[i] & 0xFFFFFF;
+            halo.setShader(new android.graphics.RadialGradient(dots.x[i], dots.y[i],
+                    pitch * 1.25f, new int[] {rgb | 0x46000000, rgb | 0x16000000, rgb},
+                    new float[] {0, 0.55f, 1}, android.graphics.Shader.TileMode.CLAMP));
+            glow.drawCircle(dots.x[i], dots.y[i], pitch * 1.25f, halo);
+        }
+        glow.restore();
+        Bitmap wide = bloom(dots, w, h, 12, pitch * 1.5f);
         Paint add = new Paint(Paint.FILTER_BITMAP_FLAG);
         add.setXfermode(new android.graphics.PorterDuffXfermode(
                 android.graphics.PorterDuff.Mode.ADD));
-        add.setAlpha(150);
+        add.setAlpha(55);
         glow.drawBitmap(wide, null, small, add);
-        add.setAlpha(110);
-        glow.drawBitmap(near, null, small, add);
-        near.recycle();
         wide.recycle();
         Bitmap fullBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas full = new Canvas(fullBitmap);
         full.drawBitmap(plateBitmap, 0, 0, null);
         full.drawBitmap(glowBitmap, null, whole, smooth);
+        // The lit dots alone, for the scan line to tint.
+        Bitmap litBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas litCanvas = new Canvas(litBitmap);
         for (int i = 0; i < dots.x.length; i++) {
             paint.setColor(dots.color[i]);
             full.drawCircle(dots.x[i], dots.y[i], dots.radius, paint);
+            paint.setColor(0xFF000000 | dots.color[i]);
+            litCanvas.drawCircle(dots.x[i], dots.y[i], dots.radius, paint);
         }
         // Nothing outside the icon's own shape: no dot or glow spills past its edge, however
         // the launcher scales it (opening an app zooms the icon up).
@@ -711,6 +726,7 @@ final class DotIcons {
         // Kept on the GPU: no upload when drawn, and off the app's Java heap.
         dots.full = toHardware(fullBitmap);
         dots.plate = toHardware(plateBitmap);
+        dots.lit = toHardware(litBitmap);
         dots.glow = toHardware(glowBitmap);
         return dots;
     }
