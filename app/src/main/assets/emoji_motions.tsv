@@ -1438,36 +1438,36 @@
 🔞	7	NO	MUTED	no one under eighteen
 ☢️	7	ALERT	GLOW	radioactive
 ☣️	7	ALERT	GLOW	biohazard
-⬆️	7	POINT_UP	SHINE	up arrow
-↗️	7	POINT_RIGHT	SHINE	up-right arrow
-➡️	7	POINT_RIGHT	SHINE	right arrow
-↘️	7	POINT_RIGHT	SHINE	down-right arrow
-⬇️	7	POINT_DOWN	SHINE	down arrow
-↙️	7	POINT_LEFT	SHINE	down-left arrow
-⬅️	7	POINT_LEFT	SHINE	left arrow
-↖️	7	POINT_LEFT	SHINE	up-left arrow
+⬆️	7	NONE	ARROW:0,-1	up arrow
+↗️	7	NONE	ARROW:1,-1	up-right arrow
+➡️	7	NONE	ARROW:1,0	right arrow
+↘️	7	NONE	ARROW:1,1	down-right arrow
+⬇️	7	NONE	ARROW:0,1	down arrow
+↙️	7	NONE	ARROW:-1,1	down-left arrow
+⬅️	7	NONE	ARROW:-1,0	left arrow
+↖️	7	NONE	ARROW:-1,-1	up-left arrow
 ↕️	7	POINT_DOWN	SHINE	up-down arrow
 ↔️	7	POINT_RIGHT	SHINE	left-right arrow
-↩️	7	POINT_RIGHT	SHINE	right arrow curving left
-↪️	7	POINT_LEFT	SHINE	left arrow curving right
-⤴️	7	POINT_RIGHT	SHINE	right arrow curving up
-⤵️	7	POINT_RIGHT	SHINE	right arrow curving down
+↩️	7	NONE	ARROW:-1,0	right arrow curving left
+↪️	7	NONE	ARROW:1,0	left arrow curving right
+⤴️	7	NONE	ARROW:0,-1	right arrow curving up
+⤵️	7	NONE	ARROW:0,1	right arrow curving down
 🔃	7	NONE	SPIN:0.5,0.5,0.4,-120	clockwise vertical arrows
 🔄	7	NONE	SPIN:0.5,0.5,0.4,120	counterclockwise arrows button
-🔙	7	POINT_LEFT	SHINE	BACK arrow
-🔚	7	PULSE	SHINE	END arrow
-🔛	7	PULSE	SHINE	ON! arrow
-🔜	7	POINT_RIGHT	SHINE	SOON arrow
-🔝	7	POINT_UP	SHINE	TOP arrow
+🔙	7	NONE	ARROW:-1,0	BACK arrow
+🔚	7	NONE	ARROW:-1,0	END arrow
+🔛	7	NONE	ARROW:1,0	ON! arrow
+🔜	7	NONE	ARROW:1,0	SOON arrow
+🔝	7	NONE	ARROW:0,-1	TOP arrow
 🛐	7	ROCK	GLOW	place of worship
 ⚛️	7	NONE	ATOM:0.5,0.5,0.36,0.13	atom symbol
 🕉️	7	PULSE	GLOW	om
-✡️	7	TWINKLE	TWINKLE	star of David
+✡️	7	NONE	TWINKLE	star of David
 ☸️	7	NONE	SPIN:0.5,0.5,0.43,30	wheel of dharma
 ☯️	7	NONE	SPIN:0.5,0.51,0.41,40	yin yang
 ✝️	7	PULSE	GLOW	latin cross
 ☦️	7	PULSE	GLOW	orthodox cross
-☪️	7	TWINKLE	TWINKLE	star and crescent
+☪️	7	NONE	TWINKLE	star and crescent
 ☮️	7	PULSE	GLOW	peace symbol
 🕎	7	PULSE	GLOW	menorah
 🔯	7	TWINKLE	TWINKLE	dotted six-pointed star

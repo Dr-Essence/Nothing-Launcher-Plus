@@ -474,6 +474,39 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * Arrow tiles: the white arrow (and its words) is lifted off the tile and pushed a dot or
+     * two the way it points, then springs back, while the tile stays still. Anchors: the
+     * way it points (dx, dy).
+     */
+    ARROW {
+        @Override
+        void pose(Scene s) {
+            float[] a = s.anchor;
+            if (a == null || a.length < 2) {
+                return;
+            }
+            Regions r = s.regions;
+            float t = (s.t + 0.3f) % 2.6f;
+            float push = t < 0.22f ? ObjectEffects.easeOut(t / 0.22f)
+                    : t < 1.4f ? 1 - ObjectEffects.spring((t - 0.22f) / 1.18f) : 0;
+            float len = (float) Math.sqrt(a[0] * a[0] + a[1] * a[1]);
+            float go = 2.2f * push / Math.max(0.01f, len);
+            s.liftHue(-1, 0, 2);
+            s.addLayerPiece(1, r.minX + 1, r.minY + 1, r.maxX, r.maxY, a[0] * go, a[1] * go);
+            int k = s.partCount - 1;
+            if (k >= 0 && s.partLayer[k] == 1) {
+                // Only within the tile: the arrow never pokes out past its edge.
+                s.partClipFixed[k] = true;
+            }
+            s.busy = t < 1.4f;
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
     /** Fizzy drinks: tiny bubbles stream up through the drink and burst at its top. */
     FIZZ {
         @Override
