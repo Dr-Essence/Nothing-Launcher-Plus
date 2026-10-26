@@ -216,6 +216,13 @@ final class Scene {
      * facing the viewer, degrees east; NaN to turn the drawing itself.
      */
     float earthCentre = Float.NaN;
+    /** A drawn flame burning (see {@link Flame}): its time, NaN for none, and its box. */
+    float flameT = Float.NaN;
+    /**
+     * The flame's box (left, top, right, bottom) and root row, resting grid units, and the
+     * reddest hue that is still flame (0: any warm colour).
+     */
+    final float[] flameBox = new float[6];
     /** How far the emoji's motion has rolled it, in radians (see {@link Pose#roll}). */
     float poseRoll;
     float sphereX;

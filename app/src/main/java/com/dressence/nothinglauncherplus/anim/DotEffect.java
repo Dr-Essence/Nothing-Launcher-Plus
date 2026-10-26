@@ -167,6 +167,59 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * Real fire (🔥 🕯️ 🪔): the flame itself burns, its tongues licking and swaying up from
+     * the root (see {@link Flame}); its heart brightens and dims with the gusts and now and
+     * then a spark is carried up from the tips. Anchors: the flame's box (x0, y0, x1, y1) and
+     * the row its root is on, as fractions of the emoji, and the reddest hue still flame; none:
+     * all of it, rooted at the bottom.
+     */
+    BURN {
+        @Override
+        void pose(Scene s) {
+            Regions r = s.regions;
+            float[] a = s.anchor;
+            boolean box = a != null && a.length >= 5;
+            s.flameBox[0] = box ? MusicEffects.ax(s, 0) : r.minX;
+            s.flameBox[1] = box ? MusicEffects.ay(s, 1) : r.minY;
+            s.flameBox[2] = box ? MusicEffects.ax(s, 2) : r.maxX + 1;
+            s.flameBox[3] = box ? MusicEffects.ay(s, 3) : r.maxY + 1;
+            s.flameBox[4] = box ? MusicEffects.ay(s, 4) : r.maxY + 1;
+            s.flameBox[5] = a != null && a.length >= 6 ? a[5] : 0;
+            s.flameT = s.t * (1 + 0.6f * s.boost);
+            s.busy = true;
+        }
+
+        @Override
+        void apply(Scene s) {
+            Regions r = s.regions;
+            float glow = 0.5f + 0.5f * (float) (Math.sin(s.t * 5.3) * 0.6
+                    + Math.sin(s.t * 8.9 + 1.3) * 0.4);
+            for (int i = 0; i < s.dots.length; i++) {
+                int ri = s.restIndex(i);
+                int c = s.dots[i];
+                if (ri < 0 || (c >>> 24) == 0 || r.hue[ri] > 62 && r.hue[ri] < 335
+                        || r.luma[ri] < 0.55f) {
+                    continue;
+                }
+                s.dots[i] = Scene.alpha(Scene.mix(c, 0xFFFFF4C0, 0.22f * glow), c >>> 24);
+            }
+            // A spark now and then, carried up from the tips into the clear air above.
+            float life = cycle(s, 2.3f, 0);
+            int cyc = (int) ((s.t + (s.seed & 0xFF) * 0.013f) / 2.3f);
+            float tipY = s.flameBox[1];
+            if (life < 0.7f && tipY > 4) {
+                float q = life / 0.7f;
+                float x = (s.flameBox[0] + s.flameBox[2]) / 2
+                        + (Scene.hash(cyc, 1, s.seed) - 0.5f) * (s.flameBox[2] - s.flameBox[0])
+                        * 0.4f + 0.8f * (float) Math.sin(q * 9);
+                float y = tipY + 0.5f - Math.min(tipY - 1.5f, 5) * ObjectEffects.easeOut(q);
+                s.blob(x, y, 0.5f, 0xFFFFC060, (float) Math.sin(q * Math.PI)
+                        * (0.75f + 0.25f * (float) Math.sin(s.t * 31)));
+            }
+        }
+    },
+
     /** Fizzy drinks: tiny bubbles stream up through the drink and burst at its top. */
     FIZZ {
         @Override

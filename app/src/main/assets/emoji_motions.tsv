@@ -141,7 +141,7 @@
 💟	0	HEARTBEAT	HEARTBEAT	heart decoration
 ❣️	0	HEARTBEAT	HEARTBEAT	heart exclamation
 💔	0	DROOP	BREAK:0.8,0.3,0.5,0.97	broken heart
-❤️‍🔥	0	FLICKER	FLAME	heart on fire
+❤️‍🔥	0	FLICKER	BURN:0,0,1,1,1,20	heart on fire
 ❤️‍🩹	0	PULSE	SHINE	mending heart
 ❤️	0	HEARTBEAT	HEARTBEAT	red heart
 🩷	0	HEARTBEAT	HEARTBEAT	pink heart
@@ -809,7 +809,7 @@
 🍨	3	JELLY	DRIP	ice cream
 🍩	3	JELLY	SPARKLE	doughnut
 🍪	3	JELLY	SPARKLE	cookie
-🎂	3	PARTY	FLAME	birthday cake
+🎂	3	NONE	BURN:0.25,0,0.75,0.2,0.17	birthday cake
 🍰	3	JELLY	SPARKLE	shortcake
 🧁	3	JELLY	SPARKLE	cupcake
 🥧	3	JELLY	SPARKLE	pie
@@ -1060,7 +1060,7 @@
 ☃️	4	ROCK	SNOW	snowman
 ⛄️	4	ROCK	SNOW	snowman without snow
 ☄️	4	WHOOSH	TWINKLE	comet
-🔥	4	FLICKER	FLAME	fire
+🔥	4	FLICKER	BURN	fire
 💧	4	DRIP	DRIP	droplet
 🌊	4	ROCK	RIPPLE	water wave
 🎃	5	FLICKER	FLAME	jack-o-lantern
@@ -1256,11 +1256,11 @@
 📼	6	FLASH	SHINE	videocassette
 🔍️	6	SEARCH	SHINE	magnifying glass tilted left
 🔎	6	SEARCH	SHINE	magnifying glass tilted right
-🕯️	6	FLICKER	FLAME	candle
+🕯️	6	NONE	BURN:0.05,0,0.95,0.36,0.33	candle
 💡	6	FLASH	GLOW	light bulb
 🔦	6	FLICKER	GLOW	flashlight
 🏮	6	FLICKER	GLOW	red paper lantern
-🪔	6	FLICKER	FLAME	diya lamp
+🪔	6	NONE	BURN:0.58,0,0.95,0.62,0.56	diya lamp
 📔	6	PAGE	SHINE	notebook with decorative cover
 📕	6	PAGE	SHINE	closed book
 📖	6	PAGE	PAGE_TURN	open book

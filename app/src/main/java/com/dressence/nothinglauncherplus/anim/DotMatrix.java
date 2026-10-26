@@ -198,6 +198,7 @@ final class DotMatrix {
         scene.boardDy = 0;
         scene.sphereTurn = Float.NaN;
         scene.earthCentre = Float.NaN;
+        scene.flameT = Float.NaN;
         scene.busy = false;
         if (effects) {
             scene.t = time;
@@ -209,7 +210,7 @@ final class DotMatrix {
             effect.pose(scene);
         }
         boolean still = p.isRest() && scene.partCount == 0 && !scene.detached
-                && scene.sphereTurn != scene.sphereTurn;
+                && scene.sphereTurn != scene.sphereTurn && scene.flameT != scene.flameT;
         if (still) {
             System.arraycopy(restDots, 0, dots, 0, dots.length);
         } else {
@@ -302,7 +303,7 @@ final class DotMatrix {
                 keepInside(pose);
             }
             glyphPaint.setAlpha(p == null ? 255 : Math.round(Math.min(1, p.alpha) * 255));
-            if (p != null && scene.sphereTurn == scene.sphereTurn) {
+            if (p != null && (scene.sphereTurn == scene.sphereTurn || scene.flameT == scene.flameT)) {
                 drawSphere();
             } else if (p == null || scene.partCount == 0 && !scene.detached) {
                 renderCanvas.drawBitmap(glyph, pose, glyphPaint);
@@ -584,6 +585,10 @@ final class DotMatrix {
             drawEarth();
             return;
         }
+        if (scene.flameT == scene.flameT) {
+            drawFlame();
+            return;
+        }
         float cx = scene.sphereX * SUPERSAMPLE;
         float cy = scene.sphereY * SUPERSAMPLE;
         float radius = scene.sphereRadius * SUPERSAMPLE;
@@ -638,6 +643,36 @@ final class DotMatrix {
             sphereFrame = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
         }
         earth.render(earthRest, RENDER, scene.earthCentre, earthPixels);
+        sphereFrame.setPixels(earthPixels, 0, RENDER, 0, 0, RENDER, RENDER);
+        partMatrix.set(restInverse);
+        partMatrix.postConcat(pose);
+        renderCanvas.save();
+        renderCanvas.concat(partMatrix);
+        renderCanvas.drawBitmap(sphereFrame, 0, 0, glyphPaint);
+        renderCanvas.restore();
+    }
+
+    private Flame flame;
+    private String flameKey;
+
+    /** The drawing with its flame burning (see {@link Flame}). */
+    private void drawFlame() {
+        float[] b = scene.flameBox;
+        float[] box = {b[0] * SUPERSAMPLE, b[1] * SUPERSAMPLE, b[2] * SUPERSAMPLE,
+                b[3] * SUPERSAMPLE, 0, b[4] * SUPERSAMPLE};
+        String key = glyphKey + "|" + Arrays.toString(b);
+        if (flame == null || !key.equals(flameKey) || sphereFrame == null) {
+            int[] rest = new int[RENDER * RENDER];
+            render.eraseColor(Color.TRANSPARENT);
+            renderCanvas.drawBitmap(glyph, restPose, glyphPaint);
+            render.getPixels(rest, 0, RENDER, 0, 0, RENDER, RENDER);
+            render.eraseColor(Color.TRANSPARENT);
+            flame = new Flame(rest, RENDER, box[0], box[1], box[2], box[3], box[5], b[5]);
+            flameKey = key;
+            earthPixels = new int[RENDER * RENDER];
+            sphereFrame = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
+        }
+        flame.render(scene.flameT, earthPixels);
         sphereFrame.setPixels(earthPixels, 0, RENDER, 0, 0, RENDER, RENDER);
         partMatrix.set(restInverse);
         partMatrix.postConcat(pose);
