@@ -86,7 +86,14 @@ plus your folders.
   ⚡ 🌩️ 💥 flash; 📶 🛜 fill bar by bar; buttons and keycaps are tapped; 👾 marches; 🎚️'s
   fader slides; 🕰️ ⌚ and the clocks tick their second hand; 💬 types; 📖 📝 📅 📈 📊 turn,
   write, flip, draw and grow; 🏭 🚂 smoke from the chimney, ✈️ trails; 🚀 throws sparks;
-  ☂️ ☔ catch the rain; 🔥 🕯️ lick and throw embers; 🍳 sizzles; 🌡️ 🔋 💈 🧭 🎰 🖨️ ⌨️ 🖱️
+  ☂️ ☔ catch the rain; 🔥 🕯️ 🪔 ❤️‍🔥 and the birthday candles burn, the flame itself
+  licking and swaying up from its root; 🎆 sends up a shell that bursts, blooms, droops and
+  burns out, 🎇 🧨 crackle; 🌍 🌎 🌏 turn as the whole Earth, put together from all three
+  globes, so the far side is really there; 🚿's jets rush and spray drops; 🏏 🏑 🏒 🏸 swing
+  and knock the ball away, 🏓 🥍 keep it up, ⛹️ dribbles, 🏌️ drives; ⚽ 🏀 ⚾ spin as they
+  are kicked up and 🏈 🏉 are tossed end over end; 💿 📀 hold still while their rainbow
+  shimmers; 🚶 🏃 stride, legs scissoring about the hip; arrows nudge the way they point;
+  🍿 pops; 🌫️ 🌁 roll; 🚬's smoke wavers; 🍳 sizzles; 🌡️ 🔋 💈 🧭 🎰 🖨️ ⌨️ 🖱️
   do theirs.
 - **Faces and feelings**: 😍 😻 🥰 😘 💌's own hearts beat lub-dub; 😵 😵‍💫 have stars
   circling the head; 😴's drawn Zs light one after another, 😪's bubble breathes, sleepers
@@ -97,6 +104,8 @@ plus your folders.
   glance about within their whites; 💔 cracks apart and mends; 🤖's antenna lamp blinks; 🤹
   juggles, the balls passing behind the head; only round open eyes blink, never ^ ^ or
   brows; angry faces flush from the chin up.
+- **Nothing is cut off**: a hop, lean or swell that would carry an emoji past the edge of
+  the panel is eased back so it comes up to the edge smoothly.
 - **Particles are smooth**: steam, smoke, snow, rain, bubbles, confetti, sparks, hearts,
   glints and musical notes are drawn soft and anti-aliased between the dots, so they glide
   rather than jump; glows are a halo of the emoji's own light and never wash it out.
