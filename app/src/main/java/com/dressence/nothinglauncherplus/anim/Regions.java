@@ -345,8 +345,9 @@ final class Regions {
             eyeCount++;
             int w = x1 - x0 + 1;
             int h = y1 - y0 + 1;
-            // Only round, solid eyes can blink; brows and closed "^ ^" eyes are thin or hollow.
-            if (h >= 2 && w <= 2 * h + 1 && comp.length >= 0.55f * w * h) {
+            // Only round, solid eyes can blink: open eyes are upright ovals, while brows and
+            // closed "^ ^" eyes are wider than they are tall, thin or hollow.
+            if (h >= 2 && w <= h + 1 && comp.length >= 0.6f * w * h) {
                 openEyes.add(new int[] {x0, y0, x1, y1, darkest,
                         skinAround(x0, y0, x1, y1, dark)});
             }

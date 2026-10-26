@@ -90,11 +90,18 @@ final class Scene {
      * leaving the rest, with what it covered filled in, as the board.
      */
     void liftHue(float hue) {
+        liftHue(hue, 32, 0.1f);
+    }
+
+    /** As above, taking only colours within {@code tolerance} degrees and this saturated. */
+    void liftHue(float hue, float tolerance, float minSat) {
         detached = true;
         detachStick = false;
         detachByDark = false;
         detachByHue = true;
         detachSpec[0] = hue;
+        detachSpec[1] = tolerance;
+        detachSpec[2] = minSat;
     }
 
     /**

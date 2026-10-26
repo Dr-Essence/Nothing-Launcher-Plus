@@ -13,15 +13,15 @@
 🫠	0	MELT	BLINK	melting face
 😉	0	TILT	BLINK	winking face
 😊	0	BOB	BLINK	smiling face with smiling eyes
-😇	0	FLOAT	SHINE	smiling face with halo
+😇	0	FLOAT	HALO	smiling face with halo
 🥰	0	LOVE	HEARTS	smiling face with hearts
 😍	0	LOVE	HEARTS	smiling face with heart-eyes
 🤩	0	TWINKLE	STAR_EYES	star-struck
 😘	0	KISS	HEARTS	face blowing a kiss
-😗	0	KISS	HEARTS	kissing face
+😗	0	KISS	KISS:0.62,0.6	kissing face
 ☺️	0	BOB	BLINK	smiling face
-😚	0	KISS	HEARTS	kissing face with closed eyes
-😙	0	KISS	HEARTS	kissing face with smiling eyes
+😚	0	KISS	KISS:0.62,0.6	kissing face with closed eyes
+😙	0	KISS	KISS:0.62,0.6	kissing face with smiling eyes
 🥲	0	DROOP	TEARS	smiling face with tear
 😋	0	JELLY	BLINK	face savoring food
 😛	0	JELLY	BLINK	face with tongue
@@ -72,8 +72,8 @@
 🤯	0	EXPLODE	FIREWORKS	exploding head
 🤠	0	TILT	BLINK	cowboy hat face
 🥳	0	PARTY	CONFETTI	partying face
-🥸	0	COOL	BLINK	disguised face
-😎	0	COOL	SHINE	smiling face with sunglasses
+🥸	0	COOL	SHINE	disguised face
+😎	0	COOL	SHINE:1	smiling face with sunglasses
 🤓	0	NOD	BLINK	nerd face
 🧐	0	SEARCH	LOOK	face with monocle
 😕	0	TILT	BLINK	confused face
@@ -91,7 +91,7 @@
 😧	0	SHIVER	BLINK	anguished face
 😨	0	SHIVER	BLINK	fearful face
 😰	0	SHIVER	SWEAT	anxious face with sweat
-😥	0	DROOP	BLINK	sad but relieved face
+😥	0	DROOP	SWEAT	sad but relieved face
 😢	0	SOB	TEARS	crying face
 😭	0	SOB	TEARS	loudly crying face
 😱	0	SCREAM	BLINK	face screaming in fear

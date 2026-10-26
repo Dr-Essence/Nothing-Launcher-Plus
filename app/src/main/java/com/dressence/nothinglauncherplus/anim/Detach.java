@@ -36,6 +36,21 @@ final class Detach {
      * so what the piece lay on (the lock's top) shows when it moves away.
      */
     static Detach byHue(int[] pixels, int size, float hue) {
+        return fromPiece(pixels, size, pieceOfHue(pixels, size, hue, 32, 0.1f), false);
+    }
+
+    /**
+     * Lifts small pieces of hue {@code hue} (within {@code tolerance} degrees, at least this
+     * saturated) lying on a rounded surface: beads of sweat on a face. What they covered is
+     * patched from the skin all round, and where they hung over the outline it is redrawn
+     * along the curve of the outline beside them.
+     */
+    static Detach byHue(int[] pixels, int size, float hue, float tolerance, float minSat) {
+        return fromPiece(pixels, size, pieceOfHue(pixels, size, hue, tolerance, minSat), true);
+    }
+
+    private static boolean[] pieceOfHue(int[] pixels, int size, float hue, float tolerance,
+            float minSat) {
         int n = size * size;
         boolean[] piece = new boolean[n];
         float[] hsv = new float[3];
@@ -46,9 +61,9 @@ final class Detach {
             }
             rgbToHsv(c, hsv);
             float d = Math.abs(hsv[0] - hue);
-            piece[i] = hsv[1] > 0.1f && Math.min(d, 360 - d) < 32;
+            piece[i] = hsv[1] > minSat && Math.min(d, 360 - d) < tolerance;
         }
-        return fromPiece(pixels, size, piece);
+        return piece;
     }
 
     /**
@@ -73,11 +88,11 @@ final class Detach {
             float d = Math.abs(hsv[0] - hue);
             piece[i] = hsv[1] > 0.1f && Math.min(d, 360 - d) < 30;
         }
-        return fromPiece(pixels, size, piece);
+        return fromPiece(pixels, size, piece, false);
     }
 
-    /** Lifts {@code piece} off the drawing (see byHue). */
-    private static Detach fromPiece(int[] pixels, int size, boolean[] piece) {
+    /** Lifts {@code piece} off the drawing (see byHue), {@code patch}ing what it covered. */
+    private static Detach fromPiece(int[] pixels, int size, boolean[] piece, boolean patch) {
         int n = size * size;
         // Grown a little (a third of a dot), so the blend where the piece meets what it lies
         // on goes with it rather than staying behind as a faint ghost.
@@ -93,6 +108,9 @@ final class Detach {
                     grown[i] = true;
                 }
             }
+        }
+        if (patch) {
+            return patched(pixels, size, piece, grown);
         }
         // Where what lies under the piece begins, column by column: measured beside the piece
         // and carried straight across it, so a curved edge (the lock's rounded top) stays
@@ -156,6 +174,157 @@ final class Detach {
                 if (piece[i] || distance(pixels[i], fill) > 140) {
                     object[i] = pixels[i];
                 }
+            }
+        }
+        return new Detach(board, object);
+    }
+
+    /**
+     * The board with the {@code hole} filled in from its rim inward, ring by ring, from the
+     * solid pixels round it; where the hole reaches open air its edge follows a circle fitted
+     * to the outline nearby.
+     */
+    private static Detach patched(int[] pixels, int size, boolean[] piece, boolean[] hole) {
+        int n = size * size;
+        int[] board = pixels.clone();
+        boolean[] known = new boolean[n];
+        boolean open = false;
+        int x0 = size, y0 = size, x1 = -1, y1 = -1;
+        for (int i = 0; i < n; i++) {
+            known[i] = !hole[i] && (pixels[i] >>> 24) > 200;
+            if (hole[i]) {
+                x0 = Math.min(x0, i % size);
+                x1 = Math.max(x1, i % size);
+                y0 = Math.min(y0, i / size);
+                y1 = Math.max(y1, i / size);
+            }
+        }
+        if (x1 < 0) {
+            return new Detach(board, new int[n]);
+        }
+        // Colour: each ring of the hole the average of the known pixels next to it.
+        boolean grew = true;
+        while (grew) {
+            grew = false;
+            boolean[] was = known.clone();
+            for (int i = 0; i < n; i++) {
+                if (!hole[i] || was[i]) {
+                    continue;
+                }
+                int x = i % size;
+                int y = i / size;
+                float r = 0, g = 0, b = 0, w = 0;
+                for (int dy = -1; dy <= 1; dy++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int nx = x + dx;
+                        int ny = y + dy;
+                        if (nx < 0 || ny < 0 || nx >= size || ny >= size) {
+                            continue;
+                        }
+                        int j = ny * size + nx;
+                        if (!was[j]) {
+                            if (!hole[j] && (pixels[j] >>> 24) < 128) {
+                                open = true;
+                            }
+                            continue;
+                        }
+                        float k = dx == 0 || dy == 0 ? 1 : 0.7f;
+                        int c = board[j];
+                        r += k * ((c >> 16) & 0xFF);
+                        g += k * ((c >> 8) & 0xFF);
+                        b += k * (c & 0xFF);
+                        w += k;
+                    }
+                }
+                if (w > 0) {
+                    board[i] = 0xFF000000 | Math.round(r / w) << 16 | Math.round(g / w) << 8
+                            | Math.round(b / w);
+                    known[i] = true;
+                    grew = true;
+                }
+            }
+        }
+        // Shape: the outline beside the hole, as a circle (least squares, Kasa's fit).
+        float cx = 0, cy = 0, radius = -1;
+        if (open) {
+            int reach = size / 4;
+            double sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, sxz = 0, syz = 0, sz = 0;
+            int count = 0;
+            for (int y = Math.max(1, y0 - reach); y < Math.min(size - 1, y1 + reach); y++) {
+                for (int x = Math.max(1, x0 - reach); x < Math.min(size - 1, x1 + reach); x++) {
+                    int i = y * size + x;
+                    if (hole[i] || (pixels[i] >>> 24) < 128) {
+                        continue;
+                    }
+                    boolean edge = false;
+                    for (int j : new int[] {i - 1, i + 1, i - size, i + size}) {
+                        edge |= !hole[j] && (pixels[j] >>> 24) < 128;
+                    }
+                    if (!edge) {
+                        continue;
+                    }
+                    double z = (double) x * x + (double) y * y;
+                    sx += x;
+                    sy += y;
+                    sxx += (double) x * x;
+                    syy += (double) y * y;
+                    sxy += (double) x * y;
+                    sxz += x * z;
+                    syz += y * z;
+                    sz += z;
+                    count++;
+                }
+            }
+            if (count >= 8) {
+                // Solves for a, b, c in x² + y² + a x + b y + c = 0.
+                double[][] m = {{sxx, sxy, sx, -sxz}, {sxy, syy, sy, -syz}, {sx, sy, count, -sz}};
+                for (int col = 0; col < 3; col++) {
+                    int best = col;
+                    for (int row = col + 1; row < 3; row++) {
+                        if (Math.abs(m[row][col]) > Math.abs(m[best][col])) {
+                            best = row;
+                        }
+                    }
+                    double[] t = m[col];
+                    m[col] = m[best];
+                    m[best] = t;
+                    for (int row = 0; row < 3; row++) {
+                        if (row != col && m[col][col] != 0) {
+                            double f = m[row][col] / m[col][col];
+                            for (int k = col; k < 4; k++) {
+                                m[row][k] -= f * m[col][k];
+                            }
+                        }
+                    }
+                }
+                double a = m[0][3] / m[0][0];
+                double b = m[1][3] / m[1][1];
+                double c = m[2][3] / m[2][2];
+                cx = (float) (-a / 2);
+                cy = (float) (-b / 2);
+                double r2 = cx * cx + cy * cy - c;
+                radius = r2 > 0 && r2 < size * size ? (float) Math.sqrt(r2) : -1;
+            }
+        }
+        int[] object = new int[n];
+        for (int i = 0; i < n; i++) {
+            if (!hole[i]) {
+                continue;
+            }
+            int fill = board[i];
+            if (!known[i]) {
+                // Out in the air, with no skin to reach.
+                board[i] = 0;
+            } else if (radius > 0) {
+                // Pixel centres, as the outline pixels the circle was fitted to.
+                float dx = i % size - cx;
+                float dy = i / size - cy;
+                float cover = radius + 0.5f - (float) Math.sqrt(dx * dx + dy * dy);
+                cover = Math.max(0, Math.min(1, cover));
+                board[i] = (fill & 0xFFFFFF) | Math.round(255 * cover) << 24;
+            }
+            if (piece[i] || distance(pixels[i], fill) > 140) {
+                object[i] = pixels[i];
             }
         }
         return new Detach(board, object);

@@ -525,6 +525,10 @@ EFFECT_EXACT.update(EFFECT_OBJECTS)
 
 # Second pass, emoji by emoji: what each one would really do.
 EFFECT_REVIEW = {
+    "smiling face with sunglasses": "SHINE:1", "disguised face": "SHINE",
+    "kissing face": "KISS:0.62,0.6", "kissing face with closed eyes": "KISS:0.62,0.6",
+    "kissing face with smiling eyes": "KISS:0.62,0.6", "smiling face with halo": "HALO",
+    "robot": "DIGITAL:0.5,0.04", "sad but relieved face": "SWEAT",
     # A mooncake does not glow; a meditating figure breathes rather than snores.
     "moon cake": "SHINE",
     "person in lotus position": "GLOW", "man in lotus position": "GLOW",

@@ -376,12 +376,12 @@ final class DotMatrix {
             return cached;
         }
         if (scene.detachByHue) {
-            String key = glyphKey + "|hue|" + d[0];
+            String key = glyphKey + "|hue|" + d[0] + "," + d[1] + "," + d[2];
             Bitmap[] cached = SPLITS.get(key);
             if (cached == null) {
                 int[] px = new int[GLYPH * GLYPH];
                 glyph.getPixels(px, 0, GLYPH, 0, 0, GLYPH, GLYPH);
-                Detach split = Detach.byHue(px, GLYPH, d[0]);
+                Detach split = Detach.byHue(px, GLYPH, d[0], d[1], d[2]);
                 cached = new Bitmap[] {
                         Bitmap.createBitmap(split.board, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
                         Bitmap.createBitmap(split.object, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),

@@ -41,6 +41,32 @@ public enum DotEffect {
         }
     },
 
+    /** A kiss: a little heart is blown from the puckered lips (anchor) and floats away. */
+    KISS {
+        @Override
+        void apply(Scene s) {
+            blink(s);
+            blowKiss(s);
+        }
+    },
+
+    /** A halo: it hovers, rising and settling over the head, light gliding round it. */
+    HALO {
+        @Override
+        void pose(Scene s) {
+            s.liftHue(197);
+            float bob = (float) Math.sin(s.t * Math.PI * 2 / 2.8f);
+            s.addLayer(1, 0, 0, 0, 0, -0.6f - 0.9f * bob, 1);
+            s.busy = true;
+        }
+
+        @Override
+        void apply(Scene s) {
+            blink(s);
+            haloGlint(s);
+        }
+    },
+
     /** Crying: the emoji's own tears run (small ones slide, rivers flow and drip). */
     TEARS {
         @Override
@@ -57,13 +83,20 @@ public enum DotEffect {
     /** Nervous: the bead of sweat slides down the face, glistening, and forms again. */
     SWEAT {
         @Override
+        void pose(Scene s) {
+            sweatDrops(s);
+        }
+
+        @Override
         void apply(Scene s) {
             blink(s);
             if (s.regions.waterCount == 0) {
                 fallbackTear(s);
                 return;
             }
-            animateWater(s, 0.7f + s.boost);
+            if (!s.detached) {
+                animateWater(s, 0.7f + s.boost);
+            }
         }
     },
 
@@ -352,11 +385,13 @@ public enum DotEffect {
             }
             s.busy = true;
             float p = ObjectEffects.ease(local / sweep);
+            // Anchor 1: only the dark glass catches it (sunglasses).
+            boolean lensOnly = s.anchor != null && s.anchor.length > 0 && s.anchor[0] == 1;
             float span = (r.maxX - r.minX) + (r.maxY - r.minY) + 10;
             float band = p * span - 5;
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
-                if (ri < 0 || !r.ink[ri]) {
+                if (ri < 0 || !r.ink[ri] || lensOnly && Regions.luma(r.rest[ri]) > 0.3f) {
                     continue;
                 }
                 float pos = ri % r.size - r.minX + ri / r.size - r.minY;
@@ -836,6 +871,10 @@ public enum DotEffect {
         @Override
         void apply(Scene s) {
             Regions r = s.regions;
+            // A lamp on top (a robot's antenna) blinks along.
+            if (s.anchor != null && s.anchor.length >= 2) {
+                ObjectEffects.record(s);
+            }
             float g = 0.5f + 0.5f * (float) Math.sin(s.t * 3);
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
@@ -1540,7 +1579,7 @@ public enum DotEffect {
     public boolean isFace() {
         switch (this) {
             case BLINK: case HEARTS: case TEARS: case SWEAT: case SLEEPY: case ANGRY:
-            case STAR_EYES: case LOOK: case GHOSTLY:
+            case STAR_EYES: case LOOK: case GHOSTLY: case KISS: case HALO:
                 return true;
             default:
                 return false;
@@ -1688,6 +1727,123 @@ public enum DotEffect {
             float y = r.bodyLowY[k] + 1 + life * life * (r.size - r.bodyLowY[k]);
             s.plotRest(r.bodyLowX[k], y, Scene.alpha(0xFF8FDBFF, Math.round(240 * fade(life))));
         }
+    }
+
+    /**
+     * Beads of sweat, each lifted whole off the face: it swells out of the skin, hangs a moment,
+     * runs down as far as the skin goes, gathering speed, and fades, leaving the skin under it.
+     */
+    private static void sweatDrops(Scene s) {
+        Regions r = s.regions;
+        int bodies = r.bodySize.length;
+        if (r.waterCount == 0 || bodies == 0 || bodies > Scene.MAX_PARTS) {
+            return;
+        }
+        for (int k = 0; k < bodies; k++) {
+            if (!isDrop(r, k)) {
+                return;
+            }
+        }
+        int[] box = new int[bodies * 4];
+        for (int k = 0; k < bodies; k++) {
+            box[k * 4] = r.size;
+            box[k * 4 + 1] = r.size;
+        }
+        for (int i = 0; i < r.size * r.size; i++) {
+            int k = r.waterBody[i];
+            if (k >= 0) {
+                int x = i % r.size;
+                int y = i / r.size;
+                box[k * 4] = Math.min(box[k * 4], x);
+                box[k * 4 + 1] = Math.min(box[k * 4 + 1], y);
+                box[k * 4 + 2] = Math.max(box[k * 4 + 2], x + 1);
+                box[k * 4 + 3] = Math.max(box[k * 4 + 3], y + 1);
+            }
+        }
+        // Only the clear sweat blue: a pale or bluish face is not taken along with it.
+        s.liftHue(199, 22, 0.4f);
+        float period = 3.6f / (1 + 0.6f * s.boost);
+        for (int k = 0; k < bodies; k++) {
+            float life = cycle(s, period, k * 1.3f);
+            float x0 = box[k * 4] - 1;
+            float y0 = box[k * 4 + 1] - 1;
+            float x1 = box[k * 4 + 2] + 1;
+            float y1 = box[k * 4 + 3] + 1;
+            // Down the skin as far as it goes; a bead at the jaw drips off it.
+            float run = Math.min(6, Math.max(3, r.bodyRoom[k] - 1));
+            float grow;
+            float slide;
+            float alpha;
+            if (life < 0.15f) {
+                grow = ObjectEffects.easeOut(life / 0.15f);
+                slide = 0;
+                alpha = Math.min(1, life / 0.08f);
+            } else if (life < 0.35f) {
+                grow = 1;
+                slide = 0;
+                alpha = 1;
+            } else if (life < 0.85f) {
+                float q = (life - 0.35f) / 0.5f;
+                grow = 1;
+                slide = run * (float) Math.pow(q, 1.7);
+                alpha = q < 0.7f ? 1 : 1 - (q - 0.7f) / 0.3f;
+            } else {
+                continue;
+            }
+            s.addLayerPiece(1, x0, y0, x1, y1, 0, slide);
+            int p = s.partCount - 1;
+            if (p >= 0 && s.partLayer[p] == 1) {
+                // It swells from where it clings, at its top.
+                s.partPivot[p * 2] = (x0 + x1) / 2;
+                s.partPivot[p * 2 + 1] = y0 + 1;
+                s.partScale[p] = 0.45f + 0.55f * grow;
+                s.partAlpha[p] = alpha;
+            }
+        }
+        s.busy = true;
+    }
+
+    private static void blowKiss(Scene s) {
+        float x = MusicEffects.ax(s, 0);
+        float y = MusicEffects.ay(s, 1);
+        float life = cycle(s, 3.2f, 0);
+        if (life > 0.75f) {
+            return;
+        }
+        float q = life / 0.75f;
+        float rise = ObjectEffects.easeOut(q);
+        // Out from the lips, up and to the side, swaying a little as it floats.
+        float hx = x + 1 + 8 * rise + 0.7f * (float) Math.sin(q * Math.PI * 2.4f);
+        float hy = y - 8 * rise;
+        float across = 2.4f + 2.6f * ObjectEffects.easeOut(Math.min(1, q / 0.3f));
+        float strength = q < 0.12f ? q / 0.12f : q > 0.6f ? (1 - q) / 0.4f : 1;
+        s.heart(hx, hy, across, 0xFFF2384F, strength);
+        s.busy = true;
+    }
+
+    /** Light gliding along the front of a lifted halo now and then. */
+    private static void haloGlint(Scene s) {
+        Regions r = s.regions;
+        float x0 = r.size, x1 = -1, y0 = r.size, y1 = -1;
+        for (int i = 0; i < r.size * r.size; i++) {
+            if (r.ink[i] && r.sat[i] > 0.3f && Math.abs(r.hue[i] - 197) < 25) {
+                x0 = Math.min(x0, i % r.size);
+                x1 = Math.max(x1, i % r.size + 1);
+                y0 = Math.min(y0, i / r.size);
+                y1 = Math.max(y1, i / r.size + 1);
+            }
+        }
+        float local = (s.t + 1.1f) % 4.2f;
+        if (x1 < 0 || local > 1.4f) {
+            return;
+        }
+        float q = ObjectEffects.ease(local / 1.4f);
+        float a = (float) Math.PI * (1 - q);
+        float bob = (float) Math.sin(s.t * Math.PI * 2 / 2.8f);
+        float gx = (x0 + x1) / 2 + (float) Math.cos(a) * ((x1 - x0) / 2 - 1);
+        float gy = (y0 + y1) / 2 + (float) Math.sin(a) * ((y1 - y0) / 2 - 0.8f) - 0.6f - 0.9f * bob;
+        s.glint(gx, gy, 1.6f, 0xFFFFFFFF, (float) Math.sin(q * Math.PI));
+        s.busy = true;
     }
 
     /** Light running down large water (small drops get their own shine as they slide). */
