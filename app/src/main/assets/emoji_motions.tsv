@@ -47,7 +47,7 @@
 😒	0	ROLL	BLINK	unamused face
 🙄	0	ROLL	LOOK	face with rolling eyes
 😬	0	SHIVER	BLINK	grimacing face
-😮‍💨	0	WHOOSH	SMOKE	face exhaling
+😮‍💨	0	WHOOSH	SMOKE:0.1,0.8,-1,0.1	face exhaling
 🤥	0	PULSE	BLINK	lying face
 🫨	0	BUZZ	BLINK	shaking face
 🙂‍↔️	0	NO	BLINK	head shaking horizontally
@@ -102,20 +102,20 @@
 😩	0	DROOP	BLINK	weary face
 😫	0	DROOP	BLINK	tired face
 🥱	0	SLEEP	SLEEPY	yawning face
-😤	0	RAGE	STEAM	face with steam from nose
+😤	0	RAGE	SMOKE:0.24,0.82,-1,0.25,0.76,0.82,1,0.25	face with steam from nose
 😡	0	RAGE	ANGRY	enraged face
 😠	0	RAGE	ANGRY	angry face
 🤬	0	RAGE	ANGRY	face with symbols on mouth
 😈	0	TILT	FLAME	smiling face with horns
 👿	0	RAGE	FLAME	angry face with horns
-💀	0	GHOST	GHOSTLY	skull
-☠️	0	GHOST	GHOSTLY	skull and crossbones
-💩	0	JELLY	SMOKE	pile of poo
+💀	0	GHOST	SHINE	skull
+☠️	0	GHOST	SHINE	skull and crossbones
+💩	0	JELLY	SMOKE:0.35,0.02,-0.2,-1,0.62,0.02,0.2,-1	pile of poo
 🤡	0	GIGGLE	CONFETTI	clown face
 👹	0	RAGE	ANGRY	ogre
 👺	0	RAGE	ANGRY	goblin
 👻	0	GHOST	GHOSTLY	ghost
-👽️	0	FLOAT	GHOSTLY	alien
+👽️	0	FLOAT	BLINK	alien
 👾	0	ROBOT	INVADER	alien monster
 🤖	0	ROBOT	DIGITAL	robot
 😺	0	HAPPY	BLINK	grinning cat
@@ -158,7 +158,7 @@
 💋	0	KISS	HEARTS	kiss mark
 💯	0	STAMP	SHINE	hundred points
 💢	0	RAGE	ANGRY	anger symbol
-💥	0	EXPLODE	FIREWORKS	collision
+💥	0	EXPLODE	ZAP	collision
 💫	0	SPIN	TWINKLE	dizzy
 💦	0	DRIP	DRIP	sweat droplets
 💨	0	WHOOSH	SMOKE	dashing away
@@ -167,7 +167,7 @@
 👁️‍🗨️	0	BLINK	LOOK	eye in speech bubble
 🗨️	0	FLOAT	SHINE	left speech bubble
 🗯️	0	RAGE	ANGRY	right anger bubble
-💭	0	FLOAT	MAGIC	thought balloon
+💭	0	FLOAT	SHINE	thought balloon
 💤	0	SLEEP	SLEEPY	ZZZ
 👋	1	WAVE	SHINE	waving hand
 🤚	1	WAVE	SHINE	raised back of hand
@@ -386,9 +386,9 @@
 🧚	1	FLOAT	TWINKLE	fairy
 🧚‍♂️	1	FLOAT	TWINKLE	man fairy
 🧚‍♀️	1	FLOAT	TWINKLE	woman fairy
-🧛	1	FLOAT	GHOSTLY	vampire
-🧛‍♂️	1	FLOAT	GHOSTLY	man vampire
-🧛‍♀️	1	FLOAT	GHOSTLY	woman vampire
+🧛	1	FLOAT	BLINK	vampire
+🧛‍♂️	1	FLOAT	BLINK	man vampire
+🧛‍♀️	1	FLOAT	BLINK	woman vampire
 🧜	1	FLOAT	BUBBLES	merperson
 🧜‍♂️	1	FLOAT	BUBBLES	merman
 🧜‍♀️	1	FLOAT	BUBBLES	mermaid
@@ -398,9 +398,9 @@
 🧞	1	FLOAT	TWINKLE	genie
 🧞‍♂️	1	FLOAT	TWINKLE	man genie
 🧞‍♀️	1	FLOAT	TWINKLE	woman genie
-🧟	1	FLOAT	GHOSTLY	zombie
-🧟‍♂️	1	FLOAT	GHOSTLY	man zombie
-🧟‍♀️	1	FLOAT	GHOSTLY	woman zombie
+🧟	1	FLOAT	BLINK	zombie
+🧟‍♂️	1	FLOAT	BLINK	man zombie
+🧟‍♀️	1	FLOAT	BLINK	woman zombie
 🧌	1	FLOAT	BLINK	troll
 💆	1	BREATHE	SHINE	person getting massage
 💆‍♂️	1	BREATHE	SHINE	man getting massage
@@ -663,7 +663,7 @@
 🐙	2	SWIM	BUBBLES	octopus
 🐚	2	SWIM	SHINE	spiral shell
 🪸	2	SWIM	BUBBLES	coral
-🪼	2	SWIM	GHOSTLY	jellyfish
+🪼	2	SWIM	GLOW	jellyfish
 🦀	2	SWIM	BUBBLES	crab
 🦞	2	SWIM	BUBBLES	lobster
 🦐	2	SWIM	BUBBLES	shrimp
@@ -854,7 +854,7 @@
 🧭	4	GLOBE	COMPASS	compass
 🏔️	4	SETTLE	SNOW	snow-capped mountain
 ⛰️	4	SETTLE	TWINKLE	mountain
-🌋	4	SETTLE	SMOKE	volcano
+🌋	4	SETTLE	FLAME	volcano
 🗻	4	SETTLE	TWINKLE	mount fuji
 🏕️	4	SETTLE	TWINKLE	camping
 🏖️	4	SETTLE	TWINKLE	beach with umbrella
@@ -882,7 +882,7 @@
 🏪	4	SETTLE	WINDOWS	convenience store
 🏫	4	SETTLE	WINDOWS	school
 🏬	4	SETTLE	WINDOWS	department store
-🏭️	4	SETTLE	SMOKE	factory
+🏭️	4	SETTLE	SMOKE:0.17,0.06,0.9,-0.45,0.45,0.06,0.9,-0.45	factory
 🏯	4	SETTLE	WINDOWS	Japanese castle
 🏰	4	SETTLE	WINDOWS	castle
 💒	4	SETTLE	WINDOWS	wedding
@@ -905,13 +905,13 @@
 🌇	4	SETTLE	TWINKLE	sunset
 🌉	4	SETTLE	TWINKLE	bridge at night
 ♨️	4	SETTLE	STEAM	hot springs
-🎠	4	HOP	NOTES	carousel horse
+🎠	4	HOP	CAROUSEL:48	carousel horse
 🛝	4	SETTLE	TWINKLE	playground slide
 🎡	4	BOB	SPIN:0.47,0.47,0.52,22,255,8	ferris wheel
 🎢	4	SETTLE	TWINKLE	roller coaster
 💈	4	SETTLE	POLE:0.17,0.27,0.83,0.73	barber pole
 🎪	4	SETTLE	CONFETTI	circus tent
-🚂	4	DRIVE	SMOKE	locomotive
+🚂	4	DRIVE	SMOKE:0.22,0.06,1,-0.25	locomotive
 🚃	4	DRIVE	WHEELS	railway car
 🚄	4	DRIVE	WHEELS	high-speed train
 🚅	4	DRIVE	WHEELS	bullet train
@@ -924,7 +924,7 @@
 🚞	4	SETTLE	WHEELS	mountain railway
 🚋	4	DRIVE	WHEELS	tram car
 🚌	4	DRIVE	WHEELS	bus
-🚍️	4	DRIVE	WHEELS	oncoming bus
+🚍️	4	DRIVE	HEADLIGHTS	oncoming bus
 🚎	4	FLOAT	WHEELS	trolleybus
 🚐	4	DRIVE	WHEELS	minibus
 🚑️	4	DRIVE	SIREN	ambulance
@@ -932,9 +932,9 @@
 🚓	4	DRIVE	SIREN	police car
 🚔️	4	DRIVE	SIREN	oncoming police car
 🚕	4	DRIVE	WHEELS	taxi
-🚖	4	DRIVE	WHEELS	oncoming taxi
+🚖	4	DRIVE	HEADLIGHTS:0.19,0.63,0.81,0.63	oncoming taxi
 🚗	4	DRIVE	WHEELS	automobile
-🚘️	4	DRIVE	WHEELS	oncoming automobile
+🚘️	4	DRIVE	HEADLIGHTS	oncoming automobile
 🚙	4	DRIVE	WHEELS	sport utility vehicle
 🛻	4	DRIVE	WHEELS	pickup truck
 🚚	4	DRIVE	WHEELS	delivery truck
@@ -946,7 +946,7 @@
 🦽	4	DRIVE	WHEELS	manual wheelchair
 🦼	4	DRIVE	WHEELS	motorized wheelchair
 🛺	4	DRIVE	WHEELS	auto rickshaw
-🚲️	4	DRIVE	WHEELS:0.21,0.72,0.2,0.79,0.72,0.2	bicycle
+🚲️	4	DRIVE	REELS:0.2,0.7,0.2,0.81,0.7,0.2,185,8	bicycle
 🛴	4	DRIVE	WHEELS	kick scooter
 🛹	4	DRIVE	WHEELS	skateboard
 🛼	4	DRIVE	WHEELS	roller skate
@@ -970,10 +970,10 @@
 ⛴️	4	ROCK	RIPPLE	ferry
 🛥️	4	ROCK	RIPPLE	motor boat
 🚢	4	ROCK	RIPPLE	ship
-✈️	4	FLY	SMOKE	airplane
-🛩️	4	FLY	SMOKE	small airplane
-🛫	4	FLY	SMOKE	airplane departure
-🛬	4	FLY	SMOKE	airplane arrival
+✈️	4	FLY	SMOKE:0.18,0.82,-0.7,0.7	airplane
+🛩️	4	FLY	SMOKE:0.2,0.75,-0.8,0.6	small airplane
+🛫	4	FLY	SMOKE:0.04,0.3,-1,0.35	airplane departure
+🛬	4	FLY	SMOKE:0.04,0.2,-1,-0.3	airplane arrival
 🪂	4	FLY	SWAY	parachute
 💺	4	FLY	SHINE	seat
 🚁	4	FLY	ROTOR	helicopter
@@ -981,17 +981,17 @@
 🚠	4	FLY	SWAY	mountain cableway
 🚡	4	FLY	SWAY	aerial tramway
 🛰️	4	FLY	TWINKLE	satellite
-🚀	4	LAUNCH	FLAME	rocket
+🚀	4	LAUNCH	FLAME:0.14,0.86,-0.7,0.7	rocket
 🛸	4	FLY	CHASE	flying saucer
 🛎️	4	RING	DING:0.38,-0.02,0.62,0.22	bellhop bell
 🧳	4	RATTLE	SHINE	luggage
 ⌛️	4	FLIP	HOURGLASS	hourglass done
 ⏳️	4	FLIP	HOURGLASS	hourglass not done
 ⌚️	4	TICK	CLOCK	watch
-⏰️	4	ALARM	CLOCK	alarm clock
+⏰️	4	ALARM	RING	alarm clock
 ⏱️	4	TICK	CLOCK	stopwatch
 ⏲️	4	TICK	CLOCK	timer clock
-🕰️	4	TICK	CLOCK	mantelpiece clock
+🕰️	4	TICK	CLOCK:0.5,0.4,0.2	mantelpiece clock
 🕛️	4	TICK	CLOCK	twelve o’clock
 🕧️	4	TICK	CLOCK	twelve-thirty
 🕐️	4	TICK	CLOCK	one o’clock
@@ -1046,7 +1046,7 @@
 🌧️	4	FLOAT	RAIN	cloud with rain
 🌨️	4	FLOAT	SNOW	cloud with snow
 🌩️	4	FLOAT	ZAP	cloud with lightning
-🌪️	4	SPIN	SMOKE	tornado
+🌪️	4	SPIN	GLOBE	tornado
 🌫️	4	FLOAT	SMOKE	fog
 🌬️	4	WHOOSH	SMOKE	wind face
 🌀	4	SPIN	GLOBE:1	cyclone
@@ -1059,7 +1059,7 @@
 ❄️	4	SPIN	SNOW	snowflake
 ☃️	4	ROCK	SNOW	snowman
 ⛄️	4	ROCK	SNOW	snowman without snow
-☄️	4	WHOOSH	FLAME	comet
+☄️	4	WHOOSH	TWINKLE	comet
 🔥	4	FLICKER	FLAME	fire
 💧	4	DRIP	DRIP	droplet
 🌊	4	ROCK	RIPPLE	water wave
@@ -1077,7 +1077,7 @@
 🎎	5	PARTY	CONFETTI	Japanese dolls
 🎏	5	PARTY	CONFETTI	carp streamer
 🎐	5	PARTY	SWAY	wind chime
-🎑	5	ROCK	CONFETTI	moon viewing ceremony
+🎑	5	ROCK	GLOW	moon viewing ceremony
 🧧	5	SEND	CONFETTI	red envelope
 🎀	5	PARTY	CONFETTI	ribbon
 🎁	5	RATTLE	SPARKLE	wrapped gift
@@ -1109,7 +1109,7 @@
 🥊	5	BOUNCE	SHINE	boxing glove
 🥋	5	BOUNCE	SHINE	martial arts uniform
 🥅	5	BOUNCE	SHINE	goal net
-⛳️	5	FLAG	FLAG	flag in hole
+⛳️	5	FLAG	FLAG:0.52,0,0.32	flag in hole
 ⛸️	5	BOUNCE	SHINE	ice skate
 🎣	5	SWIM	RIPPLE	fishing pole
 🤿	5	BOUNCE	BUBBLES	diving mask
@@ -1121,9 +1121,9 @@
 🪀	5	BOUNCE	SPARKLE	yo-yo
 🪁	5	FLY	SPARKLE	kite
 🔫	5	HAMMER	DRIP	water pistol
-🎱	5	BOUNCE	MAGIC	pool 8 ball
+🎱	5	BOUNCE	GLOBE:1	pool 8 ball
 🔮	5	TWINKLE	MAGIC	crystal ball
-🪄	5	TWINKLE	MAGIC	magic wand
+🪄	5	TWINKLE	TWINKLE	magic wand
 🎮️	5	BUZZ	CONTROLLER	video game
 🕹️	5	SETTLE	JOYSTICK:0.5,0.574,0.25,-0.05,0.75,0.444	joystick
 🎰	5	RATTLE	SLOTS:0.15,0.48,0.92,0.7	slot machine
@@ -1208,7 +1208,7 @@
 🎵	6	GROOVE	MELODY	musical note
 🎶	6	GROOVE	MELODY	musical notes
 🎙️	6	GROOVE	MIC:0.5,0.4,0.5	studio microphone
-🎚️	6	GROOVE	EQUALIZER:0.42,0.08,0.58,0.92	level slider
+🎚️	6	GROOVE	FADER:0.28,0.27,0.67,0.4,0.36	level slider
 🎛️	6	GROOVE	KNOBS	control knobs
 🎤	6	GROOVE	MIC:0.78,0.2,0.25	microphone
 🎧️	6	GROOVE	NOTES	headphone
@@ -1241,7 +1241,7 @@
 🖱️	6	TYPE	CLICK	computer mouse
 🖲️	6	TYPE	SHINE	trackball
 💽	6	SETTLE	SHINE	computer disk
-💾	6	TYPE	DIGITAL	floppy disk
+💾	6	TYPE	SHINE	floppy disk
 💿️	6	SPIN	SHINE	optical disk
 📀	6	SPIN	SHINE	dvd
 🧮	6	TYPE	SHINE	abacus
@@ -1408,11 +1408,11 @@
 🪦	6	PULSE	SHINE	headstone
 ⚱️	6	PULSE	SHINE	funeral urn
 🧿	6	PULSE	MAGIC	nazar amulet
-🪬	6	PULSE	MAGIC	hamsa
+🪬	6	PULSE	TWINKLE	hamsa
 🗿	6	PULSE	SHINE	moai
 🪧	6	PULSE	SHINE	placard
 🪪	6	PULSE	SHINE	identification card
-🏧	7	PULSE	DIGITAL	ATM sign
+🏧	7	PULSE	PRESS	ATM sign
 🚮	7	PULSE	GLOW	litter in bin sign
 🚰	7	PULSE	DRIP	potable water
 ♿️	7	DRIVE	GLOW	wheelchair symbol
@@ -1518,7 +1518,7 @@
 ➖️	7	POP	SHINE	minus
 ➗️	7	POP	SHINE	divide
 🟰	7	POP	SHINE	heavy equals sign
-♾️	7	POP	MAGIC	infinity
+♾️	7	POP	TWINKLE	infinity
 ‼️	7	ALERT	GLOW	double exclamation mark
 ⁉️	7	ALERT	GLOW	exclamation question mark
 ❓️	7	WONDER	GLOW	red question mark
@@ -1563,11 +1563,11 @@
 8️⃣	7	POP	PRESS	keycap: 8
 9️⃣	7	POP	PRESS	keycap: 9
 🔟	7	POP	PRESS	keycap: 10
-🔠	7	POP	DIGITAL	input latin uppercase
-🔡	7	POP	DIGITAL	input latin lowercase
-🔢	7	POP	DIGITAL	input numbers
-🔣	7	POP	DIGITAL	input symbols
-🔤	7	POP	DIGITAL	input latin letters
+🔠	7	POP	PRESS	input latin uppercase
+🔡	7	POP	PRESS	input latin lowercase
+🔢	7	POP	PRESS	input numbers
+🔣	7	POP	PRESS	input symbols
+🔤	7	POP	PRESS	input latin letters
 🅰️	7	POP	PRESS	A button (blood type)
 🆎	7	POP	PRESS	AB button (blood type)
 🅱️	7	POP	PRESS	B button (blood type)
@@ -1575,7 +1575,7 @@
 🆒	7	POP	PRESS	COOL button
 🆓	7	POP	PRESS	FREE button
 ℹ️	7	POP	PRESS	information
-🆔	7	POP	DIGITAL	ID button
+🆔	7	POP	PRESS	ID button
 Ⓜ️	7	POP	PRESS	circled M
 🆕	7	POP	PRESS	NEW button
 🆖	7	POP	PRESS	NG button
@@ -1636,14 +1636,14 @@
 🔘	7	GROOVE	GLOW	radio button
 🔳	7	PULSE	GLOW	white square button
 🔲	7	PULSE	GLOW	black square button
-🏁	8	FLAG	FLAG	chequered flag
-🚩	8	FLAG	FLAG	triangular flag
+🏁	8	FLAG	FLAG:0.08,0,0.72	chequered flag
+🚩	8	FLAG	FLAG:0.08,0,0.62	triangular flag
 🎌	8	FLAG	FLAG	crossed flags
-🏴	8	FLAG	FLAG	black flag
-🏳️	8	FLAG	FLAG	white flag
-🏳️‍🌈	8	FLOAT	RAINBOW	rainbow flag
-🏳️‍⚧️	8	FLAG	FLAG	transgender flag
-🏴‍☠️	8	FLAG	FLAG	pirate flag
+🏴	8	FLAG	FLAG:0.08,0,0.68	black flag
+🏳️	8	FLAG	FLAG:0.08,0,0.68	white flag
+🏳️‍🌈	8	FLOAT	FLAG:0.08,0,0.68	rainbow flag
+🏳️‍⚧️	8	FLAG	FLAG:0.08,0,0.68	transgender flag
+🏴‍☠️	8	FLAG	FLAG:0.08,0,0.68	pirate flag
 🇦🇨	8	FLAG	FLAG	flag: Ascension Island
 🇦🇩	8	FLAG	FLAG	flag: Andorra
 🇦🇪	8	FLAG	FLAG	flag: United Arab Emirates

@@ -118,11 +118,65 @@ final class Detach {
                 int fill = (a >>> 24) < 128 ? b : (b >>> 24) < 128 ? a
                         : Scene.mix(a, b, (x - left) / (float) (right - left));
                 float cover = top[x] == top[x] ? Math.max(0, Math.min(1, y + 0.5f - top[x])) : 0;
+                // Only as solid as what lies either side: open air stays clear.
+                cover *= Math.max(a >>> 24, b >>> 24) / 255f;
                 board[i] = (fill & 0xFFFFFF) | Math.round(255 * cover) << 24;
                 // The piece itself, and the blend at its edge; not plain board it grew over.
                 if (piece[i] || distance(pixels[i], fill) > 140) {
                     object[i] = pixels[i];
                 }
+            }
+        }
+        return new Detach(board, object);
+    }
+
+    /**
+     * Lifts the dark pieces inside x0, y0, x1, y1 (pixels; a fader's knob), filling what they
+     * covered from above and below, so a track running under them shows through.
+     */
+    static Detach byDark(int[] pixels, int size, int x0, int y0, int x1, int y1) {
+        int n = size * size;
+        boolean[] piece = new boolean[n];
+        for (int y = Math.max(0, y0); y <= Math.min(size - 1, y1); y++) {
+            for (int x = Math.max(0, x0); x <= Math.min(size - 1, x1); x++) {
+                int c = pixels[y * size + x];
+                float luma = (0.3f * ((c >> 16) & 0xFF) + 0.59f * ((c >> 8) & 0xFF)
+                        + 0.11f * (c & 0xFF)) / 255;
+                piece[y * size + x] = (c >>> 24) > 24 && luma < 0.3f;
+            }
+        }
+        boolean[] grown = piece;
+        for (int pass = 0; pass < Math.max(2, size / 48); pass++) {
+            boolean[] was = grown;
+            grown = was.clone();
+            for (int i = 0; i < n; i++) {
+                int x = i % size;
+                if (!was[i] && (x > 0 && was[i - 1] || x < size - 1 && was[i + 1]
+                        || i >= size && was[i - size] || i < n - size && was[i + size])) {
+                    grown[i] = (pixels[i] >>> 24) > 0;
+                }
+            }
+        }
+        int[] board = pixels.clone();
+        int[] object = new int[n];
+        for (int x = 0; x < size; x++) {
+            for (int y = 0; y < size; y++) {
+                int i = y * size + x;
+                if (!grown[i]) {
+                    continue;
+                }
+                object[i] = pixels[i];
+                int up = y;
+                while (up >= 0 && grown[up * size + x]) {
+                    up--;
+                }
+                int down = y;
+                while (down < size && grown[down * size + x]) {
+                    down++;
+                }
+                int a = up >= 0 ? pixels[up * size + x] : 0;
+                int b = down < size ? pixels[down * size + x] : 0;
+                board[i] = Scene.mix(a, b, (y - up) / (float) (down - up));
             }
         }
         return new Detach(board, object);

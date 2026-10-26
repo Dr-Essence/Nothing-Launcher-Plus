@@ -277,7 +277,7 @@ public enum DotEffect {
         @Override
         void apply(Scene s) {
             Regions r = s.regions;
-            int frame = (int) (s.t * 14);
+            float speed = 8 + 6 * s.boost;
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
                 if (ri < 0 || !r.ink[ri] || r.sat[ri] < 0.35f || r.hue[ri] > 60) {
@@ -285,22 +285,36 @@ public enum DotEffect {
                 }
                 int x = ri % r.size;
                 int y = ri / r.size;
-                float n = Scene.hash(x, frame, s.seed);
                 float tip = (y - r.top[x]) / (float) Math.max(1, r.bottom[x] - r.top[x] + 1);
-                if (tip < 0.18f && n > 0.6f + 0.3f * s.boost) {
-                    s.dots[i] = 0; // Tips lick up and down.
-                    continue;
-                }
-                float k = 0.75f + 0.45f * n + 0.3f * s.boost;
-                s.dots[i] = Scene.alpha(Scene.mix(Scene.scale(s.dots[i], k), 0xFFFFE680,
-                        (1 - tip) * 0.25f * n), s.dots[i] >>> 24);
+                // Waves of heat rising through it, each column a little out of step.
+                float wave = (float) Math.sin(y * 0.9f + s.t * speed + x * 0.7f);
+                float k = 0.88f + 0.18f * wave + 0.2f * s.boost;
+                int c = Scene.mix(Scene.scale(s.dots[i], k), 0xFFFFE680,
+                        (1 - tip) * 0.18f * (0.5f + 0.5f * wave));
+                // The tips lick up and down smoothly, fading rather than blinking out.
+                float lick = 0.16f + 0.12f * (float) Math.sin(s.t * 6.5f + x * 1.3f);
+                float a = tip < lick ? Math.max(0, tip / lick) : 1;
+                s.dots[i] = Scene.alpha(c, Math.round((s.dots[i] >>> 24) * a));
             }
             int embers = 2 + Math.round(4 * s.boost);
             for (int k = 0; k < embers; k++) {
-                float life = cycle(s, 1.3f, k * 0.37f);
-                float x = (r.minX + r.maxX) / 2f + (Scene.hash(k, (int) (s.t / 1.3f), s.seed) - 0.5f)
-                        * (r.maxX - r.minX) * 0.6f;
-                s.plotRest(x, r.minY - life * 6, Scene.alpha(0xFFFFA040, Math.round(255 * fade(life))));
+                float life = cycle(s, 1.5f, k * 0.53f);
+                int cyc = (int) ((s.t + k * 0.53f + (s.seed & 0xFF) * 0.013f) / 1.5f);
+                float x = (r.minX + r.maxX) / 2f + (Scene.hash(k, cyc, s.seed) - 0.5f)
+                        * (r.maxX - r.minX) * 0.6f + (float) Math.sin(life * 7 + k) * 0.7f;
+                float y0 = Math.max(r.minY + 1, 6);
+                float flicker = 0.7f + 0.3f * (float) Math.sin(s.t * 23 + k * 3);
+                float go = ObjectEffects.easeOut(life) * 6;
+                if (s.anchor != null && s.anchor.length >= 4) {
+                    // Sparks thrown from a nozzle (a rocket's), along its way out.
+                    float spread = (Scene.hash(k, cyc, s.seed) - 0.5f) * 1.6f;
+                    x = ObjectEffects.edgeX(r, s.anchor[0]) + s.anchor[2] * go
+                            - s.anchor[3] * spread;
+                    y0 = ObjectEffects.edgeY(r, s.anchor[1]) + s.anchor[3] * go
+                            + s.anchor[2] * spread;
+                    go = 0;
+                }
+                s.blob(x, y0 - go, 0.55f, 0xFFFFB050, fade(life) * flicker);
             }
         }
     },
@@ -594,28 +608,48 @@ public enum DotEffect {
         }
     },
 
-    /** Flags: the cloth ripples in the wind. */
+    /**
+     * Flags: the cloth ripples in the wind, more the farther from the pole. With an anchor
+     * (pole x, the cloth's top and bottom) only the cloth moves: the pole and whatever it
+     * stands in stay still.
+     */
     FLAG {
         @Override
         void apply(Scene s) {
             Regions r = s.regions;
             float speed = 3.5f + 3 * s.boost;
+            float pole = r.minX;
+            float top = -1;
+            float bottom = r.size;
+            if (s.anchor != null && s.anchor.length >= 3) {
+                pole = ObjectEffects.edgeX(r, s.anchor[0]);
+                top = ObjectEffects.edgeY(r, s.anchor[1]);
+                bottom = ObjectEffects.edgeY(r, s.anchor[2]);
+            }
+            int[] out = s.dots.clone();
             for (int i = 0; i < s.dots.length; i++) {
                 if (Float.isNaN(s.srcX[i])) {
                     continue;
                 }
                 float x = s.srcX[i];
-                float wave = (float) Math.sin((x - r.minX) * 0.45f - s.t * speed);
-                float amp = Math.min(1, (x - r.minX) / 6f) * 1.3f;
+                float y = s.srcY[i];
+                if (x < pole + 0.5f || y < top - 1.5f || y > bottom + 1.5f) {
+                    continue;
+                }
+                float wave = (float) Math.sin((x - pole) * 0.45f - s.t * speed);
+                float amp = Math.min(1, (x - pole) / 6f) * 1.3f;
                 int sx = Math.round(x);
-                int sy = Math.round(s.srcY[i] + wave * amp);
-                if (sx < 0 || sy < 0 || sx >= r.size || sy >= r.size || !r.ink[sy * r.size + sx]) {
-                    s.dots[i] = 0;
+                int sy = Math.round(y + wave * amp);
+                if (sx < 0 || sy < 0 || sx >= r.size || sy >= r.size || !r.ink[sy * r.size + sx]
+                        || sy < top - 1.5f || sy > bottom + 1.5f) {
+                    out[i] = 0;
                     continue;
                 }
                 int c = r.rest[sy * r.size + sx];
-                s.dots[i] = Scene.scale(c, 0.82f + 0.18f * (float) Math.cos((x - r.minX) * 0.45f - s.t * speed));
+                out[i] = Scene.scale(c, 0.82f + 0.18f
+                        * (float) Math.cos((x - pole) * 0.45f - s.t * speed));
             }
+            System.arraycopy(out, 0, s.dots, 0, out.length);
         }
     },
 
@@ -714,18 +748,32 @@ public enum DotEffect {
         }
     },
 
-    /** Clocks and watches: a hand sweeps round. */
+    /**
+     * Clocks and watches: a red second hand ticks round, a step each second settling with
+     * the tiny overshoot of a quartz movement.
+     */
     CLOCK {
         @Override
         void apply(Scene s) {
             Regions r = s.regions;
-            float cx = (r.minX + r.maxX) / 2f;
-            float cy = (r.minY + r.maxY) / 2f + 1;
-            float len = Math.min(r.maxX - r.minX, r.maxY - r.minY) * 0.3f;
-            float a = s.t * (1 + 4 * s.boost) - (float) Math.PI / 2;
-            for (float d = 0; d <= len; d += 0.5f) {
-                setRest(s, cx + (float) Math.cos(a) * d, cy + (float) Math.sin(a) * d, 0xFFE5322D);
+            float cx = (r.minX + r.maxX + 1) / 2f;
+            float cy = (r.minY + r.maxY + 1) / 2f;
+            float len = Math.min(r.maxX - r.minX, r.maxY - r.minY) * 0.34f;
+            if (s.anchor != null && s.anchor.length >= 3) {
+                // A face that is not the middle of the emoji (a mantel clock's).
+                cx = ObjectEffects.edgeX(r, s.anchor[0]);
+                cy = ObjectEffects.edgeY(r, s.anchor[1]);
+                len = s.anchor[2] * (r.maxX - r.minX + 1);
             }
+            float rate = 1 + 5 * s.boost;
+            float tick = (float) Math.floor(s.t * rate);
+            float step = tick + ObjectEffects.spring((s.t * rate - tick) / 0.3f);
+            float a = (float) (step * Math.PI / 30 - Math.PI / 2 + Scene.hash(s.seed, 3, 9) * 6);
+            float cos = (float) Math.cos(a);
+            float sin = (float) Math.sin(a);
+            int red = 0xFFE5322D;
+            s.strip(cx + cos * len * 0.4f, cy + sin * len * 0.4f, len * 1.2f, 0.5f, a, red, 1);
+            s.blob(cx, cy, 0.75f, red, 1);
         }
     },
 
@@ -1051,6 +1099,11 @@ public enum DotEffect {
     /** Hourglasses: the sand runs through. */
     HOURGLASS {
         @Override
+        void pose(Scene s) {
+            ObjectEffects.hourglassPose(s);
+        }
+
+        @Override
         void apply(Scene s) {
             ObjectEffects.hourglass(s);
         }
@@ -1133,6 +1186,38 @@ public enum DotEffect {
 
         @Override
         void apply(Scene s) {
+        }
+    },
+
+    /** 🎠: the horse rides up and down its pole. */
+    CAROUSEL {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.carouselPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
+    /** 🎚️: the fader is pushed up and pulled back down its track. */
+    FADER {
+        @Override
+        void pose(Scene s) {
+            ObjectEffects.faderPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
+    /** Vehicles seen from the front: the headlights flash, twice. */
+    HEADLIGHTS {
+        @Override
+        void apply(Scene s) {
+            ObjectEffects.headlights(s);
         }
     },
 
@@ -2086,7 +2171,9 @@ public enum DotEffect {
         for (int k = 0; k < strands; k++) {
             float sx = cx + (k - (strands - 1) / 2f) * Math.min(4.5f, w * 0.22f);
             int col = Math.max(0, Math.min(r.size - 1, Math.round(sx)));
-            float top = r.top[col] >= 0 ? r.top[col] : r.minY;
+            // Off the top of the food, or, when it fills the panel to the top, off its upper
+            // part, so the steam is always seen rising.
+            float top = Math.max(r.top[col] >= 0 ? r.top[col] : r.minY, 7);
             float phase = Scene.hash(k, 7, s.seed) * 6;
             for (int j = 0; j * every < span; j++) {
                 float life = ((s.t + phase + j * every) % span) / span;
@@ -2165,10 +2252,33 @@ public enum DotEffect {
         }
     }
 
-    /** Soft grey puffs drifting off to the left and up, growing and thinning. */
+    /**
+     * Soft grey puffs drifting away, growing and thinning: from where the emoji table says
+     * ({@code anchor}: per source x, y and the drift direction dx, dy), or else off its left.
+     */
     static void smoke(Scene s) {
         Regions r = s.regions;
         float mid = (r.minY + r.maxY) / 2f;
+        if (s.anchor != null && s.anchor.length >= 4) {
+            int sources = s.anchor.length / 4;
+            for (int k = 0; k < 5; k++) {
+                int src = k % sources;
+                float period = 2.8f;
+                float life = cycle(s, period, k * period / 5);
+                float x0 = ObjectEffects.edgeX(r, s.anchor[src * 4]);
+                float y0 = ObjectEffects.edgeY(r, s.anchor[src * 4 + 1]);
+                float dx = s.anchor[src * 4 + 2];
+                float dy = s.anchor[src * 4 + 3];
+                float go = ObjectEffects.easeOut(life) * 7;
+                // Curling a little across its way as it goes.
+                float curl = (float) Math.sin(life * 5 + k) * 0.8f * life;
+                float x = x0 + dx * go - dy * curl;
+                float y = y0 + dy * go + dx * curl;
+                float env = Math.min(1, life / 0.15f) * (1 - life);
+                s.blob(x, y, 0.8f + 1.5f * life, 0xFFEDEDED, 0.8f * env);
+            }
+            return;
+        }
         for (int k = 0; k < 5; k++) {
             float period = 3f;
             float life = cycle(s, period, k * period / 5);

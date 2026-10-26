@@ -696,9 +696,26 @@ final class ObjectEffects {
     // Hourglass: ⏳ ⌛
     // -------------------------------------------------------------------------------------
 
+    private static final float SAND_FLIP = 0.75f;
+    private static final float SAND_DRAIN = 6f;
+    private static final float SAND_CYCLE = SAND_FLIP + SAND_DRAIN + 1.4f;
+
+    /** The hourglass is turned over: the whole glass, upside down over SAND_FLIP seconds. */
+    static void hourglassPose(Scene s) {
+        Regions r = s.regions;
+        float t = s.t % SAND_CYCLE;
+        if (t >= SAND_FLIP || sand(r) == null) {
+            return;
+        }
+        float cx = (r.minX + r.maxX + 1) / 2f;
+        float cy = (r.minY + r.maxY + 1) / 2f;
+        s.addPart(0, 0, r.size, r.size, cx, cy, 180 * ease(t / SAND_FLIP), 0, 0);
+        s.busy = true;
+    }
+
     /**
-     * Sand drains from the top bulb through the neck into a growing pile, a thin stream
-     * falling between; then the glass is turned and it starts again.
+     * Sand drains from the top bulb through the neck into the bottom one, a thin stream
+     * falling between; it rests, then the glass is turned over and it runs again.
      */
     static void hourglass(Scene s) {
         Regions r = s.regions;
@@ -706,32 +723,51 @@ final class ObjectEffects {
         if (sand == null) {
             return;
         }
-        float drain = 6f;
-        float cycle = drain + 1.2f;
-        float t = s.t % cycle;
-        // Start full on top (as the drawing, or as a turned glass when it shows none).
-        int top0 = sand.top > 0 ? sand.top : Math.round(sand.bottom * 0.85f);
-        int bottom0 = sand.top > 0 ? sand.bottom : sand.bottom - top0;
-        float p = Math.min(1, t / drain);
-        int moved = Math.round(top0 * p);
-        int top = top0 - moved;
-        int bottom = bottom0 + moved;
-        // The turn: a soft fade back to the drawing over the last moments of the cycle, and
-        // from it at the start, so the loop never jumps.
-        float back = t > drain + 0.6f ? (t - drain - 0.6f) / 0.6f : t < 0.4f ? 1 - t / 0.4f : 0;
+        float t = s.t % SAND_CYCLE;
+        int total = Math.min(sand.capTop, sand.capBottom);
+        if (t < SAND_FLIP) {
+            // Turning: the drained glass, carried round with the drawing.
+            double a = -Math.toRadians(180 * ease(t / SAND_FLIP));
+            float cos = (float) Math.cos(a);
+            float sin = (float) Math.sin(a);
+            float cx = (r.minX + r.maxX + 1) / 2f;
+            float cy = (r.minY + r.maxY + 1) / 2f;
+            for (int i = 0; i < s.dots.length; i++) {
+                if ((s.dots[i] >>> 24) == 0 || Float.isNaN(s.srcX[i])) {
+                    continue;
+                }
+                float dx = s.srcX[i] + 0.5f - cx;
+                float dy = s.srcY[i] + 0.5f - cy;
+                int sx = (int) Math.floor(cx + dx * cos - dy * sin);
+                int sy = (int) Math.floor(cy + dx * sin + dy * cos);
+                if (!r.in(sx, sy)) {
+                    continue;
+                }
+                int rank = sand.rank[sy * r.size + sx];
+                if (rank == Integer.MIN_VALUE) {
+                    continue;
+                }
+                boolean full = rank < 0 && -rank - 1 < total;
+                s.dots[i] = Scene.alpha(full ? sand.sandColor : sand.glassColor,
+                        s.dots[i] >>> 24);
+            }
+            return;
+        }
+        float p = Math.min(1, (t - SAND_FLIP) / SAND_DRAIN);
+        int moved = Math.round(total * p);
+        int top = total - moved;
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
             if (ri < 0 || sand.rank[ri] == Integer.MIN_VALUE) {
                 continue;
             }
             int rank = sand.rank[ri];
-            boolean full = rank >= 0 ? rank < top : -rank - 1 < bottom;
+            boolean full = rank >= 0 ? rank < top : -rank - 1 < moved;
             boolean stream = p < 1 && ri % r.size == sand.neckX && ri / r.size > sand.neckY
-                    && rank < 0 && -rank - 1 >= bottom
+                    && rank < 0 && -rank - 1 >= moved
                     && ((ri / r.size) + (int) (s.t * 18)) % 2 == 0;
             int target = full || stream ? sand.sandColor : sand.glassColor;
-            target = Scene.alpha(target, r.rest[ri] >>> 24);
-            s.dots[i] = back > 0 ? Scene.mix(target, r.rest[ri], back) : target;
+            s.dots[i] = Scene.alpha(target, r.rest[ri] >>> 24);
         }
     }
 
@@ -741,6 +777,9 @@ final class ObjectEffects {
         int[] rank;
         int top;
         int bottom;
+        /** How many dots of sand each bulb holds. */
+        int capTop;
+        int capBottom;
         int neckX;
         int neckY;
         int sandColor;
@@ -835,6 +874,8 @@ final class ObjectEffects {
             };
             upper.sort(settle);
             lower.sort(settle);
+            sand.capTop = upper.size();
+            sand.capBottom = lower.size();
             sand.rank = new int[n];
             Arrays.fill(sand.rank, Integer.MIN_VALUE);
             for (int k = 0; k < upper.size(); k++) {
@@ -1196,7 +1237,20 @@ final class ObjectEffects {
         }
         List<float[]> out = new ArrayList<>();
         for (int[] c : MusicEffects.components(r, dark, false)) {
-            if (c.length >= 4 && c.length <= 140) {
+            if (c.length < 4 || c.length > 140) {
+                continue;
+            }
+            int x0 = r.size, y0 = r.size, x1 = 0, y1 = 0;
+            for (int i : c) {
+                x0 = Math.min(x0, i % r.size);
+                x1 = Math.max(x1, i % r.size);
+                y0 = Math.min(y0, i / r.size);
+                y1 = Math.max(y1, i / r.size);
+            }
+            float w = x1 - x0 + 1;
+            float h = y1 - y0 + 1;
+            // A wheel: round, filled, and down where the vehicle meets the road.
+            if (w / h > 0.6f && w / h < 1.6f && c.length > 0.5f * w * h && y1 >= r.maxY - 3) {
                 out.add(new float[] {MusicEffects.cx(r, c), MusicEffects.cy(r, c),
                         (float) Math.sqrt(c.length / Math.PI) + 0.5f});
             }
@@ -1831,6 +1885,112 @@ final class ObjectEffects {
         }
         r.memo.put("pieceOf", out);
         return out;
+    }
+
+    /**
+     * A vehicle seen from the front flashes its headlights now and then, twice, each throwing
+     * a warm glow round it.
+     */
+    static void headlights(Scene s) {
+        Regions r = s.regions;
+        List<float[]> lamps = headlamps(r);
+        if (s.anchor != null && s.anchor.length >= 4) {
+            // Lamps that blend into the bodywork: where the emoji table puts them.
+            lamps = new ArrayList<>();
+            for (int k = 0; k + 1 < s.anchor.length; k += 2) {
+                lamps.add(new float[] {edgeX(r, s.anchor[k]), edgeY(r, s.anchor[k + 1]), 1});
+            }
+        }
+        if (lamps.isEmpty()) {
+            return;
+        }
+        float period = 3.4f;
+        float t = s.since < 0.6f ? s.since : (s.t + Scene.hash(s.seed, 6, 6) * period) % period;
+        float k = t < 0.12f ? 1 : t > 0.22f && t < 0.34f ? 1 : 0;
+        if (k == 0) {
+            return;
+        }
+        s.busy = true;
+        for (float[] l : lamps) {
+            s.blob(l[0], l[1], l[2] + 0.6f, 0xFFFFFFFF, 0.95f);
+            s.blob(l[0], l[1], l[2] + 3, 0xFFFFF2C8, 0.5f);
+        }
+    }
+
+    /** Headlamps: amber, or else bright, pieces in the lower half, as a left-right pair. */
+    @SuppressWarnings("unchecked")
+    private static List<float[]> headlamps(Regions r) {
+        Object cached = r.memo.get("headlamps");
+        if (cached != null) {
+            return (List<float[]>) cached;
+        }
+        List<float[]> out = new ArrayList<>();
+        for (int pass = 0; pass < 2 && out.isEmpty(); pass++) {
+            boolean[] mask = new boolean[r.size * r.size];
+            float mid = r.minY + (r.maxY - r.minY) * 0.35f;
+            for (int i = 0; i < mask.length; i++) {
+                boolean amber = r.sat[i] > 0.5f && r.luma[i] > 0.4f && r.hue[i] > 18
+                        && r.hue[i] < 50;
+                mask[i] = r.ink[i] && i / r.size > mid && (pass == 0 ? amber : r.luma[i] > 0.7f);
+            }
+            List<float[]> pieces = new ArrayList<>();
+            for (int[] c : MusicEffects.components(r, mask, true)) {
+                if (c.length <= 16) {
+                    pieces.add(new float[] {MusicEffects.cx(r, c), MusicEffects.cy(r, c),
+                            (float) Math.sqrt(c.length / Math.PI)});
+                }
+            }
+            // The pair farthest apart on about the same row.
+            float best = (r.maxX - r.minX) * 0.3f;
+            for (float[] a : pieces) {
+                for (float[] b : pieces) {
+                    float apart = b[0] - a[0];
+                    if (apart > best && Math.abs(a[1] - b[1]) < 2) {
+                        best = apart;
+                        out.clear();
+                        out.add(a);
+                        out.add(b);
+                    }
+                }
+            }
+        }
+        r.memo.put("headlamps", out);
+        return out;
+    }
+
+    /**
+     * A fader ({@code anchor}: the knob's box x0, y0, x1, y1, then how far it travels, as a
+     * fraction of the height) is pushed up and pulled down, easing, as on a mixing desk.
+     */
+    static void faderPose(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 5) {
+            return;
+        }
+        float h = r.maxY - r.minY + 1;
+        float travel = s.anchor[4] * h;
+        // Slow moves with rests between, like a hand riding the level.
+        float phase = (s.t % 5.6f) / 5.6f;
+        float level = phase < 0.3f ? ease(phase / 0.3f) : phase < 0.5f ? 1
+                : phase < 0.85f ? 1 - ease((phase - 0.5f) / 0.35f) : 0;
+        s.liftDark(edgeX(r, s.anchor[0]), edgeY(r, s.anchor[1]), edgeX(r, s.anchor[2]),
+                edgeY(r, s.anchor[3]));
+        s.addLayer(1, 0, 0, 0, 0, travel * level, 1);
+        s.busy = phase < 0.85f && (phase < 0.3f || phase > 0.5f);
+    }
+
+    /**
+     * A carousel horse rides up and down its pole ({@code anchor}: the pole's hue), the pole
+     * standing still through it.
+     */
+    static void carouselPose(Scene s) {
+        if (s.anchor == null || s.anchor.length < 1) {
+            return;
+        }
+        s.liftHue(s.anchor[0]);
+        s.boardDy = -1.6f * (float) Math.sin(s.t * Math.PI * 2 / 2.4f);
+        s.addLayer(1, 0, 0, 0, 0, 0, 1);
+        s.busy = true;
     }
 
     // -------------------------------------------------------------------------------------

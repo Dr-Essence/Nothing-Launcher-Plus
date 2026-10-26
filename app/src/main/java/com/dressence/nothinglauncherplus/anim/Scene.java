@@ -57,6 +57,10 @@ final class Scene {
     final float[] detachSpec = new float[5];
     /** True when the emoji is split by colour ({@link #liftHue}) rather than as a board. */
     boolean detachByHue;
+    /** True when dark pieces inside a box are lifted ({@link #liftDark}). */
+    boolean detachByDark;
+    /** How far the board itself (what is left when a piece is lifted) moves down, in dots. */
+    float boardDy;
 
     /**
      * Splits the emoji into a round board (centre and radius in resting grid units), the
@@ -66,6 +70,7 @@ final class Scene {
     void detach(float cx, float cy, float radius, float objectDegrees, float shadowDegrees) {
         detached = true;
         detachByHue = false;
+        detachByDark = false;
         detachSpec[0] = cx;
         detachSpec[1] = cy;
         detachSpec[2] = radius;
@@ -79,8 +84,23 @@ final class Scene {
      */
     void liftHue(float hue) {
         detached = true;
+        detachByDark = false;
         detachByHue = true;
         detachSpec[0] = hue;
+    }
+
+    /**
+     * Splits off the dark pieces inside x0, y0, x1, y1 (resting grid units) as layer 1 (a
+     * fader's knob), what they covered filled in from above and below.
+     */
+    void liftDark(float x0, float y0, float x1, float y1) {
+        detached = true;
+        detachByHue = false;
+        detachByDark = true;
+        detachSpec[0] = x0;
+        detachSpec[1] = y0;
+        detachSpec[2] = x1;
+        detachSpec[3] = y1;
     }
 
     /** As {@link #addLayer}, showing only the part of the layer inside x0, y0, x1, y1. */

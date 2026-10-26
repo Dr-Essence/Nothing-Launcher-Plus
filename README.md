@@ -71,25 +71,33 @@ plus your folders.
   shadowed inside and the papers in it, then closes again (📂 closes up and reopens). It is
   drawn from the emoji's own dots, so it never changes size; tap it and it opens at once.
 - **Objects do what the real thing does**: 🎮 buttons are pressed in combos and the d-pad
-  clicks; 🕹️'s stick (a clean round ball, cut from the drawing) tilts on its base with spring
-  physics and the fire button flashes; 📷 📸 press the shutter button, close iris blades across
-  the glass only (the metal ring stays as it is), fire a real flash bloom and catch a glint;
-  📹 🎥 pulse their own red REC lamp, with its light spilling onto the body, and 🎥's reels
-  catch the light as they turn; 📽️'s six-spoke reels really turn while their arms stay put;
-  🎬 snaps shut, bounces and reopens; 🔒 lifts its shackle and turns it round its long leg;
-  💬 shows the typing indicator; 📖 turns a page, 📝 is written on line by line, 📅 📆 flip
-  their date page; 📈 📉 draw their line and 📊 grows its bars; 🍳 sizzles; 🫕's burner
-  flickers; 🚦 🚥 cycle green, amber, red; ⏳ ⌛ drain their sand into a growing pile; 🔋
-  charges bar by bar and 🪫 blinks; 🌡️'s mercury climbs and sinks; 🧭's needle (turned as a
-  disc of the drawing) swings and settles; 🎲's pips flicker as it rolls; 🎰's reels spin and
-  stop one by one; cars, buses, bikes and 🛒 turn their wheels; 🚁's rotor blurs; 🎡's lights
-  chase round; 💈's stripes climb; 🌍 🌎 🌏 🌐 and the sport balls turn; ⌨️ is typed on, 🖱️
-  double-clicks, 🖨️ feeds out printed paper; ⚙️ 🛞 💿 📀 spin.
-- **Moving parts are drawn, not shuffled dot by dot**: a stick, needle, shutter, shackle or
-  reel is cut out of the emoji and moved before the emoji becomes dots, in the same
-  supersampled frame, so it moves with smooth anti-aliased edges instead of jagged dot jumps.
-  While a part is moving the cover renders at the display's full rate (up to 120 Hz) and drops
-  back to the panel's 24 fps once it rests.
+  clicks; 🕹️'s stick tilts on its base with spring physics and the fire button flashes;
+  📷 📸 press the shutter, close iris blades over the glass only and fire a flash bloom;
+  📹 🎥 pulse their red REC lamp; 📽️'s reels turn under their arms; 🎬 snaps shut; 🔒 opens
+  like a real padlock, the free leg popping out while the long leg stays in the body, then
+  snaps shut; 🎯 has a dart thrown into the bull, quivering as it lands with its shadow, then
+  pulled out; ⚽ 🏀 ⚾ 🏐 roll with their shading held still and 🏈 🏉 tumble end over end;
+  🎾's ball is bounced on the racket; 🎲 tumbles; 🌍 🌎 🌏 🌐 turn as globes; ⌛ ⏳ drain and
+  are turned over; 🎠's horse rides its pole; 🎡 turns behind its legs; ☯️ ☸️ 🔁 turn on
+  their tiles; 🚓 🚑 🚒 flash their roof lights; 🚘 🚖 🚍 flash their headlights; 🛸's rim
+  lights chase; 🚲's spoked wheels turn; 🚦 🚥 cycle with a glow; ☎️ rattles its handset,
+  📞 ⏰ ring, 🛎️'s plunger is struck; 🔌 sparks between its pins; ⚛️'s electrons orbit;
+  ⚡ 🌩️ 💥 flash; 📶 🛜 fill bar by bar; buttons and keycaps are tapped; 👾 marches; 🎚️'s
+  fader slides; 🕰️ ⌚ and the clocks tick their second hand; 💬 types; 📖 📝 📅 📈 📊 turn,
+  write, flip, draw and grow; 🏭 🚂 smoke from the chimney, ✈️ trails; 🚀 throws sparks;
+  ☂️ ☔ catch the rain; 🔥 🕯️ lick and throw embers; 🍳 sizzles; 🌡️ 🔋 💈 🧭 🎰 🖨️ ⌨️ 🖱️
+  do theirs.
+- **Faces and feelings**: 😍 😻 🥰 😘 💌's own hearts beat lub-dub; 😵 😵‍💫 have stars
+  circling the head; 😴's drawn Zs light one after another, 😪's bubble breathes, sleepers
+  without drawn Zs give off real Z letters; 😤 huffs.
+- **Particles are smooth**: steam, smoke, snow, rain, bubbles, confetti, sparks, hearts,
+  glints and musical notes are drawn soft and anti-aliased between the dots, so they glide
+  rather than jump; glows are a halo of the emoji's own light and never wash it out.
+- **Moving parts are drawn, not shuffled dot by dot**: a stick, needle, dart, shackle, reel or
+  ball is cut out of the emoji (what it covered filled in from the drawing itself) and moved
+  before the emoji becomes dots, in the same supersampled frame, so it moves with smooth
+  anti-aliased edges. While something moves the cover renders at the display's full rate (up
+  to 120 Hz) and drops back to the panel's 24 fps once it rests.
 - **Music plays by its own logic**, all to one shared 96 BPM beat, so the music folders in the
   drawer groove together: 🔊 lights its own drawn sound waves inner to outer like a volume
   meter, 🎵 🎶 light each note head as it sounds, 🎼 runs a playhead along the staff, 🎹 plays a

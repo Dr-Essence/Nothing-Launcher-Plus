@@ -185,6 +185,7 @@ final class DotMatrix {
         boolean effects = effect != DotEffect.NONE && scene.regions != null;
         scene.partCount = 0;
         scene.detached = false;
+        scene.boardDy = 0;
         scene.sphereTurn = Float.NaN;
         scene.busy = false;
         if (effects) {
@@ -272,6 +273,9 @@ final class DotMatrix {
                 clipPart(c, k, true);
             }
         }
+        if (layers != null && scene.boardDy != 0) {
+            c.translate(0, scene.boardDy * SUPERSAMPLE);
+        }
         c.drawBitmap(layers != null ? layers[0] : glyph, restPose, glyphPaint);
         c.restore();
         int alpha = glyphPaint.getAlpha();
@@ -325,6 +329,26 @@ final class DotMatrix {
     /** The glyph split by the effect's {@link Scene#detach}: board, object, shadow. */
     private Bitmap[] detached() {
         float[] d = scene.detachSpec;
+        if (scene.detachByDark) {
+            float[] box = {d[0] * SUPERSAMPLE, d[1] * SUPERSAMPLE, d[2] * SUPERSAMPLE,
+                    d[3] * SUPERSAMPLE};
+            restInverse.mapPoints(box);
+            String key = glyphKey + "|dark|" + Math.round(box[0]) + "," + Math.round(box[1])
+                    + "," + Math.round(box[2]) + "," + Math.round(box[3]);
+            Bitmap[] cached = SPLITS.get(key);
+            if (cached == null) {
+                int[] px = new int[GLYPH * GLYPH];
+                glyph.getPixels(px, 0, GLYPH, 0, 0, GLYPH, GLYPH);
+                Detach split = Detach.byDark(px, GLYPH, Math.round(box[0]), Math.round(box[1]),
+                        Math.round(box[2]), Math.round(box[3]));
+                cached = new Bitmap[] {
+                        Bitmap.createBitmap(split.board, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                        Bitmap.createBitmap(split.object, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                        Bitmap.createBitmap(split.shadow, GLYPH, GLYPH, Bitmap.Config.ARGB_8888)};
+                SPLITS.put(key, cached);
+            }
+            return cached;
+        }
         if (scene.detachByHue) {
             String key = glyphKey + "|hue|" + d[0];
             Bitmap[] cached = SPLITS.get(key);
