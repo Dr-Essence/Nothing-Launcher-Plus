@@ -268,7 +268,32 @@ final class DotMatrix {
             y0 = Math.min(y0, corners[k + 1]);
             y1 = Math.max(y1, corners[k + 1]);
         }
+        // Grown bigger than the panel (a heartbeat of a heart that fills it): squeezed back,
+        // softly, so it swells up to the edge instead of being cut off there.
+        float span = Math.max(x1 - x0, y1 - y0);
+        float room = RENDER - 2;
+        if (span > room * 0.9f) {
+            float fit = fitSpan(span, room) / span;
+            float mx = (x0 + x1) / 2;
+            float my = (y0 + y1) / 2;
+            m.postScale(fit, fit, mx, my);
+            x0 = mx + (x0 - mx) * fit;
+            x1 = mx + (x1 - mx) * fit;
+            y0 = my + (y0 - my) * fit;
+            y1 = my + (y1 - my) * fit;
+        }
         m.postTranslate(inside(x0, x1), inside(y0, y1));
+    }
+
+    /** A span past 90% of the room eased so it never quite exceeds the room. */
+    static float fitSpan(float span, float room) {
+        float knee = room * 0.9f;
+        if (span <= knee) {
+            return span;
+        }
+        float over = span - knee;
+        float rest = room - knee;
+        return knee + rest * (1 - (float) Math.exp(-over / rest));
     }
 
     /** How far to move a span from lo to hi so it stays within the panel, softly. */

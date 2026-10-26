@@ -602,7 +602,6 @@ public enum Motion {
         void pose(float t, Pose p) {
             p.tx = t < 0.35f ? -0.09f * ease(t / 0.35f)
                     : -0.09f * (1 - spring(t - 0.35f, 2.5f, 0.45f));
-            p.alpha = 1 - 0.5f * hump(t / 0.7f);
         }
     },
     SETTLE("Settle", 1.2f, 2.0f) {
