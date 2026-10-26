@@ -2076,50 +2076,105 @@ final class ObjectEffects {
         s.ring(ox, oy, inner, 1.0f, color, 1);
     }
 
-    /** How far a toolbox's lid is open (0 shut, 1 swung back), with a little settle. */
-    private static float lidOpen(Scene s) {
-        float t = s.since < 4f ? s.since : (s.t + Scene.hash(s.seed, 9, 9) * 5.2f) % 5.2f;
-        if (t < 1.2f) {
+    /** The toolbox's timeline: clasps flip open, the lid swings up, back down, clasps shut. */
+    private static float toolboxTime(Scene s) {
+        float period = 6f;
+        return s.since < period ? s.since : (s.t + Scene.hash(s.seed, 9, 9) * period) % period;
+    }
+
+    /** How far the clasps are flipped down (0 shut, 1 hanging open). */
+    private static float claspOpen(float t) {
+        if (t < 0.8f) {
             return 0;
         }
-        if (t < 1.75f) {
-            return spring((t - 1.2f) / 0.55f);
+        if (t < 1.35f) {
+            return spring((t - 0.8f) / 0.45f);
         }
-        if (t < 3.3f) {
+        if (t < 4.1f) {
             return 1;
         }
-        if (t < 3.7f) {
-            return 1 - easeIn((t - 3.3f) / 0.4f);
+        // Snapped back up, quick, as a thumb pushes them home.
+        return t < 4.35f ? 1 - easeIn((t - 4.1f) / 0.25f) : 0;
+    }
+
+    /** How far the lid is open (0 shut, 1 swung back), with a little settle. */
+    private static float lidOpen(float t) {
+        if (t < 1.4f) {
+            return 0;
+        }
+        if (t < 1.95f) {
+            return spring((t - 1.4f) / 0.55f);
+        }
+        if (t < 3.4f) {
+            return 1;
+        }
+        if (t < 3.8f) {
+            return 1 - easeIn((t - 3.4f) / 0.4f);
         }
         // Shut with a small bounce as it lands.
-        return t < 3.86f ? 0.08f * (float) Math.sin(Math.PI * (t - 3.7f) / 0.16f) : 0;
+        return t < 3.96f ? 0.08f * (float) Math.sin(Math.PI * (t - 3.8f) / 0.16f) : 0;
     }
 
     /**
-     * 🧰: the lid ({@code anchor}: its hinge row, the seam row) swings back on its hinge; seen
-     * from the front its face shortens up toward the hinge, showing the dark inside of the box
-     * with the tools in it; then it drops shut with a small bounce.
+     * 🧰 ({@code anchor}: the lid's hinge row, the seam row, then each clasp's box x0, y0, x1,
+     * y1): the clasps flip down on their hinges, the lid swings back (its face shortening
+     * toward the hinge), showing the shadowed inside of the box; it drops shut with a small
+     * bounce and the clasps snap back up.
      */
     static void toolboxPose(Scene s) {
         Regions r = s.regions;
         if (s.anchor == null || s.anchor.length < 2) {
             return;
         }
-        float open = lidOpen(s);
-        if (open <= 0) {
+        float t = toolboxTime(s);
+        float clasp = claspOpen(t);
+        float open = lidOpen(t);
+        if (clasp <= 0 && open <= 0) {
             return;
         }
         s.busy = true;
         float hinge = edgeY(r, s.anchor[0]);
         float seam = edgeY(r, s.anchor[1]);
-        s.addPart(-1, -1, r.size + 1, seam, (r.minX + r.maxX + 1) / 2f, hinge, 0, 0, 0);
-        s.swingLastPart((float) Math.cos(Math.toRadians(68 * open)));
+        // The clasps come off the drawing (by their colour); the box and lid are drawn without
+        // them, and each clasp is drawn on its own, flipping about its lower hinge.
+        s.liftHue(200);
+        if (open > 0) {
+            s.addPart(-1, -1, r.size + 1, seam, (r.minX + r.maxX + 1) / 2f, hinge, 0, 0, 0);
+            s.swingLastPart((float) Math.cos(Math.toRadians(68 * open)));
+        }
+        for (int k = 2; k + 3 < s.anchor.length; k += 4) {
+            float x0 = edgeX(r, s.anchor[k]);
+            float y0 = edgeY(r, s.anchor[k + 1]);
+            float x1 = edgeX(r, s.anchor[k + 2]);
+            float y1 = edgeY(r, s.anchor[k + 3]);
+            s.addLayerPiece(1, x0, y0, x1, y1, 0, 0);
+            int p = s.partCount - 1;
+            s.partPivot[p * 2] = (x0 + x1) / 2;
+            s.partPivot[p * 2 + 1] = y1;
+            // Down and over, past level, till it hangs from its hinge.
+            s.partScaleY[p] = (float) Math.cos(Math.toRadians(165 * clasp));
+        }
     }
 
-    /** The inside of the open toolbox, and the tools standing in it. */
+    /** The shadowed inside of the open toolbox, and the clasps' glint as they snap shut. */
     static void toolbox(Scene s) {
         Regions r = s.regions;
-        if (s.anchor == null || s.anchor.length < 2 || lidOpen(s) <= 0) {
+        if (s.anchor == null || s.anchor.length < 2) {
+            return;
+        }
+        float t = toolboxTime(s);
+        if (t > 4.3f && t < 4.7f) {
+            // Clicked home: the clasps catch the light.
+            float g = 1 - ease((t - 4.3f) / 0.4f);
+            for (int i = 0; i < s.dots.length; i++) {
+                int ri = s.restIndex(i);
+                if (ri >= 0 && r.ink[ri] && r.sat[ri] > 0.12f && r.hue[ri] > 170
+                        && r.hue[ri] < 230) {
+                    MusicEffects.lighten(s, i, 0.55f * g);
+                }
+            }
+        }
+        if (lidOpen(t) <= 0) {
             return;
         }
         float hinge = edgeY(r, s.anchor[0]);
@@ -2128,35 +2183,53 @@ final class ObjectEffects {
         int bx = Math.round((r.minX + r.maxX) / 2f);
         int by = Math.min(r.size - 1, Math.round(seam) + 3);
         int box = r.rest[by * r.size + bx] | 0xFF000000;
-        float w = r.maxX - r.minX + 1;
         for (int i = 0; i < s.dots.length; i++) {
             int ri = s.restIndex(i);
             if (ri < 0 || !r.ink[ri] || (s.dots[i] >>> 24) > 110) {
                 continue;
             }
-            int x = ri % r.size;
             int y = ri / r.size;
             if (y < hinge || y >= seam) {
                 continue;
             }
-            // The back wall, in shadow, darker toward the bottom of the box.
+            // The back wall, in shadow, deepening toward the floor of the box.
             float depth = (y - hinge) / Math.max(1, seam - hinge);
-            int c = Scene.scale(box, 0.45f - 0.25f * depth);
-            // A wrench (a shaft and an open head) and a screwdriver (handle, then shaft)
-            // standing in it.
-            float fx = (x + 0.5f - r.minX) / w;
-            float up = seam - y;
-            if (Math.abs(fx - 0.33f) < 0.035f && up <= 6
-                    || up > 5 && up <= 7 && Math.abs(fx - 0.33f) < 0.09f
-                    && Math.abs(fx - 0.33f) > 0.025f) {
-                c = 0xFFB8C0C6;
-            } else if (Math.abs(fx - 0.64f) < 0.05f && up <= 3) {
-                c = 0xFFFFC52E;
-            } else if (Math.abs(fx - 0.64f) < 0.02f && up > 3 && up <= 6) {
-                c = 0xFFC8CED2;
-            }
-            s.dots[i] = Scene.alpha(c, r.rest[ri] >>> 24);
+            s.dots[i] = Scene.alpha(Scene.scale(box, 0.42f - 0.24f * depth), r.rest[ri] >>> 24);
         }
+    }
+
+    /**
+     * The knobs ({@code anchor}: x, y per knob, then their radius as a fraction of the width)
+     * are turned by hand, one after another: each twists to a new setting, overshooting a
+     * touch and settling, then rests while the next is set. Each knob turns as a disc of the
+     * drawing, its pointer going round.
+     */
+    static void knobsPose(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 3) {
+            return;
+        }
+        int knobs = (s.anchor.length - 1) / 2;
+        float rad = s.anchor[s.anchor.length - 1] * (r.maxX - r.minX + 1);
+        float step = 1.1f - 0.5f * s.boost;
+        int now = (int) (s.t / step);
+        for (int j = 0; j < knobs; j++) {
+            // The last turn this knob was given, and the one before.
+            int last = now - ((now - j) % knobs + knobs) % knobs;
+            float since = s.t - last * step;
+            float from = knobSetting(last - knobs, j, s.seed);
+            float to = knobSetting(last, j, s.seed);
+            float k = spring(since / 0.55f);
+            s.busy |= since < 0.65f;
+            s.addDisc(edgeX(r, s.anchor[j * 2]), edgeY(r, s.anchor[j * 2 + 1]), rad,
+                    from + (to - from) * k);
+        }
+    }
+
+    /** Where turn {@code n} leaves knob {@code j}, in degrees from as drawn. */
+    private static float knobSetting(int n, int j, int seed) {
+        float h = Scene.hash(n, j + 11, seed);
+        return h < 0.2f ? 0 : -120 + 240 * Scene.hash(n, j + 23, seed);
     }
 
     // -------------------------------------------------------------------------------------

@@ -292,8 +292,8 @@ final class DotMatrix {
                         scene.partShift[k * 2 + 1] * SUPERSAMPLE);
                 c.rotate(scene.partAngle[k], scene.partPivot[k * 2] * SUPERSAMPLE,
                         scene.partPivot[k * 2 + 1] * SUPERSAMPLE);
-                if (scene.partScale[k] != 1) {
-                    c.scale(scene.partScale[k], scene.partScale[k],
+                if (scene.partScale[k] != 1 || scene.partScaleY[k] != 1) {
+                    c.scale(scene.partScale[k], scene.partScale[k] * scene.partScaleY[k],
                             scene.partPivot[k * 2] * SUPERSAMPLE,
                             scene.partPivot[k * 2 + 1] * SUPERSAMPLE);
                 }
@@ -319,7 +319,9 @@ final class DotMatrix {
             }
             clipPart(c, k, false);
             Bitmap[] split = scene.partKeepHue[k] < 0 ? null : split(k);
-            c.drawBitmap(split != null ? split[0] : glyph, restPose, glyphPaint);
+            // A piece cut from the drawing comes from what is left once lifted pieces are off.
+            c.drawBitmap(split != null ? split[0] : layers != null ? layers[0] : glyph,
+                    restPose, glyphPaint);
             c.restore();
             if (split != null) {
                 // The piece over the part stays where it is.

@@ -845,13 +845,13 @@
 🔪	3	RATTLE	SHINE	kitchen knife
 🫙	3	RATTLE	SHINE	jar
 🏺	3	RATTLE	SHINE	amphora
-🌍️	4	GLOBE	GLOBE	globe showing Europe-Africa
-🌎️	4	GLOBE	GLOBE	globe showing Americas
-🌏️	4	GLOBE	GLOBE	globe showing Asia-Australia
-🌐	4	GLOBE	GLOBE:2	globe with meridians
+🌍️	4	NONE	GLOBE	globe showing Europe-Africa
+🌎️	4	NONE	GLOBE	globe showing Americas
+🌏️	4	NONE	GLOBE	globe showing Asia-Australia
+🌐	4	NONE	GLOBE:2	globe with meridians
 🗺️	4	GLOBE	RIPPLE	world map
 🗾	4	GLOBE	RIPPLE	map of Japan
-🧭	4	GLOBE	COMPASS	compass
+🧭	4	NONE	COMPASS	compass
 🏔️	4	SETTLE	SNOW	snow-capped mountain
 ⛰️	4	SETTLE	TWINKLE	mountain
 🌋	4	SETTLE	FLAME	volcano
@@ -905,9 +905,9 @@
 🌇	4	SETTLE	TWINKLE	sunset
 🌉	4	SETTLE	TWINKLE	bridge at night
 ♨️	4	SETTLE	STEAM	hot springs
-🎠	4	HOP	CAROUSEL:48	carousel horse
+🎠	4	NONE	CAROUSEL:48	carousel horse
 🛝	4	SETTLE	TWINKLE	playground slide
-🎡	4	BOB	SPIN:0.47,0.47,0.52,22,255,8	ferris wheel
+🎡	4	NONE	SPIN:0.47,0.47,0.52,22,255,8	ferris wheel
 🎢	4	SETTLE	TWINKLE	roller coaster
 💈	4	SETTLE	POLE:0.17,0.27,0.83,0.73	barber pole
 🎪	4	SETTLE	CONFETTI	circus tent
@@ -946,7 +946,7 @@
 🦽	4	DRIVE	WHEELS	manual wheelchair
 🦼	4	DRIVE	WHEELS	motorized wheelchair
 🛺	4	DRIVE	WHEELS	auto rickshaw
-🚲️	4	DRIVE	REELS:0.2,0.7,0.2,0.81,0.7,0.2,185,8	bicycle
+🚲️	4	NONE	REELS:0.2,0.7,0.2,0.81,0.7,0.2,185,8	bicycle
 🛴	4	DRIVE	WHEELS	kick scooter
 🛹	4	DRIVE	WHEELS	skateboard
 🛼	4	DRIVE	WHEELS	roller skate
@@ -957,8 +957,8 @@
 ⛽️	4	DRIVE	DRIP	fuel pump
 🛞	4	SPIN	SHINE	wheel
 🚨	4	ALERT	BEACON	police car light
-🚥	4	FLASH	TRAFFIC	horizontal traffic light
-🚦	4	FLASH	TRAFFIC	vertical traffic light
+🚥	4	NONE	TRAFFIC	horizontal traffic light
+🚦	4	NONE	TRAFFIC	vertical traffic light
 🛑	4	DRIVE	GLOW	stop sign
 🚧	4	NOD	BEACON	construction
 ⚓️	4	ROCK	RIPPLE	anchor
@@ -983,12 +983,12 @@
 🛰️	4	FLY	TWINKLE	satellite
 🚀	4	LAUNCH	FLAME:0.14,0.86,-0.7,0.7	rocket
 🛸	4	FLY	CHASE	flying saucer
-🛎️	4	RING	DING:0.38,-0.02,0.62,0.22	bellhop bell
+🛎️	4	NONE	DING:0.38,-0.02,0.62,0.22	bellhop bell
 🧳	4	RATTLE	SHINE	luggage
-⌛️	4	FLIP	HOURGLASS	hourglass done
-⏳️	4	FLIP	HOURGLASS	hourglass not done
+⌛️	4	NONE	HOURGLASS	hourglass done
+⏳️	4	NONE	HOURGLASS	hourglass not done
 ⌚️	4	TICK	CLOCK	watch
-⏰️	4	ALARM	RING	alarm clock
+⏰️	4	ALARM	CLOCK:0.5,0.58,0.27	alarm clock
 ⏱️	4	TICK	CLOCK	stopwatch
 ⏲️	4	TICK	CLOCK	timer clock
 🕰️	4	TICK	CLOCK:0.5,0.4,0.2	mantelpiece clock
@@ -1046,10 +1046,10 @@
 🌧️	4	FLOAT	RAIN	cloud with rain
 🌨️	4	FLOAT	SNOW	cloud with snow
 🌩️	4	FLOAT	ZAP	cloud with lightning
-🌪️	4	SPIN	GLOBE	tornado
+🌪️	4	NONE	GLOBE	tornado
 🌫️	4	FLOAT	SMOKE	fog
 🌬️	4	WHOOSH	SMOKE	wind face
-🌀	4	SPIN	GLOBE:1	cyclone
+🌀	4	NONE	GLOBE:1	cyclone
 🌈	4	FLOAT	SPARKLE	rainbow
 🌂	4	ROCK	SHINE	closed umbrella
 ☂️	4	ROCK	RAIN:1	umbrella
@@ -1097,7 +1097,7 @@
 🏐	5	BOUNCE	GLOBE:1	volleyball
 🏈	5	BOUNCE	GLOBE:1	american football
 🏉	5	BOUNCE	GLOBE:1	rugby football
-🎾	5	BOUNCE	TENNIS:0.17,0.16,0.15,0.66,0.35	tennis
+🎾	5	NONE	TENNIS:0.17,0.16,0.15,0.66,0.35	tennis
 🥏	5	BOUNCE	SHINE	flying disc
 🎳	5	BOUNCE	SHINE	bowling
 🏏	5	BOUNCE	SHINE	cricket game
@@ -1117,7 +1117,7 @@
 🎿	5	BOUNCE	SHINE	skis
 🛷	5	BOUNCE	SHINE	sled
 🥌	5	BOUNCE	SHINE	curling stone
-🎯	5	RATTLE	DARTS:0.4625,0.5,0.4625,-29,31	bullseye
+🎯	5	NONE	DARTS:0.4625,0.5,0.4625,-29,31	bullseye
 🪀	5	BOUNCE	SPARKLE	yo-yo
 🪁	5	FLY	SPARKLE	kite
 🔫	5	HAMMER	DRIP	water pistol
@@ -1125,9 +1125,9 @@
 🔮	5	TWINKLE	MAGIC	crystal ball
 🪄	5	TWINKLE	TWINKLE	magic wand
 🎮️	5	BUZZ	CONTROLLER	video game
-🕹️	5	SETTLE	JOYSTICK:0.5,0.6,0.3,195,0.52	joystick
-🎰	5	RATTLE	SLOTS:0.15,0.48,0.92,0.7	slot machine
-🎲	5	RATTLE	GLOBE:1	game die
+🕹️	5	NONE	JOYSTICK:0.5,0.6,0.3,195,0.52	joystick
+🎰	5	NONE	SLOTS:0.15,0.48,0.92,0.7	slot machine
+🎲	5	NONE	GLOBE:1	game die
 🧩	5	RATTLE	SPARKLE	puzzle piece
 🧸	5	ROCK	SPARKLE	teddy bear
 🪅	5	ROCK	SPARKLE	piñata
@@ -1208,8 +1208,8 @@
 🎵	6	GROOVE	MELODY	musical note
 🎶	6	GROOVE	MELODY	musical notes
 🎙️	6	GROOVE	MIC:0.5,0.4,0.5	studio microphone
-🎚️	6	GROOVE	FADER:0.28,0.27,0.67,0.4,0.36	level slider
-🎛️	6	GROOVE	KNOBS	control knobs
+🎚️	6	NONE	FADER:0.28,0.27,0.67,0.4,0.36	level slider
+🎛️	6	NONE	KNOBS:0.27,0.27,0.75,0.27,0.27,0.73,0.75,0.73,0.17	control knobs
 🎤	6	GROOVE	MIC:0.78,0.2,0.25	microphone
 🎧️	6	GROOVE	NOTES	headphone
 📻️	6	GROOVE	EQUALIZER:0.5,0.48,0.885,0.65	radio
@@ -1222,18 +1222,18 @@
 🪕	6	GROOVE	STRUM:0.22,0.75,0.9,0.08	banjo
 🥁	6	DRUM	DRUM	drum
 🪘	6	DRUM	DRUM	long drum
-🪇	6	GROOVE	MARACAS	maracas
+🪇	6	NONE	MARACAS	maracas
 🪈	6	GROOVE	WIND:0.75,0.3,0.2,-1	flute
 🪉	6	GROOVE	GLISS	harp
 📱	6	BUZZ	SCREEN	mobile phone
 📲	6	BUZZ	SCREEN	mobile phone with arrow
-☎️	6	BUZZ	RING:-0.02,-0.02,1.02,0.42	telephone
-📞	6	BUZZ	RING	telephone receiver
+☎️	6	NONE	RING:-0.02,-0.02,1.02,0.42	telephone
+📞	6	NONE	RING	telephone receiver
 📟️	6	BUZZ	SCREEN	pager
 📠	6	BUZZ	PRINT	fax machine
 🔋	6	PULSE	BATTERY	battery
 🪫	6	PULSE	BATTERY	low battery
-🔌	6	PULSE	SPARK:0.1,0.31,0.33,0.08	electric plug
+🔌	6	NONE	SPARK:0.1,0.31,0.33,0.08	electric plug
 💻️	6	TYPE	SCREEN	laptop
 🖥️	6	TYPE	SCREEN	desktop computer
 🖨️	6	TYPE	PRINT	printer
@@ -1247,11 +1247,11 @@
 🧮	6	TYPE	SHINE	abacus
 🎥	6	FLASH	FILM_CAMERA:0.453,0.785,0.39,0.295,0.26,0.83,0.374,0.18	movie camera
 🎞️	6	FLASH	GLOW	film frames
-📽️	6	FLASH	REELS:0.219,0.365,0.215,0.727,0.241,0.215,200,6	film projector
-🎬️	6	FLASH	CLAPPER:0.02,0.24,-0.02,-0.02,1.02,0.256	clapper board
+📽️	6	NONE	REELS:0.219,0.365,0.215,0.727,0.241,0.215,200,6	film projector
+🎬️	6	NONE	CLAPPER:0.02,0.24,-0.02,-0.02,1.02,0.256	clapper board
 📺️	6	FLASH	STATIC	television
-📷️	6	FLASH	CAMERA:0.59,0.18,0.056,-0.03,0.37,0.09	camera
-📸	6	FLASH	CAMERA:0.61,0.21,0.056,0.135,0.37,0.19	camera with flash
+📷️	6	NONE	CAMERA:0.59,0.18,0.056,-0.03,0.37,0.09	camera
+📸	6	NONE	CAMERA:0.61,0.21,0.056,0.135,0.37,0.19	camera with flash
 📹️	6	FLASH	RECORD:0.256,0.364	video camera
 📼	6	FLASH	SHINE	videocassette
 🔍️	6	SEARCH	SHINE	magnifying glass tilted left
@@ -1331,7 +1331,7 @@
 🗃️	6	HOP	SHINE	card file box
 🗄️	6	HOP	SHINE	file cabinet
 🗑️	6	HOP	SHINE	wastebasket
-🔒️	6	UNLOCK	LOCK:200,0.1,0.34,0.47,2.6	locked
+🔒️	6	NONE	LOCK:200,0.1,0.34,0.47,2.6	locked
 🔓️	6	UNLOCK	SHINE	unlocked
 🔏	6	UNLOCK	SHINE	locked with pen
 🔐	6	UNLOCK	SHINE	locked with key
@@ -1360,14 +1360,14 @@
 ⛓️‍💥	6	HAMMER	SHINE	broken chain
 ⛓️	6	HAMMER	SHINE	chains
 🪝	6	HAMMER	SHINE	hook
-🧰	6	HAMMER	TOOLBOX:0.15,0.55	toolbox
+🧰	6	NONE	TOOLBOX:0.15,0.55,0.15,0.44,0.31,0.71,0.66,0.44,0.82,0.71	toolbox
 🧲	6	PULSE	TWINKLE	magnet
 🪜	6	HAMMER	SHINE	ladder
 🪏	6	HAMMER	SHINE	shovel
 ⚗️	6	PULSE	BUBBLES	alembic
 🧪	6	PULSE	BUBBLES	test tube
 🧫	6	PULSE	BUBBLES	petri dish
-🧬	6	PULSE	GLOBE	dna
+🧬	6	NONE	GLOBE	dna
 🔬	6	PULSE	SHINE	microscope
 🔭	6	PULSE	TWINKLE	telescope
 📡	6	FLY	SIGNAL:0.8,0.05	satellite antenna
@@ -1460,11 +1460,11 @@
 🔜	7	POINT_RIGHT	SHINE	SOON arrow
 🔝	7	POINT_UP	SHINE	TOP arrow
 🛐	7	ROCK	GLOW	place of worship
-⚛️	7	PULSE	ATOM:0.5,0.5,0.36,0.13	atom symbol
+⚛️	7	NONE	ATOM:0.5,0.5,0.36,0.13	atom symbol
 🕉️	7	PULSE	GLOW	om
 ✡️	7	TWINKLE	TWINKLE	star of David
-☸️	7	PULSE	SPIN:0.5,0.5,0.43,30	wheel of dharma
-☯️	7	PULSE	SPIN:0.5,0.51,0.41,40	yin yang
+☸️	7	NONE	SPIN:0.5,0.5,0.43,30	wheel of dharma
+☯️	7	NONE	SPIN:0.5,0.51,0.41,40	yin yang
 ✝️	7	PULSE	GLOW	latin cross
 ☦️	7	PULSE	GLOW	orthodox cross
 ☪️	7	TWINKLE	TWINKLE	star and crescent
@@ -1486,8 +1486,8 @@
 ♓️	7	TWINKLE	TWINKLE	Pisces
 ⛎️	7	TWINKLE	TWINKLE	Ophiuchus
 🔀	7	PULSE	PRESS	shuffle tracks button
-🔁	7	SPIN	SPIN:0.5,0.5,0.4,-120	repeat button
-🔂	7	PULSE	SPIN:0.5,0.5,0.4,-120	repeat single button
+🔁	7	NONE	SPIN:0.5,0.5,0.4,-120	repeat button
+🔂	7	NONE	SPIN:0.5,0.5,0.4,-120	repeat single button
 ▶️	7	PULSE	PRESS	play button
 ⏩️	7	PULSE	PRESS	fast-forward button
 ⏭️	7	PULSE	PRESS	next track button
@@ -1495,9 +1495,9 @@
 ◀️	7	PULSE	PRESS	reverse button
 ⏪️	7	PULSE	PRESS	fast reverse button
 ⏮️	7	PULSE	PRESS	last track button
-🔼	7	POINT_UP	PRESS	upwards button
+🔼	7	NONE	PRESS	upwards button
 ⏫️	7	PULSE	PRESS	fast up button
-🔽	7	POINT_DOWN	PRESS	downwards button
+🔽	7	NONE	PRESS	downwards button
 ⏬️	7	PULSE	PRESS	fast down button
 ⏸️	7	PULSE	PRESS	pause button
 ⏹️	7	PULSE	PRESS	stop button
@@ -1508,7 +1508,7 @@
 🔆	7	PULSE	GLOW	bright button
 📶	7	PULSE	SEQUENCE	antenna bars
 🛜	7	PULSE	SEQUENCE	wireless
-📳	7	BUZZ	RING	vibration mode
+📳	7	NONE	RING	vibration mode
 📴	7	BUZZ	MUTED	mobile phone off
 ♀️	7	PULSE	SHINE	female sign
 ♂️	7	PULSE	SHINE	male sign
@@ -1593,7 +1593,7 @@
 🉐	7	POP	PRESS	Japanese “bargain” button
 🈹	7	POP	PRESS	Japanese “discount” button
 🈚️	7	POP	PRESS	Japanese “free of charge” button
-🈲	7	NO	PRESS	Japanese “prohibited” button
+🈲	7	NONE	PRESS	Japanese “prohibited” button
 🉑	7	POP	PRESS	Japanese “acceptable” button
 🈸	7	POP	PRESS	Japanese “application” button
 🈴	7	POP	PRESS	Japanese “passing grade” button
@@ -1601,7 +1601,7 @@
 ㊗️	7	POP	PRESS	Japanese “congratulations” button
 ㊙️	7	POP	PRESS	Japanese “secret” button
 🈺	7	POP	PRESS	Japanese “open for business” button
-🈵	7	NO	PRESS	Japanese “no vacancy” button
+🈵	7	NONE	PRESS	Japanese “no vacancy” button
 🔴	7	PULSE	GLOW	red circle
 🟠	7	PULSE	GLOW	orange circle
 🟡	7	PULSE	GLOW	yellow circle

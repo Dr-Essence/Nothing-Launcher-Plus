@@ -565,8 +565,12 @@ public enum DotEffect {
     /** Mixing desks: the knobs turn. */
     KNOBS {
         @Override
+        void pose(Scene s) {
+            ObjectEffects.knobsPose(s);
+        }
+
+        @Override
         void apply(Scene s) {
-            MusicEffects.knobs(s);
         }
     },
 

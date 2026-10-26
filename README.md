@@ -81,7 +81,7 @@ plus your folders.
   are turned over; 🎠's horse rides its pole; 🎡 turns behind its legs; ☯️ ☸️ 🔁 turn on
   their tiles; 🚓 🚑 🚒 flash their roof lights; 🚘 🚖 🚍 flash their headlights; 🛸's rim
   lights chase; 🚲's spoked wheels turn; 🚦 🚥 cycle with a glow; ☎️ rattles its handset,
-  📞 ⏰ ring, 🛎️'s plunger is struck; 🧰's lid swings open on its hinge, showing the tools inside, and drops shut; 🔌 sparks between its pins; ⚛️'s electrons orbit;
+  📞 ⏰ ring, 🛎️'s plunger is struck; 🧰's clasps flip down, its lid swings open on its hinge showing the shadowed inside, drops shut and the clasps snap back with a glint; 🎛️'s knobs are turned by hand one after another; 🔌 sparks between its pins; ⚛️'s electrons orbit;
   ⚡ 🌩️ 💥 flash; 📶 🛜 fill bar by bar; buttons and keycaps are tapped; 👾 marches; 🎚️'s
   fader slides; 🕰️ ⌚ and the clocks tick their second hand; 💬 types; 📖 📝 📅 📈 📊 turn,
   write, flip, draw and grow; 🏭 🚂 smoke from the chimney, ✈️ trails; 🚀 throws sparks;

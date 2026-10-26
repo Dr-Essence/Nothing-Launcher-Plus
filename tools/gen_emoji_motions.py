@@ -90,7 +90,7 @@ EXACT = {
     "snowman": "ROCK", "snowman without snow": "ROCK", "comet": "WHOOSH",
     "shooting star": "WHOOSH", "droplet": "DRIP", "water wave": "ROCK",
     # Objects worth singling out
-    "wrapped gift": "RATTLE", "video game": "BUZZ", "joystick": "BUZZ", "gear": "SPIN",
+    "wrapped gift": "RATTLE", "video game": "BUZZ", "joystick": "NONE", "gear": "SPIN",
     "light bulb": "FLASH", "hourglass done": "FLIP", "hourglass not done": "FLIP",
     "alarm clock": "ALARM", "chart increasing": "GROW", "chart decreasing": "SHRINK",
     "chart increasing with yen": "GROW", "bomb": "EXPLODE", "magic wand": "TWINKLE",
@@ -226,7 +226,7 @@ RULES = [
 # Whole-object moves that follow the object (applied over the tables above).
 EXACT.update({
     "wheel": "SPIN", "optical disk": "SPIN", "dvd": "SPIN", "computer disk": "SETTLE",
-    "ferris wheel": "BOB", "joystick": "SETTLE",
+    "ferris wheel": "BOB", "joystick": "NONE",
 })
 
 SUBGROUP_DEFAULT = {
@@ -353,7 +353,7 @@ EFFECT_EXACT = {
     "airplane arrival": "SMOKE:0.04,0.2,-1,-0.3", "face exhaling": "SMOKE:0.1,0.8,-1,0.1",
     "pile of poo": "SMOKE:0.35,0.02,-0.2,-1,0.62,0.02,0.2,-1", "volcano": "FLAME",
     "tornado": "GLOBE",
-    "alarm clock": "RING", "toolbox": "TOOLBOX:0.15,0.55",
+    "alarm clock": "RING",
     "moon viewing ceremony": "GLOW", "comet": "TWINKLE", "alien": "BLINK", "zombie": "BLINK",
     "man zombie": "BLINK", "woman zombie": "BLINK", "vampire": "BLINK", "man vampire": "BLINK",
     "woman vampire": "BLINK", "skull": "SHINE", "skull and crossbones": "SHINE",
@@ -575,7 +575,7 @@ EFFECT_REVIEW = {
     "airplane arrival": "SMOKE:0.04,0.2,-1,-0.3", "face exhaling": "SMOKE:0.1,0.8,-1,0.1",
     "pile of poo": "SMOKE:0.35,0.02,-0.2,-1,0.62,0.02,0.2,-1", "volcano": "FLAME",
     "tornado": "GLOBE",
-    "alarm clock": "RING", "toolbox": "TOOLBOX:0.15,0.55",
+    "alarm clock": "CLOCK:0.5,0.58,0.27", "control knobs": "KNOBS:0.27,0.27,0.75,0.27,0.27,0.73,0.75,0.73,0.17", "toolbox": "TOOLBOX:0.15,0.55,0.15,0.44,0.31,0.71,0.66,0.44,0.82,0.71",
     "moon viewing ceremony": "GLOW", "comet": "TWINKLE", "alien": "BLINK", "zombie": "BLINK",
     "man zombie": "BLINK", "woman zombie": "BLINK", "vampire": "BLINK", "man vampire": "BLINK",
     "woman vampire": "BLINK", "skull": "SHINE", "skull and crossbones": "SHINE",
@@ -592,6 +592,21 @@ EFFECT_REVIEW = {
     "fire engine": "SIREN:0.22,0.14", "flying saucer": "CHASE",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
+
+# Emojis whose own mechanism moves (a stick, a lid, a dart, a turning globe): a motion of
+# the whole emoji on top would fight it, so they hold still and let the mechanism play.
+EXACT.update({name: "NONE" for name in [
+    "globe showing europe-africa", "globe showing americas", "globe showing asia-australia",
+    "globe with meridians", "compass", "carousel horse", "hourglass done",
+    "hourglass not done", "tornado", "cyclone", "repeat button", "repeat single button",
+    "tennis", "bullseye", "game die", "slot machine", "level slider", "control knobs",
+    "maracas", "telephone", "telephone receiver", "vibration mode", "bellhop bell",
+    "film projector", "clapper board", "camera", "camera with flash", "locked", "toolbox",
+    "horizontal traffic light", "vertical traffic light", "upwards button",
+    "downwards button", "japanese “prohibited” button", "japanese “no vacancy” button",
+    "joystick", "yin yang", "wheel of dharma", "ferris wheel", "atom symbol",
+    "electric plug", "bicycle", "dna",
+]})
 
 # Name keywords, tried in order when there is no exact entry.
 EFFECT_RULES = [
