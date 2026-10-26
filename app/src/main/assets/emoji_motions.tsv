@@ -864,9 +864,9 @@
 🏟️	4	SETTLE	WINDOWS	stadium
 🏛️	4	SETTLE	WINDOWS	classical building
 🏗️	4	NOD	WINDOWS	building construction
-🧱	4	SETTLE	WINDOWS	brick
-🪨	4	SETTLE	WINDOWS	rock
-🪵	4	SETTLE	WINDOWS	wood
+🧱	4	SETTLE	SHINE	brick
+🪨	4	SETTLE	SHINE	rock
+🪵	4	SETTLE	SHINE	wood
 🛖	4	SETTLE	WINDOWS	hut
 🏘️	4	SETTLE	WINDOWS	houses
 🏚️	4	SETTLE	WINDOWS	derelict house
@@ -897,7 +897,7 @@
 ⛲️	4	SETTLE	RIPPLE	fountain
 ⛺️	4	SETTLE	TWINKLE	tent
 🌁	4	FLOAT	SMOKE	foggy
-🌃	4	SETTLE	WINDOWS	night with stars
+🌃	4	SETTLE	TWINKLE	night with stars
 🏙️	4	SETTLE	WINDOWS	cityscape
 🌄	4	SETTLE	TWINKLE	sunrise over mountains
 🌅	4	SETTLE	TWINKLE	sunrise

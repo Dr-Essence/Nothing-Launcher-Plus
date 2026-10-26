@@ -607,6 +607,7 @@ EFFECT_REVIEW = {
     "wine glass": "SHINE", "tumbler glass": "SHINE", "baby bottle": "SHINE",
     "teapot": "STEAM", "sake": "SHINE", "beverage box": "SHINE", "bubble tea": "SHINE",
     "fish cake with swirl": "SHINE",
+    "night with stars": "TWINKLE", "brick": "SHINE", "rock": "SHINE", "wood": "SHINE",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 

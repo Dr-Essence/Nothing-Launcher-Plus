@@ -2569,8 +2569,13 @@ public enum DotEffect {
                 float cy = (r.minY + r.maxY) / 2f + (float) Math.sin(angle) * ry;
                 int gx = Math.round(cx - 0.5f);
                 int gy = Math.round(cy - 0.5f);
-                if (cx >= 2.5f && cy >= 2.5f && cx <= r.size - 2.5f && cy <= r.size - 2.5f
-                        && !r.ink[gy * r.size + gx]) {
+                boolean clear = gx >= 2 && gy >= 2 && gx < r.size - 2 && gy < r.size - 2;
+                for (int dy = -2; dy <= 2 && clear; dy++) {
+                    for (int dx = -2; dx <= 2 && clear; dx++) {
+                        clear = !r.ink[(gy + dy) * r.size + gx + dx];
+                    }
+                }
+                if (clear) {
                     x = cx;
                     y = cy;
                 }
