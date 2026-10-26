@@ -481,12 +481,12 @@
 🏋️	1	RUN	SHINE	person lifting weights
 🏋️‍♂️	1	RUN	SHINE	man lifting weights
 🏋️‍♀️	1	RUN	SHINE	woman lifting weights
-🚴	1	RUN	SHINE	person biking
-🚴‍♂️	1	RUN	SHINE	man biking
-🚴‍♀️	1	RUN	SHINE	woman biking
-🚵	1	RUN	SHINE	person mountain biking
-🚵‍♂️	1	RUN	SHINE	man mountain biking
-🚵‍♀️	1	RUN	SHINE	woman mountain biking
+🚴	1	DRIVE	SHINE	person biking
+🚴‍♂️	1	DRIVE	SHINE	man biking
+🚴‍♀️	1	DRIVE	SHINE	woman biking
+🚵	1	DRIVE	SHINE	person mountain biking
+🚵‍♂️	1	DRIVE	SHINE	man mountain biking
+🚵‍♀️	1	DRIVE	SHINE	woman mountain biking
 🤸	1	RUN	SHINE	person cartwheeling
 🤸‍♂️	1	RUN	SHINE	man cartwheeling
 🤸‍♀️	1	RUN	SHINE	woman cartwheeling

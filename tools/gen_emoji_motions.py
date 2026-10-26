@@ -765,7 +765,7 @@ EXACT.update({name: "NONE" for name in [
 # Balls: round ones are kicked up and spin in the air (their effect turns the surface with the
 # motion, the light held still); long ones are tossed end over end.
 EXACT.update({
-    "yo-yo": "YOYO", "money bag": "RATTLE", "parachute": "SWING", "suspension railway": "SWING", "mountain cableway": "SWING", "aerial tramway": "SWING",
+    "yo-yo": "YOYO", "money bag": "RATTLE", "person biking": "DRIVE", "man biking": "DRIVE", "woman biking": "DRIVE", "person mountain biking": "DRIVE", "man mountain biking": "DRIVE", "woman mountain biking": "DRIVE", "parachute": "SWING", "suspension railway": "SWING", "mountain cableway": "SWING", "aerial tramway": "SWING",
     "bouquet": "NONE",
     "cherry blossom": "NONE",
     "white flower": "NONE",
