@@ -63,6 +63,8 @@ final class Scene {
     boolean detachByDark;
     /** True when a stick and its knob are lifted ({@link #liftStick}). */
     boolean detachStick;
+    /** True when a separate piece of the drawing is lifted ({@link #liftPiece}). */
+    boolean detachPiece;
     /** Per part: clipped where the board is (a fixed opening), not where the part has gone. */
     final boolean[] partClipFixed = new boolean[MAX_PARTS];
     /** How far the board itself (what is left when a piece is lifted) moves down, in dots. */
@@ -75,6 +77,7 @@ final class Scene {
      */
     void detach(float cx, float cy, float radius, float objectDegrees, float shadowDegrees) {
         detached = true;
+        detachPiece = false;
         detachStick = false;
         detachByHue = false;
         detachByDark = false;
@@ -96,6 +99,7 @@ final class Scene {
     /** As above, taking only colours within {@code tolerance} degrees and this saturated. */
     void liftHue(float hue, float tolerance, float minSat) {
         detached = true;
+        detachPiece = false;
         detachStick = false;
         detachByDark = false;
         detachByHue = true;
@@ -110,6 +114,7 @@ final class Scene {
      */
     void liftDark(float x0, float y0, float x1, float y1) {
         detached = true;
+        detachPiece = false;
         detachStick = false;
         detachByHue = false;
         detachByDark = true;
@@ -120,11 +125,26 @@ final class Scene {
     }
 
     /**
+     * Lifts the separate piece of the drawing under (x, y) (resting grid units) as layer 1:
+     * one half of a broken heart.
+     */
+    void liftPiece(float x, float y) {
+        detached = true;
+        detachStick = false;
+        detachByHue = false;
+        detachByDark = false;
+        detachPiece = true;
+        detachSpec[0] = x;
+        detachSpec[1] = y;
+    }
+
+    /**
      * Lifts a stick and its knob as layer 1: everything above {@code knobBottom}, then the
      * pieces of hue {@code hue} down to {@code cut} (resting grid rows).
      */
     void liftStick(float knobBottom, float hue, float cut) {
         detached = true;
+        detachPiece = false;
         detachByHue = false;
         detachByDark = false;
         detachStick = true;

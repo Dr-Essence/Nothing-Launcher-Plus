@@ -355,6 +355,23 @@ final class DotMatrix {
             }
             return cached;
         }
+        if (scene.detachPiece) {
+            float[] at = {d[0] * SUPERSAMPLE, d[1] * SUPERSAMPLE};
+            restInverse.mapPoints(at);
+            String key = glyphKey + "|piece|" + Math.round(at[0]) + "," + Math.round(at[1]);
+            Bitmap[] cached = SPLITS.get(key);
+            if (cached == null) {
+                int[] px = new int[GLYPH * GLYPH];
+                glyph.getPixels(px, 0, GLYPH, 0, 0, GLYPH, GLYPH);
+                Detach split = Detach.piece(px, GLYPH, Math.round(at[0]), Math.round(at[1]));
+                cached = new Bitmap[] {
+                        Bitmap.createBitmap(split.board, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                        Bitmap.createBitmap(split.object, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                        Bitmap.createBitmap(split.shadow, GLYPH, GLYPH, Bitmap.Config.ARGB_8888)};
+                SPLITS.put(key, cached);
+            }
+            return cached;
+        }
         if (scene.detachByDark) {
             float[] box = {d[0] * SUPERSAMPLE, d[1] * SUPERSAMPLE, d[2] * SUPERSAMPLE,
                     d[3] * SUPERSAMPLE};

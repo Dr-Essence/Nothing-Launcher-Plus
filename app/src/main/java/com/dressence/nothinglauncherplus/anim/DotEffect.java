@@ -50,6 +50,42 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * A broken heart: now and then the halves come apart along the crack, tipping away from
+     * each other about the point where they meet, and slowly close again. Anchors: a point on
+     * the right half, and the point they turn about.
+     */
+    BREAK {
+        @Override
+        void pose(Scene s) {
+            if (s.anchor == null || s.anchor.length < 4) {
+                return;
+            }
+            float t = (s.t + 0.8f) % 4.2f;
+            float open;
+            if (t < 0.45f) {
+                // It gives way quickly, with a little overshoot.
+                open = ObjectEffects.spring(t / 0.45f);
+            } else if (t < 1.6f) {
+                open = 1;
+            } else if (t < 2.6f) {
+                open = 1 - ObjectEffects.ease((t - 1.6f) / 1.0f);
+            } else {
+                return;
+            }
+            float px = MusicEffects.ax(s, 2);
+            float py = MusicEffects.ay(s, 3);
+            s.liftPiece(MusicEffects.ax(s, 0), MusicEffects.ay(s, 1));
+            s.addPart(0, 0, s.size, s.size, px, py, -5.5f * open, -0.3f * open, 0);
+            s.addLayer(1, px, py, 5.5f * open, 0.3f * open, 0, 1);
+            s.busy = true;
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
     /** A halo: it hovers, rising and settling over the head, light gliding round it. */
     HALO {
         @Override
@@ -70,13 +106,39 @@ public enum DotEffect {
     /** Crying: the emoji's own tears run (small ones slide, rivers flow and drip). */
     TEARS {
         @Override
+        void pose(Scene s) {
+            // Single tears run whole, as beads of sweat do; rivers of tears flow below.
+            if (s.anchor == null || s.anchor.length == 0) {
+                sweatDrops(s);
+            }
+        }
+
+        @Override
         void apply(Scene s) {
             blink(s);
             if (s.regions.waterCount == 0) {
                 fallbackTear(s);
                 return;
             }
-            animateWater(s, 1 + s.boost);
+            if (s.anchor != null && s.anchor.length > 0 && s.anchor[0] == 1) {
+                // Held back: the tears only well up, light trembling across them.
+                Regions r = s.regions;
+                for (int i = 0; i < s.dots.length; i++) {
+                    int ri = s.restIndex(i);
+                    if (ri < 0 || r.waterBody[ri] < 0) {
+                        continue;
+                    }
+                    float w = (float) Math.sin(ri % r.size * 0.9f - s.t * (3 + 3 * s.boost));
+                    if (w > 0.4f) {
+                        float k = (w - 0.4f) / 0.6f;
+                        s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFE8FBFF, 0.6f * k * k),
+                                s.dots[i] >>> 24);
+                    }
+                }
+                s.busy = true;
+            } else if (!s.detached) {
+                animateWater(s, 1 + s.boost);
+            }
         }
     },
 
@@ -166,20 +228,19 @@ public enum DotEffect {
         @Override
         void apply(Scene s) {
             Regions r = s.regions;
+            // The face flushes red from the chin up, with the pulse.
             float pulse = 0.5f + 0.5f * (float) Math.sin(s.t * 6);
-            float k = 0.25f + 0.2f * pulse + 0.3f * s.boost;
+            float k = 0.18f + 0.14f * pulse + 0.3f * s.boost;
+            float h = Math.max(1, r.maxY - r.minY);
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
                 if (ri >= 0 && r.ink[ri] && !r.eyes[ri] && r.luma[ri] > 0.3f) {
-                    s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFE5322D, k), s.dots[i] >>> 24);
+                    float up = Math.max(0, Math.min(1, (r.maxY - ri / r.size) / h));
+                    float w = k * (1 - 0.6f * up * up);
+                    s.dots[i] = Scene.alpha(Scene.mix(s.dots[i], 0xFFE5322D, w), s.dots[i] >>> 24);
                 }
             }
-            for (int side = -1; side <= 1; side += 2) {
-                float life = cycle(s, 1.2f, side > 0 ? 0.6f : 0);
-                float x = (side < 0 ? r.minX : r.maxX) + side * (1 + life * 3);
-                float y = r.minY + 2 - life * 4;
-                s.plotRest(x, y, Scene.alpha(0xFFE0E0E0, Math.round(220 * fade(life))));
-            }
+            s.busy = true;
         }
     },
 

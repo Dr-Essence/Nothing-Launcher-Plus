@@ -525,6 +525,7 @@ EFFECT_EXACT.update(EFFECT_OBJECTS)
 
 # Second pass, emoji by emoji: what each one would really do.
 EFFECT_REVIEW = {
+    "broken heart": "BREAK:0.8,0.3,0.5,0.97", "face holding back tears": "TEARS:1",
     "smiling face with sunglasses": "SHINE:1", "disguised face": "SHINE",
     "kissing face": "KISS:0.62,0.6", "kissing face with closed eyes": "KISS:0.62,0.6",
     "kissing face with smiling eyes": "KISS:0.62,0.6", "smiling face with halo": "HALO",

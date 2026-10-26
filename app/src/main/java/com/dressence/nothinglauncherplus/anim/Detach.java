@@ -67,6 +67,42 @@ final class Detach {
     }
 
     /**
+     * Lifts the separate piece of the drawing under (x, y) (pixels): one half of a broken
+     * heart. Nothing lies under it, so the board is simply the rest.
+     */
+    static Detach piece(int[] pixels, int size, int x, int y) {
+        int n = size * size;
+        boolean[] piece = new boolean[n];
+        int start = Math.max(0, Math.min(size - 1, y)) * size + Math.max(0, Math.min(size - 1, x));
+        int[] stack = new int[n];
+        int top = 0;
+        if ((pixels[start] >>> 24) >= 24) {
+            stack[top++] = start;
+            piece[start] = true;
+        }
+        while (top > 0) {
+            int i = stack[--top];
+            int px = i % size;
+            for (int j : new int[] {px > 0 ? i - 1 : -1, px < size - 1 ? i + 1 : -1, i - size,
+                    i + size}) {
+                if (j >= 0 && j < n && !piece[j] && (pixels[j] >>> 24) >= 24) {
+                    piece[j] = true;
+                    stack[top++] = j;
+                }
+            }
+        }
+        int[] board = pixels.clone();
+        int[] object = new int[n];
+        for (int i = 0; i < n; i++) {
+            if (piece[i]) {
+                object[i] = pixels[i];
+                board[i] = 0;
+            }
+        }
+        return new Detach(board, object);
+    }
+
+    /**
      * Lifts a stick and its knob (a joystick's): everything above {@code knobBottom}, and
      * below it the pixels of hue {@code hue} down to {@code cut} (pixel rows).
      */

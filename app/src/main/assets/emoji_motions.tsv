@@ -86,7 +86,7 @@
 😲	0	SURPRISE	BLINK	astonished face
 😳	0	SURPRISE	BLINK	flushed face
 🥺	0	PULSE	BLINK	pleading face
-🥹	0	SOB	TEARS	face holding back tears
+🥹	0	SOB	TEARS:1	face holding back tears
 😦	0	DROOP	BLINK	frowning face with open mouth
 😧	0	SHIVER	BLINK	anguished face
 😨	0	SHIVER	BLINK	fearful face
@@ -140,7 +140,7 @@
 💕	0	LOVE	HEARTS	two hearts
 💟	0	HEARTBEAT	HEARTBEAT	heart decoration
 ❣️	0	HEARTBEAT	HEARTBEAT	heart exclamation
-💔	0	DROOP	TEARS	broken heart
+💔	0	DROOP	BREAK:0.8,0.3,0.5,0.97	broken heart
 ❤️‍🔥	0	FLICKER	FLAME	heart on fire
 ❤️‍🩹	0	PULSE	SHINE	mending heart
 ❤️	0	HEARTBEAT	HEARTBEAT	red heart
