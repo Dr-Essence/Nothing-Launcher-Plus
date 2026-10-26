@@ -38,6 +38,11 @@ public class LauncherHook implements IXposedHookLoadPackage {
             Hooks.install("widget app landscape", () -> WidgetApps.install(new ConfigStore()));
             return;
         }
+        if (Config.SYSTEMUI_PKG.equals(lpparam.packageName)) {
+            ClassLoader systemUi = lpparam.classLoader;
+            Hooks.install("status bar", () -> StatusBar.install(systemUi, new ConfigStore()));
+            return;
+        }
         if (!Config.LAUNCHER_PKG.equals(lpparam.packageName)) {
             return;
         }

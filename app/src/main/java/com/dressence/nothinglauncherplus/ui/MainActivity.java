@@ -88,6 +88,17 @@ public class MainActivity extends Activity {
                     config.dotIcons = checked;
                     store.save(this);
                 });
+        ui.switchRow("Ndot status bar",
+                "Clock and battery in glowing green Ndot · restart System UI to apply",
+                config.ndotStatusBar, checked -> {
+                    config.ndotStatusBar = checked;
+                    store.save(this);
+                });
+        ui.switchRow("Date in status bar", "The date before the clock · restart System UI",
+                config.statusBarDate, checked -> {
+                    config.statusBarDate = checked;
+                    store.save(this);
+                });
         ui.row("Animation test", "Play any emoji's animation on a big dot screen", null,
                 ui.chevron(), v -> startActivity(EmojiPickerActivity.testIntent(this)));
 

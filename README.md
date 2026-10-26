@@ -109,6 +109,10 @@ plus your folders.
   glance about within their whites; 💔 cracks apart and mends; 🤖's antenna lamp blinks; 🤹
   juggles, the balls passing behind the head; only round open eyes blink, never ^ ^ or
   brows; angry faces flush from the chin up.
+- **Ndot status bar** (option): System UI is in the module's scope; the status bar clock and
+  battery are drawn in Nothing's NDot, lit the green of the folder name panels with a soft
+  glow, on any wallpaper. Another option puts the date before the time. Restart System UI
+  (or the phone) after switching either.
 - **Animation test**: in the module's settings, play any emoji's animation on a big dot
   screen without making a folder for it: step through emoji one by one, replay its reaction,
   slow it to half or a quarter speed, and compare the dots with the plain emoji.
