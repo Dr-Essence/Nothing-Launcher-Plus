@@ -359,13 +359,25 @@ public enum DotEffect {
             }
             float hx = MusicEffects.ax(s, 0);
             float hy = MusicEffects.ay(s, 1);
-            float phase = (float) (s.t * a[3] * Math.PI * 2);
-            float swing = a[2] * (float) Math.sin(phase);
-            // The body is highest as the legs pass each other, lowest at full stride.
-            float rise = -0.5f * (float) Math.abs(Math.cos(phase));
-            s.addPart(0, hy, hx, s.size, hx, hy, swing, 0, rise);
-            s.addPart(hx, hy, s.size, s.size, hx, hy, -swing, 0, rise);
-            s.addPart(0, 0, s.size, hy, hx, hy, 0, 0, rise);
+            float[] feet = feet(s.regions, hy);
+            if (feet == null) {
+                return;
+            }
+            // Each leg's angle from straight down, as drawn: the left foot's and the right's.
+            float left = (float) Math.toDegrees(Math.atan2(feet[0] - hx, feet[1] - hy));
+            float right = (float) Math.toDegrees(Math.atan2(feet[2] - hx, feet[3] - hy));
+            // Through one stride the legs trade places and come back: a full scissor, easing
+            // at each end where the foot plants.
+            float u = 0.5f - 0.5f * (float) Math.cos(s.t * a[3] * Math.PI);
+            // Bent legs (a runner's) only sway, so they never sweep up past the knee.
+            float limit = 2 * a[2];
+            float swing = Math.max(-limit, Math.min(limit, left - right)) * u;
+            // The body is lowest at full stride and rises as the legs pass each other.
+            float rise = -0.6f * (float) Math.sin(u * Math.PI);
+            s.liftLegs(hy);
+            s.boardDy = rise;
+            s.addLayer(1, hx, hy, swing, 0, rise, 1);
+            s.addLayer(2, hx, hy, -swing, 0, rise, 1);
             s.busy = true;
         }
 
@@ -521,23 +533,51 @@ public enum DotEffect {
      */
     DISC {
         @Override
-        void apply(Scene s) {
+        void pose(Scene s) {
+            // The disc spins up, runs, and slows to a stop; the light on it stays (see apply).
             Regions r = s.regions;
-            float[] hsv = new float[3];
+            float period = 5.2f;
+            float t = (s.t + 0.5f) % period;
+            final float run = 3.6f;
+            float turn;
+            if (t < run) {
+                // Spins up over the first second, runs at 1.2 turns a second, coasts down.
+                float up = 1;
+                float rate = (float) (Math.PI * 2 * 1.2f);
+                float a = Math.min(t, up);
+                turn = rate * a * a / (2 * up) + rate * Math.max(0, t - up);
+                float down = Math.max(0, t - (run - 1.2f));
+                turn -= rate * down * down / (2 * 1.2f);
+            } else {
+                float rate = (float) (Math.PI * 2 * 1.2f);
+                turn = rate * (1 / 2f + (run - 1.2f - 1) + 1.2f / 2);
+            }
+            float cx = (r.minX + r.maxX + 1) / 2f;
+            float cy = (r.minY + r.maxY + 1) / 2f;
+            float radius = Math.max(r.maxX - r.minX + 1, r.maxY - r.minY + 1) / 2f + 0.5f;
+            s.turnSphere(cx, cy, radius, -turn, true);
+            s.busy = t < run;
+        }
+
+        @Override
+        void apply(Scene s) {
+            // A spinning disc's rainbow stays where the light falls on it: the colour of each
+            // dot is the disc at rest, its brightness the turning disc, so the spin shows in
+            // the passing light and dark of the surface while the reflection holds still.
+            Regions r = s.regions;
+            float[] still = new float[3];
+            float[] turning = new float[3];
             for (int i = 0; i < s.dots.length; i++) {
                 int ri = s.restIndex(i);
-                if (ri < 0 || !r.ink[ri] || r.sat[ri] < 0.08f || r.luma[ri] < 0.45f) {
+                int c = s.dots[i];
+                if (ri < 0 || !r.ink[ri] || (c >>> 24) == 0) {
                     continue;
                 }
-                int c = s.dots[i];
-                Detach.rgbToHsv(c, hsv);
-                // Each band of the rainbow drifts through the spectrum at its own pace.
-                float angle = (float) Math.atan2(ri / r.size - (r.minY + r.maxY) / 2f,
-                        ri % r.size - (r.minX + r.maxX) / 2f);
-                hsv[0] = (hsv[0] + 16 * (float) Math.sin(s.t * 1.3f + angle * 2) + 360) % 360;
-                s.dots[i] = (hsvToRgb(hsv) & 0xFFFFFF) | (c & 0xFF000000);
+                Detach.rgbToHsv(r.rest[ri], still);
+                Detach.rgbToHsv(c, turning);
+                still[2] = still[2] * 0.4f + turning[2] * 0.6f;
+                s.dots[i] = (hsvToRgb(still) & 0xFFFFFF) | (c & 0xFF000000);
             }
-            s.busy = true;
         }
     },
 
@@ -2990,6 +3030,64 @@ public enum DotEffect {
         b = k == 3 || k == 4 ? c : k == 2 || k == 5 ? x : 0;
         return 0xFF000000 | Math.round((r + m) * 255) << 16 | Math.round((g + m) * 255) << 8
                 | Math.round((b + m) * 255);
+    }
+
+    /**
+     * A walker's feet below row {@code hipY}: the two biggest blue pieces, as the left one's
+     * x, y and the right one's (lowest point of each, where it meets the ground); null if
+     * there are not two.
+     */
+    private static float[] feet(Regions r, float hipY) {
+        float[] cached = (float[]) r.memo.get("feet");
+        if (cached != null) {
+            return cached.length == 0 ? null : cached;
+        }
+        int n = r.size * r.size;
+        boolean[] seen = new boolean[n];
+        java.util.List<float[]> found = new java.util.ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            if (seen[i] || !foot(r, i, hipY)) {
+                continue;
+            }
+            java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+            q.add(i);
+            seen[i] = true;
+            float sx = 0;
+            float sy = 0;
+            int count = 0;
+            while (!q.isEmpty()) {
+                int j = q.poll();
+                sx += j % r.size + 0.5f;
+                sy += j / r.size + 0.5f;
+                count++;
+                for (int k : around(r, j)) {
+                    if (!seen[k] && foot(r, k, hipY)) {
+                        seen[k] = true;
+                        q.add(k);
+                    }
+                }
+            }
+            found.add(new float[] {sx / count, sy / count, count});
+        }
+        found.sort((p, q) -> Float.compare(q[2], p[2]));
+        float[] result = new float[0];
+        if (found.size() >= 2) {
+            float[] p = found.get(0);
+            float[] q = found.get(1);
+            if (q[0] < p[0]) {
+                float[] t = p;
+                p = q;
+                q = t;
+            }
+            result = new float[] {p[0], p[1], q[0], q[1]};
+        }
+        r.memo.put("feet", result);
+        return result.length == 0 ? null : result;
+    }
+
+    private static boolean foot(Regions r, int i, float hipY) {
+        return r.ink[i] && i / r.size > hipY && r.hue[i] > 190 && r.hue[i] < 250
+                && r.sat[i] > 0.3f;
     }
 
     /** Light running down large water (small drops get their own shine as they slide). */

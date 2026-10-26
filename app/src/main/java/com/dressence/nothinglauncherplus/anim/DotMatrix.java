@@ -391,7 +391,8 @@ final class DotMatrix {
                     clipPart(c, k, false);
                 }
                 // A shadow only darkens what is there: it never falls on thin air.
-                Paint paint = scene.partLayer[k] == 2 ? shadowPaint : glyphPaint;
+                Paint paint = scene.partLayer[k] == 2 && !scene.detachLegs ? shadowPaint
+                        : glyphPaint;
                 paint.setAlpha(Math.round(alpha * scene.partAlpha[k]));
                 c.drawBitmap(layers[scene.partLayer[k]], restPose, paint);
                 glyphPaint.setAlpha(alpha);
@@ -441,6 +442,31 @@ final class DotMatrix {
                         Bitmap.createBitmap(split.board, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
                         Bitmap.createBitmap(split.object, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
                         Bitmap.createBitmap(split.shadow, GLYPH, GLYPH, Bitmap.Config.ARGB_8888)};
+                SPLITS.put(key, cached);
+            }
+            return cached;
+        }
+        if (scene.detachLegs) {
+            float[] row = {0, d[0] * SUPERSAMPLE};
+            restInverse.mapPoints(row);
+            String key = glyphKey + "|legs|" + Math.round(row[1]);
+            Bitmap[] cached = SPLITS.get(key);
+            if (cached == null) {
+                int[] px = new int[GLYPH * GLYPH];
+                glyph.getPixels(px, 0, GLYPH, 0, 0, GLYPH, GLYPH);
+                Detach split = Detach.legs(px, GLYPH, row[1]);
+                if (split == null) {
+                    // No two feet to be found: the walker stays as drawn.
+                    int[] none = new int[GLYPH * GLYPH];
+                    cached = new Bitmap[] {glyph,
+                            Bitmap.createBitmap(none, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                            Bitmap.createBitmap(none, GLYPH, GLYPH, Bitmap.Config.ARGB_8888)};
+                } else {
+                    cached = new Bitmap[] {
+                            Bitmap.createBitmap(split.board, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                            Bitmap.createBitmap(split.object, GLYPH, GLYPH, Bitmap.Config.ARGB_8888),
+                            Bitmap.createBitmap(split.shadow, GLYPH, GLYPH, Bitmap.Config.ARGB_8888)};
+                }
                 SPLITS.put(key, cached);
             }
             return cached;

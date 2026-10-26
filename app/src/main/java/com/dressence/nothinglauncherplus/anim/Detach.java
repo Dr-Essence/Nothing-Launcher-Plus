@@ -25,9 +25,141 @@ final class Detach {
     final int[] shadow;
 
     private Detach(int[] board, int[] object) {
+        this(board, object, new int[board.length]);
+    }
+
+    private Detach(int[] board, int[] object, int[] second) {
         this.board = board;
         this.object = object;
-        this.shadow = new int[board.length];
+        this.shadow = second;
+    }
+
+    /**
+     * Lifts a walker's two legs, each whole: the trousers and shoes below {@code hipY}
+     * (pixels), shared out between the two shoes by growing from each through the legs, so
+     * the split follows the gap between the legs and their crotch. The object is the leg of
+     * the shoe further left, the second layer the other; the board is the rest. Null if two
+     * shoes cannot be found.
+     */
+    static Detach legs(int[] pixels, int size, float hipY) {
+        int n = size * size;
+        float[] hsv = new float[3];
+        boolean[] leg = new boolean[n];
+        boolean[] shoe = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            int c = pixels[i];
+            if ((c >>> 24) < 40 || i / size < hipY) {
+                continue;
+            }
+            rgbToHsv(c, hsv);
+            boolean blue = hsv[0] > 190 && hsv[0] < 250 && hsv[1] > 0.3f;
+            boolean grey = hsv[1] < 0.25f && hsv[2] < 0.85f;
+            leg[i] = blue || grey;
+            shoe[i] = blue;
+        }
+        // The two biggest shoe pieces are the feet.
+        int[] label = new int[n];
+        java.util.List<Integer> sizes = new java.util.ArrayList<>();
+        java.util.List<Float> xs = new java.util.ArrayList<>();
+        int next = 0;
+        for (int i = 0; i < n; i++) {
+            if (!shoe[i] || label[i] != 0) {
+                continue;
+            }
+            next++;
+            int count = 0;
+            float sx = 0;
+            java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+            q.add(i);
+            label[i] = next;
+            while (!q.isEmpty()) {
+                int j = q.poll();
+                count++;
+                sx += j % size;
+                for (int k : neighbours(j, size)) {
+                    if (k >= 0 && shoe[k] && label[k] == 0) {
+                        label[k] = next;
+                        q.add(k);
+                    }
+                }
+            }
+            sizes.add(count);
+            xs.add(sx / count);
+        }
+        int a = -1, b = -1;
+        for (int k = 0; k < sizes.size(); k++) {
+            if (a < 0 || sizes.get(k) > sizes.get(a)) {
+                b = a;
+                a = k;
+            } else if (b < 0 || sizes.get(k) > sizes.get(b)) {
+                b = k;
+            }
+        }
+        if (b < 0 || sizes.get(b) < size / 6) {
+            return null;
+        }
+        if (xs.get(b) < xs.get(a)) {
+            int t = a;
+            a = b;
+            b = t;
+        }
+        // Grow from both feet at once through the legs: each pixel goes to the nearer foot.
+        int[] owner = new int[n];
+        java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+        for (int i = 0; i < n; i++) {
+            if (label[i] == a + 1 || label[i] == b + 1) {
+                owner[i] = label[i] == a + 1 ? 1 : 2;
+                q.add(i);
+            }
+        }
+        while (!q.isEmpty()) {
+            int j = q.poll();
+            for (int k : neighbours(j, size)) {
+                if (k >= 0 && leg[k] && owner[k] == 0) {
+                    owner[k] = owner[j];
+                    q.add(k);
+                }
+            }
+        }
+        // The soft edge round each leg goes with it.
+        for (int pass = 0; pass < Math.max(2, size / 48); pass++) {
+            int[] was = owner.clone();
+            for (int i = 0; i < n; i++) {
+                if (was[i] != 0 || (pixels[i] >>> 24) == 0 || i / size < hipY) {
+                    continue;
+                }
+                rgbToHsv(pixels[i], hsv);
+                if (hsv[1] > 0.35f && !(hsv[0] > 190 && hsv[0] < 250)) {
+                    continue; // Skin or shirt: stays with the body.
+                }
+                for (int k : neighbours(i, size)) {
+                    if (k >= 0 && was[k] != 0) {
+                        owner[i] = was[k];
+                        break;
+                    }
+                }
+            }
+        }
+        int[] board = pixels.clone();
+        int[] first = new int[n];
+        int[] second = new int[n];
+        for (int i = 0; i < n; i++) {
+            if (owner[i] == 1) {
+                first[i] = pixels[i];
+                board[i] = 0;
+            } else if (owner[i] == 2) {
+                second[i] = pixels[i];
+                board[i] = 0;
+            }
+        }
+        return new Detach(board, first, second);
+    }
+
+    private static int[] neighbours(int i, int size) {
+        int x = i % size;
+        int n = size * size;
+        return new int[] {x > 0 ? i - 1 : -1, x < size - 1 ? i + 1 : -1,
+                i >= size ? i - size : -1, i + size < n ? i + size : -1};
     }
 
     /**

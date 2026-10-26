@@ -67,6 +67,8 @@ final class Scene {
     boolean detachStick;
     /** True when a separate piece of the drawing is lifted ({@link #liftPiece}). */
     boolean detachPiece;
+    /** True when a walker's legs are lifted ({@link #liftLegs}): layers 1 and 2 are legs. */
+    boolean detachLegs;
     /** Per part: clipped where the board is (a fixed opening), not where the part has gone. */
     final boolean[] partClipFixed = new boolean[MAX_PARTS];
     /** How far the board itself (what is left when a piece is lifted) moves down, in dots. */
@@ -79,6 +81,7 @@ final class Scene {
      */
     void detach(float cx, float cy, float radius, float objectDegrees, float shadowDegrees) {
         detached = true;
+        detachLegs = false;
         detachPiece = false;
         detachStick = false;
         detachByHue = false;
@@ -110,6 +113,7 @@ final class Scene {
         detachArea[1] = cy;
         detachArea[2] = radius;
         detached = true;
+        detachLegs = false;
         detachPiece = false;
         detachStick = false;
         detachByDark = false;
@@ -127,6 +131,7 @@ final class Scene {
      */
     void liftDark(float x0, float y0, float x1, float y1) {
         detached = true;
+        detachLegs = false;
         detachPiece = false;
         detachStick = false;
         detachByHue = false;
@@ -138,11 +143,26 @@ final class Scene {
     }
 
     /**
+     * Lifts a walker's legs below row {@code hipY} (resting grid units), each whole: layer 1
+     * is the leg of the shoe further left, layer 2 the other.
+     */
+    void liftLegs(float hipY) {
+        detached = true;
+        detachStick = false;
+        detachByHue = false;
+        detachByDark = false;
+        detachPiece = false;
+        detachLegs = true;
+        detachSpec[0] = hipY;
+    }
+
+    /**
      * Lifts the separate piece of the drawing under (x, y) (resting grid units) as layer 1:
      * one half of a broken heart.
      */
     void liftPiece(float x, float y) {
         detached = true;
+        detachLegs = false;
         detachStick = false;
         detachByHue = false;
         detachByDark = false;
@@ -157,6 +177,7 @@ final class Scene {
      */
     void liftStick(float knobBottom, float hue, float cut) {
         detached = true;
+        detachLegs = false;
         detachPiece = false;
         detachByHue = false;
         detachByDark = false;

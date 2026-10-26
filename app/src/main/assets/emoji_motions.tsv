@@ -408,12 +408,12 @@
 💇	1	BREATHE	SHINE	person getting haircut
 💇‍♂️	1	BREATHE	SHINE	man getting haircut
 💇‍♀️	1	BREATHE	SHINE	woman getting haircut
-🚶	1	NONE	STRIDE:0.5,0.56,14,1.1	person walking
-🚶‍♂️	1	NONE	STRIDE:0.5,0.56,14,1.1	man walking
-🚶‍♀️	1	NONE	STRIDE:0.5,0.56,14,1.1	woman walking
-🚶‍➡️	1	NONE	STRIDE:0.5,0.56,14,1.1	person walking facing right
-🚶‍♀️‍➡️	1	NONE	STRIDE:0.5,0.56,14,1.1	woman walking facing right
-🚶‍♂️‍➡️	1	NONE	STRIDE:0.5,0.56,14,1.1	man walking facing right
+🚶	1	NONE	STRIDE:0.5,0.56,40,1.1	person walking
+🚶‍♂️	1	NONE	STRIDE:0.5,0.56,40,1.1	man walking
+🚶‍♀️	1	NONE	STRIDE:0.5,0.56,40,1.1	woman walking
+🚶‍➡️	1	NONE	STRIDE:0.5,0.56,40,1.1	person walking facing right
+🚶‍♀️‍➡️	1	NONE	STRIDE:0.5,0.56,40,1.1	woman walking facing right
+🚶‍♂️‍➡️	1	NONE	STRIDE:0.5,0.56,40,1.1	man walking facing right
 🧍	1	NOD	SHINE	person standing
 🧍‍♂️	1	NOD	SHINE	man standing
 🧍‍♀️	1	NOD	SHINE	woman standing
