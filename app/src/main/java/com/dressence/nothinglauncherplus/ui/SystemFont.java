@@ -205,6 +205,19 @@ final class SystemFont {
     /** The chosen font, kept in the module beside its system folder (for {@link #verify}). */
     private static final String FONT_COPY = "nlplus_font.ttf";
 
+    /**
+     * Restarts System UI and the launcher only (they start again by themselves in a moment),
+     * so they draw in the newly chosen font; nothing else is touched. False without root.
+     */
+    static boolean restartSystemUi() {
+        try {
+            return su("pkill -f com.android.systemui; am force-stop "
+                    + com.dressence.nothinglauncherplus.Config.LAUNCHER_PKG) == null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /** Restarts the phone's interface (not the phone): every app starts again, new fonts. */
     private static final String RESTART = "setprop ctl.restart zygote";
 

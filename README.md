@@ -113,12 +113,11 @@ plus your folders.
   battery are drawn in Nothing's NDot, lit the green of the folder name panels with a soft
   glow, on any wallpaper. Another option puts the date before the time. Restart System UI
   (or the phone) after switching either.
-- **System font** (root): choose any of Nothing's fonts already on the phone (NDot, NType,
-  and the ones inside Nothing's widgets app) as the phone's system font. The module writes a
-  small Magisk / KernelSU module that puts it in place of the phone's text fonts (Roboto,
-  NType, Google Sans), so it shows whichever font Nothing's own setting picks. Apply now
-  mounts it at once and restarts the phone's interface (a few seconds, no full reboot), or
-  it applies at the next reboot; Phone default removes it. Turn off any other font module.
+- **System font**: choose any of Nothing's fonts already on the phone (NDot, NType, and the
+  ones inside Nothing's widgets app). No reboot: every app the module is enabled for in
+  LSPosed draws its text in it from its next start, and System UI and the launcher are
+  restarted at once (just those two). With root it is also set up as a font module, so after
+  any later reboot every app has it; Phone default undoes both.
 - **Animation test**: in the module's settings, play any emoji's animation on a big dot
   screen without making a folder for it: step through emoji one by one, replay its reaction,
   slow it to half or a quarter speed, and compare the dots with the plain emoji.

@@ -99,8 +99,7 @@ public class MainActivity extends Activity {
                     config.statusBarDate = checked;
                     store.save(this);
                 });
-        ui.row("System font", "Use one of Nothing's fonts on this phone everywhere · needs"
-                + " root and a reboot", null, ui.chevron(), v -> chooseSystemFont());
+        ui.row("System font", "Use one of Nothing's fonts on this phone · no reboot", null, ui.chevron(), v -> chooseSystemFont());
         ui.row("Animation test", "Play any emoji's animation on a big dot screen", null,
                 ui.chevron(), v -> startActivity(EmojiPickerActivity.testIntent(this)));
 
@@ -387,17 +386,7 @@ public class MainActivity extends Activity {
                 Dialogs.builder(this)
                         .setTitle("System font")
                         .setItems(names, (dialog, which) -> {
-                            SystemFont.Choice choice = which == 0 ? null : fonts.get(which - 1);
-                            Dialogs.builder(this)
-                                    .setTitle(choice == null ? "Phone default" : choice.title)
-                                    .setMessage("Apply now restarts the phone's interface (a"
-                                            + " few seconds, apps close) so the font shows at"
-                                            + " once. Turn off any other font module first.")
-                                    .setPositiveButton("Apply now",
-                                            (d, w) -> applyFont(choice, true))
-                                    .setNegativeButton("On next reboot",
-                                            (d, w) -> applyFont(choice, false))
-                                    .show();
+                            applyFont(which == 0 ? null : fonts.get(which - 1));
                         })
                         .setNeutralButton("Check", (dialog, which) -> checkFont())
                         .setNegativeButton("Cancel", null)
@@ -433,17 +422,25 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    private void applyFont(SystemFont.Choice choice, boolean now) {
-                            new Thread(() -> {
-                                String error = SystemFont.apply(this, choice, now);
-                                runOnUiThread(() -> Toast.makeText(this, error != null
-                                        ? "Could not set the font: " + error
-                                        : (choice == null ? "System font removed"
-                                                : choice.title + " set in place of "
-                                                + SystemFont.replaced + " font files")
-                                        + (now ? "." : ". Reboot to apply."),
-                                        Toast.LENGTH_LONG).show());
-                            }).start();
+    /**
+     * Sets the font at once, no reboot: hooked apps draw in it from their next start, and
+     * System UI and the launcher are restarted now (just those two, a second each). The font
+     * is also set up as a font module, so after any later reboot every app has it.
+     */
+    private void applyFont(SystemFont.Choice choice) {
+        store.config.systemFont = choice == null ? ""
+                : choice.path != null ? "file:" + choice.path : "res:" + choice.title;
+        store.save(this);
+        new Thread(() -> {
+            String error = SystemFont.apply(this, choice, false);
+            boolean restarted = SystemFont.restartSystemUi();
+            runOnUiThread(() -> Toast.makeText(this, (choice == null ? "Phone font back"
+                    : choice.title + " set")
+                    + (restarted ? ": status bar and launcher now use it." : ".")
+                    + " Other apps in the module's LSPosed scope use it when reopened."
+                    + (error != null ? " (Font module: " + error + ")" : ""),
+                    Toast.LENGTH_LONG).show());
+        }).start();
     }
 
     private void restartLauncher() {
