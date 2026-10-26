@@ -167,6 +167,14 @@ public enum DotEffect {
         }
     },
 
+    /** Fizzy drinks: tiny bubbles stream up through the drink and burst at its top. */
+    FIZZ {
+        @Override
+        void apply(Scene s) {
+            fizz(s, 5 + Math.round(4 * s.boost));
+        }
+    },
+
     /** A halo: it hovers, rising and settling over the head, light gliding round it. */
     HALO {
         @Override
@@ -2192,6 +2200,53 @@ public enum DotEffect {
         return java.util.Arrays.copyOf(out, k);
     }
 
+    private static void fizz(Scene s, int count) {
+        Regions r = s.regions;
+        // Per column, the run of drink (coloured, not glass or foam): lowest and highest row.
+        int[] runs = (int[]) r.memo.get("drink");
+        if (runs == null) {
+            runs = new int[r.size * 2];
+            for (int x = 0; x < r.size; x++) {
+                int lo = -1;
+                int hi = -1;
+                for (int y = 0; y < r.size; y++) {
+                    int i = y * r.size + x;
+                    if (r.ink[i] && r.sat[i] > 0.2f && r.luma[i] > 0.2f) {
+                        hi = hi < 0 ? y : hi;
+                        lo = y;
+                    }
+                }
+                runs[x * 2] = lo - hi >= 3 ? lo : -1;
+                runs[x * 2 + 1] = hi;
+            }
+            r.memo.put("drink", runs);
+        }
+        int columns = 0;
+        for (int x = 0; x < r.size; x++) {
+            columns += runs[x * 2] >= 0 ? 1 : 0;
+        }
+        if (columns == 0) {
+            SHINE.apply(s);
+            return;
+        }
+        for (int k = 0; k < count; k++) {
+            float period = 1.4f + 0.5f * Scene.hash(k, 3, s.seed);
+            float life = cycle(s, period, k * 0.37f);
+            int cyc = (int) ((s.t + k * 0.37f + (s.seed & 0xFF) * 0.013f) / period);
+            int pick = (int) (Scene.hash(k, cyc, s.seed) * columns);
+            int x = 0;
+            while (runs[x * 2] < 0 || pick-- > 0) {
+                x++;
+            }
+            float bottom = runs[x * 2] + 0.5f;
+            float top = runs[x * 2 + 1] + 0.5f;
+            float y = bottom - (bottom - top) * life * life;
+            float env = Math.min(1, life / 0.15f) * (life > 0.9f ? (1 - life) / 0.1f : 1);
+            s.blob(x + 0.5f, y, 0.7f, 0xFFFFFFF0, env);
+        }
+        s.busy = true;
+    }
+
     private static void juggle(Scene s) {
         Regions r = s.regions;
         int[][] balls = (int[][]) r.memo.get("balls");
@@ -2882,9 +2937,26 @@ public enum DotEffect {
             float period = 2.6f;
             float life = cycle(s, period, k * (period / count));
             int cyc = (int) ((s.t + k * (period / count) + (s.seed & 0xFF) * 0.013f) / period);
-            float x0 = r.minX + 1 + Scene.hash(k, cyc, s.seed) * Math.max(1, r.maxX - r.minX - 2);
-            float y0 = r.maxY - (r.maxY - r.minY) * 0.3f * Scene.hash(cyc, k, s.seed);
-            float y = y0 - (y0 - r.minY + 3) * (float) Math.pow(life, 1.3);
+            // Each leaves the creature's top edge and rises through the clear water above it,
+            // never across the creature itself.
+            float x0 = -1;
+            float y0 = 0;
+            for (int tryNo = 0; tryNo < 6 && x0 < 0; tryNo++) {
+                int col = r.minX + 1 + (int) (Scene.hash(k + 5 * tryNo, cyc, s.seed)
+                        * Math.max(1, r.maxX - r.minX - 2));
+                int top = 0;
+                while (top < r.size && !r.ink[top * r.size + col]) {
+                    top++;
+                }
+                if (top >= 7 && top < r.size) {
+                    x0 = col + 0.5f;
+                    y0 = top - 0.5f;
+                }
+            }
+            if (x0 < 0) {
+                continue;
+            }
+            float y = y0 - Math.min(9, y0 - 1.5f) * (float) Math.pow(life, 1.3);
             float x = x0 + (float) Math.sin(life * 9 + k) * 0.6f;
             float radius = 0.6f + 0.5f * life;
             float env = Math.min(1, life / 0.1f);

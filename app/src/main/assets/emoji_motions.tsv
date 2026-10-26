@@ -798,7 +798,7 @@
 🍢	3	JELLY	STEAM	oden
 🍣	3	JELLY	SHINE	sushi
 🍤	3	SWIM	STEAM	fried shrimp
-🍥	3	SWIM	BUBBLES	fish cake with swirl
+🍥	3	SWIM	SHINE	fish cake with swirl
 🥮	3	JELLY	SHINE	moon cake
 🍡	3	JELLY	SHINE	dango
 🥟	3	JELLY	STEAM	dumpling
@@ -818,24 +818,24 @@
 🍭	3	JELLY	SPARKLE	lollipop
 🍮	3	JELLY	SPARKLE	custard
 🍯	3	JELLY	DRIP	honey pot
-🍼	3	SIP	BUBBLES	baby bottle
+🍼	3	SIP	SHINE	baby bottle
 🥛	3	SIP	SHINE	glass of milk
 ☕️	3	SIP	STEAM	hot beverage
-🫖	3	SIP	BUBBLES	teapot
+🫖	3	SIP	STEAM	teapot
 🍵	3	SIP	STEAM	teacup without handle
-🍶	3	SIP	BUBBLES	sake
+🍶	3	SIP	SHINE	sake
 🍾	3	SIP	CONFETTI	bottle with popping cork
-🍷	3	SIP	BUBBLES	wine glass
-🍸️	3	SIP	BUBBLES	cocktail glass
-🍹	3	SIP	BUBBLES	tropical drink
-🍺	3	SIP	BUBBLES	beer mug
-🍻	3	SIP	BUBBLES	clinking beer mugs
-🥂	3	SIP	SPARKLE	clinking glasses
-🥃	3	SIP	BUBBLES	tumbler glass
+🍷	3	SIP	SHINE	wine glass
+🍸️	3	SIP	SHINE	cocktail glass
+🍹	3	SIP	FIZZ	tropical drink
+🍺	3	SIP	FIZZ	beer mug
+🍻	3	SIP	FIZZ	clinking beer mugs
+🥂	3	SIP	FIZZ	clinking glasses
+🥃	3	SIP	SHINE	tumbler glass
 🫗	3	SIP	DRIP	pouring liquid
-🥤	3	SIP	BUBBLES	cup with straw
-🧋	3	SIP	BUBBLES	bubble tea
-🧃	3	SIP	BUBBLES	beverage box
+🥤	3	SIP	FIZZ	cup with straw
+🧋	3	SIP	SHINE	bubble tea
+🧃	3	SIP	SHINE	beverage box
 🧉	3	SIP	STEAM	mate
 🧊	3	SIP	SHINE	ice
 🥢	3	RATTLE	SHINE	chopsticks

@@ -601,6 +601,12 @@ EFFECT_REVIEW = {
     "anger symbol": "HEARTBEAT", "right anger bubble": "HEARTBEAT",
     "face with monocle": "GLEAM", "baby angel": "HALO", "person juggling": "JUGGLE",
     "man juggling": "JUGGLE", "woman juggling": "JUGGLE",
+    # Drinks: only fizzy ones bubble, and only inside the drink.
+    "beer mug": "FIZZ", "clinking beer mugs": "FIZZ", "clinking glasses": "FIZZ",
+    "tropical drink": "FIZZ", "cup with straw": "FIZZ", "cocktail glass": "SHINE",
+    "wine glass": "SHINE", "tumbler glass": "SHINE", "baby bottle": "SHINE",
+    "teapot": "STEAM", "sake": "SHINE", "beverage box": "SHINE", "bubble tea": "SHINE",
+    "fish cake with swirl": "SHINE",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 
