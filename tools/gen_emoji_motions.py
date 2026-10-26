@@ -602,12 +602,18 @@ EFFECT_REVIEW = {
     "face with monocle": "GLEAM", "baby angel": "HALO", "person juggling": "JUGGLE",
     "man juggling": "JUGGLE", "woman juggling": "JUGGLE",
     # Drinks: only fizzy ones bubble, and only inside the drink.
-    "beer mug": "FIZZ", "clinking beer mugs": "FIZZ", "clinking glasses": "FIZZ",
+    "beer mug": "FIZZ", "clinking beer mugs": "FIZZ", "clinking glasses": "SPARKLE",
     "tropical drink": "FIZZ", "cup with straw": "FIZZ", "cocktail glass": "SHINE",
     "wine glass": "SHINE", "tumbler glass": "SHINE", "baby bottle": "SHINE",
     "teapot": "STEAM", "sake": "SHINE", "beverage box": "SHINE", "bubble tea": "SHINE",
     "fish cake with swirl": "SHINE",
     "night with stars": "TWINKLE", "brick": "SHINE", "rock": "SHINE", "wood": "SHINE",
+    # Confetti only where something is celebrated, not over still things.
+    "christmas tree": "TWINKLE", "tanabata tree": "SWAY", "pine decoration": "SWAY",
+    "japanese dolls": "SHINE", "carp streamer": "SWAY", "red envelope": "SHINE",
+    "ribbon": "SHINE", "reminder ribbon": "SHINE", "admission tickets": "SHINE",
+    "ticket": "SHINE", "mirror ball": "TWINKLE", "alembic": "SHINE", "test tube": "FIZZ",
+    "petri dish": "FIZZ",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 

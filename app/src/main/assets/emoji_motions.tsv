@@ -830,7 +830,7 @@
 🍹	3	SIP	FIZZ	tropical drink
 🍺	3	SIP	FIZZ	beer mug
 🍻	3	SIP	FIZZ	clinking beer mugs
-🥂	3	SIP	FIZZ	clinking glasses
+🥂	3	SIP	SPARKLE	clinking glasses
 🥃	3	SIP	SHINE	tumbler glass
 🫗	3	SIP	DRIP	pouring liquid
 🥤	3	SIP	FIZZ	cup with straw
@@ -1064,7 +1064,7 @@
 💧	4	DRIP	DRIP	droplet
 🌊	4	ROCK	RIPPLE	water wave
 🎃	5	FLICKER	FLAME	jack-o-lantern
-🎄	5	PARTY	CONFETTI	Christmas tree
+🎄	5	PARTY	TWINKLE	Christmas tree
 🎆	5	EXPLODE	FIREWORKS	fireworks
 🎇	5	TWINKLE	FIREWORKS	sparkler
 🧨	5	EXPLODE	FIREWORKS	firecracker
@@ -1072,18 +1072,18 @@
 🎈	5	FLOAT	SHINE	balloon
 🎉	5	PARTY	CONFETTI	party popper
 🎊	5	PARTY	CONFETTI	confetti ball
-🎋	5	PARTY	CONFETTI	tanabata tree
-🎍	5	PARTY	CONFETTI	pine decoration
-🎎	5	PARTY	CONFETTI	Japanese dolls
-🎏	5	PARTY	CONFETTI	carp streamer
+🎋	5	PARTY	SWAY	tanabata tree
+🎍	5	PARTY	SWAY	pine decoration
+🎎	5	PARTY	SHINE	Japanese dolls
+🎏	5	PARTY	SWAY	carp streamer
 🎐	5	PARTY	SWAY	wind chime
 🎑	5	ROCK	GLOW	moon viewing ceremony
-🧧	5	SEND	CONFETTI	red envelope
-🎀	5	PARTY	CONFETTI	ribbon
+🧧	5	SEND	SHINE	red envelope
+🎀	5	PARTY	SHINE	ribbon
 🎁	5	RATTLE	SPARKLE	wrapped gift
-🎗️	5	POP	CONFETTI	reminder ribbon
-🎟️	5	PARTY	CONFETTI	admission tickets
-🎫	5	PARTY	CONFETTI	ticket
+🎗️	5	POP	SHINE	reminder ribbon
+🎟️	5	PARTY	SHINE	admission tickets
+🎫	5	PARTY	SHINE	ticket
 🎖️	5	POP	SPARKLE	military medal
 🏆️	5	POP	SHINE	trophy
 🏅	5	POP	SPARKLE	sports medal
@@ -1131,7 +1131,7 @@
 🧩	5	RATTLE	SPARKLE	puzzle piece
 🧸	5	ROCK	SPARKLE	teddy bear
 🪅	5	ROCK	SPARKLE	piñata
-🪩	5	BOUNCE	SPARKLE	mirror ball
+🪩	5	BOUNCE	TWINKLE	mirror ball
 🪆	5	ROCK	SPARKLE	nesting dolls
 ♠️	5	RATTLE	SPARKLE	spade suit
 ♥️	5	RATTLE	HEARTBEAT	heart suit
@@ -1364,9 +1364,9 @@
 🧲	6	PULSE	TWINKLE	magnet
 🪜	6	HAMMER	SHINE	ladder
 🪏	6	HAMMER	SHINE	shovel
-⚗️	6	PULSE	BUBBLES	alembic
-🧪	6	PULSE	BUBBLES	test tube
-🧫	6	PULSE	BUBBLES	petri dish
+⚗️	6	PULSE	SHINE	alembic
+🧪	6	PULSE	FIZZ	test tube
+🧫	6	PULSE	FIZZ	petri dish
 🧬	6	NONE	GLOBE	dna
 🔬	6	PULSE	SHINE	microscope
 🔭	6	PULSE	TWINKLE	telescope

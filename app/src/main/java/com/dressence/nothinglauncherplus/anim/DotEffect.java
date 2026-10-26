@@ -2207,14 +2207,22 @@ public enum DotEffect {
         if (runs == null) {
             runs = new int[r.size * 2];
             for (int x = 0; x < r.size; x++) {
+                // The longest unbroken run in the column.
                 int lo = -1;
                 int hi = -1;
                 for (int y = 0; y < r.size; y++) {
-                    int i = y * r.size + x;
-                    if (r.ink[i] && r.sat[i] > 0.2f && r.luma[i] > 0.2f) {
-                        hi = hi < 0 ? y : hi;
-                        lo = y;
+                    if (!drink(r, y * r.size + x)) {
+                        continue;
                     }
+                    int end = y;
+                    while (end + 1 < r.size && drink(r, (end + 1) * r.size + x)) {
+                        end++;
+                    }
+                    if (end - y > lo - hi) {
+                        hi = y;
+                        lo = end;
+                    }
+                    y = end;
                 }
                 runs[x * 2] = lo - hi >= 3 ? lo : -1;
                 runs[x * 2 + 1] = hi;
@@ -2238,13 +2246,21 @@ public enum DotEffect {
             while (runs[x * 2] < 0 || pick-- > 0) {
                 x++;
             }
-            float bottom = runs[x * 2] + 0.5f;
-            float top = runs[x * 2 + 1] + 0.5f;
-            float y = bottom - (bottom - top) * life * life;
+            int bottom = runs[x * 2] - 1;
+            int top = runs[x * 2 + 1];
+            int y = Math.round(bottom - (bottom - top) * life * life);
             float env = Math.min(1, life / 0.15f) * (life > 0.9f ? (1 - life) / 0.1f : 1);
-            s.blob(x + 0.5f, y, 0.7f, 0xFFFFFFF0, env);
+            // A dot of light, on the drink only: never spilling past the glass.
+            if (y >= top && drink(r, y * r.size + x)) {
+                s.paintRest(x, y, Scene.alpha(0xFFFFFFF0, Math.round(230 * env)));
+            }
         }
         s.busy = true;
+    }
+
+    /** A dot of the drink itself: clearly coloured, unlike glass, foam or a stand. */
+    private static boolean drink(Regions r, int i) {
+        return r.ink[i] && r.sat[i] > 0.4f && r.luma[i] > 0.2f;
     }
 
     private static void juggle(Scene s) {
