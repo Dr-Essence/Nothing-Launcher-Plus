@@ -463,9 +463,9 @@
 🏇	1	RUN	SHINE	horse racing
 ⛷️	1	RUN	SHINE	skier
 🏂️	1	RUN	SNOW	snowboarder
-🏌️	1	RUN	SHINE	person golfing
-🏌️‍♂️	1	RUN	SHINE	man golfing
-🏌️‍♀️	1	RUN	SHINE	woman golfing
+🏌️	1	NONE	DRIVE:0.72,0.99,0.5,1	person golfing
+🏌️‍♂️	1	NONE	DRIVE:0.72,0.99,0.5,1	man golfing
+🏌️‍♀️	1	NONE	DRIVE:0.72,0.99,0.5,1	woman golfing
 🏄️	1	RUN	SHINE	person surfing
 🏄‍♂️	1	RUN	SHINE	man surfing
 🏄‍♀️	1	RUN	SHINE	woman surfing
@@ -475,9 +475,9 @@
 🏊️	1	RUN	SHINE	person swimming
 🏊‍♂️	1	RUN	SHINE	man swimming
 🏊‍♀️	1	RUN	SHINE	woman swimming
-⛹️	1	RUN	SHINE	person bouncing ball
-⛹️‍♂️	1	RUN	SHINE	man bouncing ball
-⛹️‍♀️	1	RUN	SHINE	woman bouncing ball
+⛹️	1	NONE	PADDLE:0.12,0.72,0.12,0.97,0.5,1,2	person bouncing ball
+⛹️‍♂️	1	NONE	PADDLE:0.12,0.72,0.12,0.97,0.5,1,2	man bouncing ball
+⛹️‍♀️	1	NONE	PADDLE:0.16,0.75,0.16,0.97,0.5,1,2	woman bouncing ball
 🏋️	1	RUN	SHINE	person lifting weights
 🏋️‍♂️	1	RUN	SHINE	man lifting weights
 🏋️‍♀️	1	RUN	SHINE	woman lifting weights
@@ -1100,12 +1100,12 @@
 🎾	5	NONE	TENNIS:0.17,0.16,0.15,0.66,0.35	tennis
 🥏	5	BOUNCE	SHINE	flying disc
 🎳	5	BOUNCE	SHINE	bowling
-🏏	5	BOUNCE	SHINE	cricket game
-🏑	5	BOUNCE	SHINE	field hockey
-🏒	5	BOUNCE	SHINE	ice hockey
-🥍	5	BOUNCE	SHINE	lacrosse
-🏓	5	BOUNCE	SHINE	ping pong
-🏸	5	BOUNCE	SHINE	badminton
+🏏	5	NONE	HIT:0.13,0.27,0.92,0.08,-12,9,-9,-5	cricket game
+🏑	5	NONE	HIT:0.75,0.84,0.92,0.06,13,-8,9,0	field hockey
+🏒	5	NONE	HIT:0.82,0.88,0.94,0.06,13,-8,9,0	ice hockey
+🥍	5	NONE	PADDLE:0.15,0.15,0.75,0.22,0.06,0.95,1	lacrosse
+🏓	5	NONE	PADDLE:0.3,0.15,0.58,0.42,0.08,0.95,0	ping pong
+🏸	5	NONE	HIT:0.27,0.17,0.06,0.94,14,-10,-8,-5	badminton
 🥊	5	BOUNCE	SHINE	boxing glove
 🥋	5	BOUNCE	SHINE	martial arts uniform
 🥅	5	BOUNCE	SHINE	goal net

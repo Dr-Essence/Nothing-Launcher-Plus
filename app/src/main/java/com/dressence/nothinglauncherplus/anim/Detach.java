@@ -46,7 +46,24 @@ final class Detach {
      * along the curve of the outline beside them.
      */
     static Detach byHue(int[] pixels, int size, float hue, float tolerance, float minSat) {
-        return fromPiece(pixels, size, pieceOfHue(pixels, size, hue, tolerance, minSat), true);
+        return byHue(pixels, size, hue, tolerance, minSat, 0, 0, 0, true);
+    }
+
+    /**
+     * As above, only within {@code radius} of (cx, cy) (pixels; 0: anywhere); {@code patch}:
+     * filled in from all round (else column by column, as {@link #byHue(int[], int, float)}).
+     */
+    static Detach byHue(int[] pixels, int size, float hue, float tolerance, float minSat,
+            float cx, float cy, float radius, boolean patch) {
+        boolean[] piece = pieceOfHue(pixels, size, hue, tolerance, minSat);
+        if (radius > 0) {
+            for (int i = 0; i < piece.length; i++) {
+                float dx = i % size + 0.5f - cx;
+                float dy = i / size + 0.5f - cy;
+                piece[i] &= dx * dx + dy * dy <= radius * radius;
+            }
+        }
+        return fromPiece(pixels, size, piece, patch);
     }
 
     private static boolean[] pieceOfHue(int[] pixels, int size, float hue, float tolerance,

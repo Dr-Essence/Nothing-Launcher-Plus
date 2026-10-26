@@ -57,6 +57,8 @@ final class Scene {
     /** Set by {@link #detach}: the board's centre, radius (grid units) and the directions. */
     boolean detached;
     final float[] detachSpec = new float[5];
+    /** For {@link #liftHue}: the disc it is limited to (centre, radius; radius 0: none). */
+    final float[] detachArea = new float[3];
     /** True when the emoji is split by colour ({@link #liftHue}) rather than as a board. */
     boolean detachByHue;
     /** True when dark pieces inside a box are lifted ({@link #liftDark}). */
@@ -94,10 +96,19 @@ final class Scene {
      */
     void liftHue(float hue) {
         liftHue(hue, 32, 0.1f);
+        detachSpec[3] = 0;
     }
 
     /** As above, taking only colours within {@code tolerance} degrees and this saturated. */
     void liftHue(float hue, float tolerance, float minSat) {
+        liftHue(hue, tolerance, minSat, 0, 0, 0);
+    }
+
+    /** As above, only within {@code radius} of (cx, cy) (resting grid units; 0: anywhere). */
+    void liftHue(float hue, float tolerance, float minSat, float cx, float cy, float radius) {
+        detachArea[0] = cx;
+        detachArea[1] = cy;
+        detachArea[2] = radius;
         detached = true;
         detachPiece = false;
         detachStick = false;
@@ -106,6 +117,8 @@ final class Scene {
         detachSpec[0] = hue;
         detachSpec[1] = tolerance;
         detachSpec[2] = minSat;
+        // What it covered is filled in from all round (see Detach#patched).
+        detachSpec[3] = 1;
     }
 
     /**

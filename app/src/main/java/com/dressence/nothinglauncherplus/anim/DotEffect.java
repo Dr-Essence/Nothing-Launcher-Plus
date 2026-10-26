@@ -231,6 +231,119 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * A ball struck (🏏 🏑 🏒 🏸): the ball is lifted off the drawing; the bat winds back
+     * about its grip, swings through fast and knocks the ball away, follows through and
+     * settles, and a new ball appears where the first one lay. Anchors: the ball (x, y), the
+     * grip (x, y), as fractions of the emoji; the wind-up and the follow-through (degrees,
+     * clockwise); where the ball flies (dx, dy, dots).
+     */
+    HIT {
+        @Override
+        void pose(Scene s) {
+            hitPose(s);
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
+    /**
+     * A ball kept up on a paddle or caught in a net (🏓 🥍): the ball, lifted off the drawing,
+     * drops onto the face and pops back up to where it was drawn, twice; the paddle gives a
+     * little at each touch. Anchors: the ball (x, y), where it lands (x, y), the grip (x, y),
+     * as fractions of the emoji, and 1 if the ball stands apart (else it is the white on it).
+     */
+    PADDLE {
+        @Override
+        void pose(Scene s) {
+            float[] a = s.anchor;
+            if (a == null || a.length < 7) {
+                return;
+            }
+            float drop = ObjectEffects.tennisDrop(s);
+            if (drop < 0) {
+                return;
+            }
+            float bx = MusicEffects.ax(s, 0);
+            float by = MusicEffects.ay(s, 1);
+            float tx = MusicEffects.ax(s, 2);
+            float ty = MusicEffects.ay(s, 3);
+            if (a[6] == 1) {
+                s.liftPiece(bx, by);
+            } else if (a[6] == 2) {
+                // An orange ball held against an arm: its own colour, round where it is.
+                s.liftHue(22, 14, 0.5f, bx, by, (s.regions.maxX - s.regions.minX + 1) * 0.16f);
+            } else {
+                s.liftHue(-1, 25, 2);
+            }
+            // The face gives as the ball lands on it.
+            float give = Math.max(0, (drop - 0.8f) / 0.2f);
+            s.addPart(0, 0, s.size, s.size, MusicEffects.ax(s, 4), MusicEffects.ay(s, 5),
+                    2.5f * give, 0, 0);
+            s.addLayer(1, bx, by, 0, (tx - bx) * drop, (ty - by) * drop - 2 * drop * (1 - drop),
+                    1);
+            s.busy = true;
+        }
+
+        @Override
+        void apply(Scene s) {
+        }
+    },
+
+    /**
+     * A golfer's drive (🏌️): the body twists back and drives through, and the ball on the
+     * ground by the club head is struck and flies off into the distance, getting smaller.
+     * Anchors: the ball (x, y) and the feet (x, y), as fractions of the emoji.
+     */
+    DRIVE {
+        @Override
+        void pose(Scene s) {
+            if (s.anchor == null || s.anchor.length < 4) {
+                return;
+            }
+            float t = (s.t + 0.4f) % HIT_PERIOD;
+            float angle;
+            if (t < 0.55f) {
+                angle = -6 * ObjectEffects.ease(t / 0.55f);
+            } else if (t < 0.7f) {
+                float q = (t - 0.55f) / 0.15f;
+                angle = -6 + 11 * q * q;
+            } else if (t < 1.6f) {
+                angle = 5 * (1 - ObjectEffects.ease((t - 0.7f) / 0.9f));
+            } else {
+                angle = 0;
+            }
+            s.addPart(0, 0, s.size, s.size, MusicEffects.ax(s, 2), MusicEffects.ay(s, 3),
+                    angle, 0, 0);
+            s.busy = t < 2.6f;
+        }
+
+        @Override
+        void apply(Scene s) {
+            if (s.anchor == null || s.anchor.length < 4) {
+                return;
+            }
+            float t = (s.t + 0.4f) % HIT_PERIOD;
+            float bx = MusicEffects.ax(s, 0);
+            float by = MusicEffects.ay(s, 1);
+            final float contact = 0.64f;
+            if (t < contact) {
+                s.ball(bx, by, 1.2f, 0xFFFFFFFF, false);
+            } else if (t < contact + 0.9f) {
+                float q = (t - contact) / 0.9f;
+                float go = ObjectEffects.easeOut(q);
+                s.ball(bx + 7 * go, by - 14 * go + 6 * q * q, 1.2f - 0.6f * go, 0xFFFFFFFF,
+                        false);
+            } else if (t > 2.2f) {
+                // A new ball is set down.
+                float q = Math.min(1, (t - 2.2f) / 0.3f);
+                s.ball(bx, by, 1.2f * q, 0xFFFFFFFF, false);
+            }
+        }
+    },
+
     /** Fizzy drinks: tiny bubbles stream up through the drink and burst at its top. */
     FIZZ {
         @Override
@@ -2297,6 +2410,61 @@ public enum DotEffect {
             }
         }
         return java.util.Arrays.copyOf(out, k);
+    }
+
+    private static final float HIT_PERIOD = 3.0f;
+
+    private static void hitPose(Scene s) {
+        float[] a = s.anchor;
+        if (a == null || a.length < 8) {
+            return;
+        }
+        float bx = MusicEffects.ax(s, 0);
+        float by = MusicEffects.ay(s, 1);
+        float gx = MusicEffects.ax(s, 2);
+        float gy = MusicEffects.ay(s, 3);
+        float t = s.since < HIT_PERIOD ? s.since : (s.t + 0.4f) % HIT_PERIOD;
+        // The swing: back, fast through the ball, follow through, settle.
+        float back = a[4];
+        float through = a[5];
+        float angle;
+        final float wind = 0.55f;
+        final float strike = 0.14f;
+        final float contact = wind + strike * 0.6f;
+        if (t < wind) {
+            angle = back * ObjectEffects.ease(t / wind);
+        } else if (t < wind + strike) {
+            float q = (t - wind) / strike;
+            angle = back + (through - back) * q * q;
+        } else if (t < wind + strike + 0.9f) {
+            angle = through * (1 - ObjectEffects.ease((t - wind - strike) / 0.9f));
+        } else {
+            angle = 0;
+        }
+        s.liftPiece(bx, by);
+        s.addPart(0, 0, s.size, s.size, gx, gy, angle, 0, 0);
+        // The ball: still until struck, then away, then a new one appears in its place.
+        float fly = t < contact ? 0 : Math.min(1, (t - contact) / 0.55f);
+        if (fly < 1) {
+            float go = ObjectEffects.easeOut(fly);
+            float alpha = fly < 0.6f ? 1 : 1 - (fly - 0.6f) / 0.4f;
+            s.addLayer(1, bx, by, 0, a[6] * go, a[7] * go + 3 * fly * fly, alpha);
+            int k = s.partCount - 1;
+            if (k >= 0 && s.partLayer[k] == 1) {
+                s.partScale[k] = 1 - 0.3f * go;
+            }
+        } else {
+            float back2 = t - (wind + strike + 1.0f);
+            if (back2 > 0) {
+                float q = Math.min(1, back2 / 0.35f);
+                s.addLayer(1, bx, by, 0, 0, 0, q);
+                int k = s.partCount - 1;
+                if (k >= 0 && s.partLayer[k] == 1) {
+                    s.partScale[k] = 0.6f + 0.4f * ObjectEffects.easeOut(q);
+                }
+            }
+        }
+        s.busy = t < wind + strike + 1.4f;
     }
 
     private static void shower(Scene s) {

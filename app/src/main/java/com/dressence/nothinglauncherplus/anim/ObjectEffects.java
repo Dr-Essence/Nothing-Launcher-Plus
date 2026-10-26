@@ -1546,7 +1546,7 @@ final class ObjectEffects {
      * How far down the tennis ball is at {@code t}: it drops onto the strings under gravity
      * and pops back up, twice, then rests in the air where it is drawn; -1 while resting.
      */
-    private static float tennisDrop(Scene s) {
+    static float tennisDrop(Scene s) {
         float period = BOUNCE * 2 + 1.7f;
         float t = s.since < BOUNCE * 2 ? s.since : s.t % period;
         if (t >= BOUNCE * 2) {

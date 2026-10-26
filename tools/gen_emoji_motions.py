@@ -625,6 +625,18 @@ EFFECT_REVIEW = {
     "birthday cake": "BURN:0.25,0,0.75,0.2,0.17",
     "fireworks": "FIREWORKS:0,0.5,0.47,0.78", "sparkler": "FIREWORKS:1,0.48,0.52,0.6,2",
     "firecracker": "FIREWORKS:1,0.87,0.14,0.18,1", "shower": "SHOWER",
+    # Balls are hit, kept up, dribbled and driven.
+    "cricket game": "HIT:0.13,0.27,0.92,0.08,-12,9,-9,-5",
+    "field hockey": "HIT:0.75,0.84,0.92,0.06,13,-8,9,0",
+    "ice hockey": "HIT:0.82,0.88,0.94,0.06,13,-8,9,0",
+    "badminton": "HIT:0.27,0.17,0.06,0.94,14,-10,-8,-5",
+    "ping pong": "PADDLE:0.3,0.15,0.58,0.42,0.08,0.95,0",
+    "lacrosse": "PADDLE:0.15,0.15,0.75,0.22,0.06,0.95,1",
+    "person golfing": "DRIVE:0.72,0.99,0.5,1", "man golfing": "DRIVE:0.72,0.99,0.5,1",
+    "woman golfing": "DRIVE:0.72,0.99,0.5,1",
+    "person bouncing ball": "PADDLE:0.12,0.72,0.12,0.97,0.5,1,2",
+    "man bouncing ball": "PADDLE:0.12,0.72,0.12,0.97,0.5,1,2",
+    "woman bouncing ball": "PADDLE:0.16,0.75,0.16,0.97,0.5,1,2",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 
@@ -643,6 +655,9 @@ EXACT.update({name: "NONE" for name in [
     "joystick", "yin yang", "wheel of dharma", "ferris wheel", "atom symbol",
     "electric plug", "bicycle", "dna", "pool 8 ball", "optical disk", "dvd",
     "birthday cake", "candle", "diya lamp", "fireworks", "sparkler", "firecracker", "shower",
+    "cricket game", "field hockey", "ice hockey", "badminton", "ping pong", "lacrosse",
+    "person golfing", "man golfing", "woman golfing", "person bouncing ball",
+    "man bouncing ball", "woman bouncing ball",
 ]})
 
 # Balls: round ones are kicked up and spin in the air (their effect turns the surface with the
