@@ -118,12 +118,26 @@ final class SystemFont {
 
     /**
      * Installs {@code choice} as the system font (null: removes it, back to the phone's own).
-     * Returns null on success, else what went wrong. Needs root; takes effect after a reboot.
+     * Returns null on success, else what went wrong. Needs root. With {@code now}, the font is
+     * mounted in place at once and the phone's interface restarted (a soft reboot of a few
+     * seconds: Android reads its fonts once, when the interface starts); otherwise it takes
+     * effect at the next reboot.
      */
-    static String apply(Context context, Choice choice) {
+    static String apply(Context context, Choice choice, boolean now) {
         try {
             if (choice == null) {
-                return su("rm -rf " + MODULE);
+                StringBuilder off = new StringBuilder();
+                if (now) {
+                    // Every font mounted over by an earlier choice, back to the phone's own.
+                    for (String target : defaultFontFiles()) {
+                        off.append("umount -l '").append(target).append("' 2>/dev/null\n");
+                    }
+                }
+                String error = su("rm -rf " + MODULE + "\n" + inGlobalMounts(off.toString()));
+                if (error == null && now) {
+                    su(RESTART);
+                }
+                return error;
             }
             // The font, copied where the root shell can read it.
             File font = new File(context.getCacheDir(), "nlplus_systemfont.ttf");
@@ -155,10 +169,44 @@ final class SystemFont {
                     + "$M/system/product/fonts/* 2>/dev/null; chcon -R u:object_r:system_file:s0"
                     + " $M/system 2>/dev/null; rmdir $M/system/product/fonts "
                     + "$M/system/product 2>/dev/null; true\n");
-            return su(script.toString());
+            if (now) {
+                // The module's copy mounted over each file now, for every app to see.
+                StringBuilder mounts = new StringBuilder();
+                for (String target : targets) {
+                    String copy = MODULE + (target.startsWith("/product/") ? "/system" + target
+                            : target);
+                    mounts.append("umount -l '").append(target).append("' 2>/dev/null; ")
+                            .append("mount -o bind '").append(copy).append("' '")
+                            .append(target).append("'\n");
+                }
+                script.append(inGlobalMounts(mounts.toString()));
+            }
+            String error = su(script.toString());
+            if (error == null && now) {
+                su(RESTART);
+            }
+            return error;
         } catch (Exception e) {
             return e.getMessage();
         }
+    }
+
+    /** Restarts the phone's interface (not the phone): every app starts again, new fonts. */
+    private static final String RESTART = "setprop ctl.restart zygote";
+
+    /**
+     * {@code commands} run in the system's own mount namespace, so a mount is seen by every
+     * app, not only by this root shell.
+     */
+    private static String inGlobalMounts(String commands) {
+        if (commands.isEmpty()) {
+            return "";
+        }
+        return "cat > /data/local/tmp/nlplus_font.sh <<'EOF'\n" + commands
+                + "EOF\n"
+                + "nsenter --mount=/proc/1/ns/mnt sh /data/local/tmp/nlplus_font.sh 2>/dev/null"
+                + " || sh /data/local/tmp/nlplus_font.sh\n"
+                + "rm -f /data/local/tmp/nlplus_font.sh\n";
     }
 
     private static InputStream open(Context context, Choice choice) throws Exception {

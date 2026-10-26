@@ -115,8 +115,10 @@ plus your folders.
   (or the phone) after switching either.
 - **System font** (root): choose any of Nothing's fonts already on the phone (NDot, NType,
   and the ones inside Nothing's widgets app) as the phone's system font. The module writes a
-  small Magisk / KernelSU module that puts it in place of the default text font; reboot to
-  apply, and choose Phone default to remove it. Turn off any other font module first.
+  small Magisk / KernelSU module that puts it in place of the phone's text fonts (Roboto,
+  NType, Google Sans), so it shows whichever font Nothing's own setting picks. Apply now
+  mounts it at once and restarts the phone's interface (a few seconds, no full reboot), or
+  it applies at the next reboot; Phone default removes it. Turn off any other font module.
 - **Animation test**: in the module's settings, play any emoji's animation on a big dot
   screen without making a folder for it: step through emoji one by one, replay its reaction,
   slow it to half or a quarter speed, and compare the dots with the plain emoji.

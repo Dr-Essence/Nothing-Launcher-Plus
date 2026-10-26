@@ -388,21 +388,34 @@ public class MainActivity extends Activity {
                         .setTitle("System font")
                         .setItems(names, (dialog, which) -> {
                             SystemFont.Choice choice = which == 0 ? null : fonts.get(which - 1);
-                            new Thread(() -> {
-                                String error = SystemFont.apply(this, choice);
-                                runOnUiThread(() -> Toast.makeText(this, error != null
-                                        ? "Could not set the font: " + error
-                                        : (choice == null ? "System font removed"
-                                                : choice.title + " set in place of "
-                                                + SystemFont.replaced + " font files")
-                                        + ". Reboot to apply. Turn off any other font module"
-                                        + " first.", Toast.LENGTH_LONG).show());
-                            }).start();
+                            Dialogs.builder(this)
+                                    .setTitle(choice == null ? "Phone default" : choice.title)
+                                    .setMessage("Apply now restarts the phone's interface (a"
+                                            + " few seconds, apps close) so the font shows at"
+                                            + " once. Turn off any other font module first.")
+                                    .setPositiveButton("Apply now",
+                                            (d, w) -> applyFont(choice, true))
+                                    .setNegativeButton("On next reboot",
+                                            (d, w) -> applyFont(choice, false))
+                                    .show();
                         })
                         .setNegativeButton("Cancel", null)
                         .show();
             });
         }).start();
+    }
+
+    private void applyFont(SystemFont.Choice choice, boolean now) {
+                            new Thread(() -> {
+                                String error = SystemFont.apply(this, choice, now);
+                                runOnUiThread(() -> Toast.makeText(this, error != null
+                                        ? "Could not set the font: " + error
+                                        : (choice == null ? "System font removed"
+                                                : choice.title + " set in place of "
+                                                + SystemFont.replaced + " font files")
+                                        + (now ? "." : ". Reboot to apply."),
+                                        Toast.LENGTH_LONG).show());
+                            }).start();
     }
 
     private void restartLauncher() {
