@@ -32,6 +32,9 @@ final class SystemFont {
     private static final String[] FONT_CONFIGS = {"/system/etc/fonts.xml",
             "/product/etc/fonts_customization.xml", "/system/etc/font_fallback.xml"};
     private static final String[] NAMES = {"ndot", "ntype", "lettera", "nothing"};
+    /** The Latin text fonts a phone's interface may be set in. */
+    private static final String[] TEXT_FONTS = {"roboto", "ntype", "googlesans", "google-sans",
+            "nothing"};
 
     /** A font that can be chosen: its title, and a file path or a widgets-app resource. */
     static final class Choice {
@@ -45,6 +48,9 @@ final class SystemFont {
             this.resource = resource;
         }
     }
+
+    /** How many font files the last {@link #apply} put the chosen font in place of. */
+    static int replaced;
 
     private SystemFont() {
     }
@@ -137,7 +143,9 @@ final class SystemFont {
                             + "description=")
                     .append(choice.title.replace("'", ""))
                     .append(" as the system font\\n' > $M/module.prop\n");
-            for (String target : defaultFontFiles()) {
+            Set<String> targets = defaultFontFiles();
+            replaced = targets.size();
+            for (String target : targets) {
                 String dest = target.startsWith("/product/") ? "$M/system" + target
                         : "$M" + target;
                 script.append("cp '").append(font.getAbsolutePath()).append("' '")
@@ -162,8 +170,8 @@ final class SystemFont {
     }
 
     /**
-     * The files of the system's default text font: every font of the sans-serif families in
-     * the system's font lists, where it lives; Roboto's own names if none can be read.
+     * The files of the system's text fonts: every font of the sans-serif families in the
+     * system's font lists, and every Roboto, NType and Google Sans file there is.
      */
     static Set<String> defaultFontFiles() {
         Set<String> files = new LinkedHashSet<>();
@@ -192,11 +200,31 @@ final class SystemFont {
                 }
             }
         }
-        if (files.isEmpty()) {
-            for (String name : new String[] {"Roboto-Regular.ttf", "RobotoStatic-Regular.ttf"}) {
-                files.add("/system/fonts/" + name);
+        // Nothing OS has its own text font setting (NType or the stock one): every Latin text
+        // font the phone can use is replaced, so the chosen font shows whichever is picked.
+        for (String dir : FONT_DIRS) {
+            File[] all = new File(dir).listFiles();
+            if (all == null) {
+                continue;
+            }
+            for (File f : all) {
+                String lower = f.getName().toLowerCase(Locale.ROOT);
+                if (!(lower.endsWith(".ttf") || lower.endsWith(".otf"))) {
+                    continue;
+                }
+                for (String prefix : TEXT_FONTS) {
+                    if (lower.startsWith(prefix)) {
+                        files.add(f.getAbsolutePath());
+                        break;
+                    }
+                }
             }
         }
+        // Never Nothing's dot or display fonts themselves.
+        files.removeIf(path -> {
+            String lower = new File(path).getName().toLowerCase(Locale.ROOT);
+            return lower.contains("ndot") || lower.contains("emoji");
+        });
         return files;
     }
 

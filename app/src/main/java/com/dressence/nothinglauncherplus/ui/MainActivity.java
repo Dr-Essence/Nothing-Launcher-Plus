@@ -393,7 +393,8 @@ public class MainActivity extends Activity {
                                 runOnUiThread(() -> Toast.makeText(this, error != null
                                         ? "Could not set the font: " + error
                                         : (choice == null ? "System font removed"
-                                                : choice.title + " set")
+                                                : choice.title + " set in place of "
+                                                + SystemFont.replaced + " font files")
                                         + ". Reboot to apply. Turn off any other font module"
                                         + " first.", Toast.LENGTH_LONG).show());
                             }).start();
