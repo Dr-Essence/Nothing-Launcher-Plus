@@ -1,10 +1,12 @@
 package com.dressence.nothinglauncherplus.hook;
 
 import android.graphics.Bitmap;
+import android.graphics.BlendModeColorFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.PixelFormat;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
@@ -55,9 +57,29 @@ class GlowDrawable extends Drawable implements Drawable.Callback {
         inner.draw(new Canvas(buffer));
         canvas.save();
         canvas.translate(b.left, b.top);
-        // Green whatever the tile's tint: the tint is set (setColorFilter) but not drawn.
-        GreenGlow.draw(canvas, buffer, h * GLOW, alpha / 255f, true);
+        // Lit the tile's tint when it is one of ours (green, or amber on a tile that is on);
+        // any other tint the theme gives (dark on a white tile) is drawn green.
+        GreenGlow.draw(canvas, buffer, h * GLOW, alpha / 255f, true, lit(filter));
         canvas.restore();
+    }
+
+    /** The colour to light the icon for tint {@code f}: a vivid tint as is, else green. */
+    private static int lit(ColorFilter f) {
+        int c;
+        if (f instanceof BlendModeColorFilter) {
+            c = ((BlendModeColorFilter) f).getColor();
+        } else if (f instanceof PorterDuffColorFilter) {
+            try {
+                c = (Integer) PorterDuffColorFilter.class.getMethod("getColor").invoke(f);
+            } catch (ReflectiveOperationException e) {
+                return GreenGlow.GREEN;
+            }
+        } else {
+            return GreenGlow.GREEN;
+        }
+        float[] hsv = new float[3];
+        Color.colorToHSV(c, hsv);
+        return hsv[1] > 0.5f && hsv[2] > 0.6f ? c | 0xFF000000 : GreenGlow.GREEN;
     }
 
     @Override

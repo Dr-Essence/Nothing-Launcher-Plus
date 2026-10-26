@@ -3,13 +3,14 @@ package com.dressence.nothinglauncherplus.hook;
 import android.graphics.Bitmap;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 
 /**
- * An icon lit the green of the NDot clock with the clock's soft glow round it: its own shape,
- * crisp, only its colour changed, as the clock's text is.
+ * An icon lit the green of the NDot clock with the clock's soft glow round it (or another
+ * colour, glowing the same way): its own shape, crisp, only its colour changed.
  */
 final class GreenGlow {
 
@@ -21,10 +22,19 @@ final class GreenGlow {
     private static final Paint HALO = new Paint(Paint.FILTER_BITMAP_FLAG);
     private static final Paint BLUR = new Paint();
     private static float blurRadius;
+    private static int colour;
 
     static {
-        ICON.setColorFilter(new PorterDuffColorFilter(GREEN, PorterDuff.Mode.SRC_IN));
-        HALO.setColorFilter(new PorterDuffColorFilter(GLOW, PorterDuff.Mode.SRC_IN));
+        tint(GREEN);
+    }
+
+    /** The paints set to light {@code c}, with its glow a little deeper and softer. */
+    private static void tint(int c) {
+        colour = c;
+        ICON.setColorFilter(new PorterDuffColorFilter(c, PorterDuff.Mode.SRC_IN));
+        int glow = c == GREEN ? GLOW : Color.argb(0xAA, Color.red(c) * 85 / 100,
+                Color.green(c) * 85 / 100, Color.blue(c) * 85 / 100);
+        HALO.setColorFilter(new PorterDuffColorFilter(glow, PorterDuff.Mode.SRC_IN));
     }
 
     private GreenGlow() {
@@ -35,6 +45,15 @@ final class GreenGlow {
      * {@code strong} glow (on the quick settings' dark tiles) twice as bright.
      */
     static void draw(Canvas canvas, Bitmap icon, float radius, float alpha, boolean strong) {
+        draw(canvas, icon, radius, alpha, strong, GREEN);
+    }
+
+    /** As {@link #draw(Canvas, Bitmap, float, float, boolean)}, lit {@code c}. */
+    static void draw(Canvas canvas, Bitmap icon, float radius, float alpha, boolean strong,
+            int c) {
+        if (c != colour) {
+            tint(c);
+        }
         int a = Math.round(255 * alpha);
         if (radius >= 1) {
             if (blurRadius != radius) {

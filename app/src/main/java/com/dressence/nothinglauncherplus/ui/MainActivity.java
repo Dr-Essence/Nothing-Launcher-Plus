@@ -99,6 +99,12 @@ public class MainActivity extends Activity {
                     config.ndotQuickSettings = checked;
                     store.save(this);
                 });
+        ui.switchRow("Amber dashboard tiles",
+                "Tiles that are on glow amber like a retro car dashboard, not green",
+                config.qsAmber, checked -> {
+                    config.qsAmber = checked;
+                    store.save(this);
+                });
         ui.switchRow("Date in status bar", "The date before the clock · restart System UI",
                 config.statusBarDate, checked -> {
                     config.statusBarDate = checked;

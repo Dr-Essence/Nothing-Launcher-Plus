@@ -41,6 +41,7 @@ public final class Config {
     public static final String KEY_STATUS_DATE = "status_bar_date";
     public static final String KEY_SYSTEM_FONT = "system_font";
     public static final String KEY_NDOT_QS = "ndot_quick_settings";
+    public static final String KEY_QS_AMBER = "qs_amber";
     public static final String KEY_UI_SOUNDS = "ui_sounds";
     public static final String KEY_MUSIC = "music";
     public static final String KEY_MUSIC_STYLE = "music_style";
@@ -121,6 +122,8 @@ public final class Config {
     public String systemFont = "";
     /** Quick settings tile icons drawn as dot-matrix icons. */
     public boolean ndotQuickSettings = false;
+    /** Quick settings tiles that are on lit amber, as a retro car dashboard, not green. */
+    public boolean qsAmber = false;
     public boolean uiSounds = false;
     public boolean music = false;
     /** A {@code sound.Style} name. */
@@ -148,6 +151,7 @@ public final class Config {
         config.statusBarDate = prefs.getBoolean(KEY_STATUS_DATE, false);
         config.systemFont = prefs.getString(KEY_SYSTEM_FONT, "");
         config.ndotQuickSettings = prefs.getBoolean(KEY_NDOT_QS, false);
+        config.qsAmber = prefs.getBoolean(KEY_QS_AMBER, false);
         config.uiSounds = prefs.getBoolean(KEY_UI_SOUNDS, false);
         config.music = prefs.getBoolean(KEY_MUSIC, false);
         config.musicStyle = prefs.getString(KEY_MUSIC_STYLE, "HOME_MENU");
@@ -176,6 +180,7 @@ public final class Config {
                 .putBoolean(KEY_STATUS_DATE, statusBarDate)
                 .putString(KEY_SYSTEM_FONT, systemFont)
                 .putBoolean(KEY_NDOT_QS, ndotQuickSettings)
+                .putBoolean(KEY_QS_AMBER, qsAmber)
                 .putBoolean(KEY_UI_SOUNDS, uiSounds)
                 .putBoolean(KEY_MUSIC, music)
                 .putString(KEY_MUSIC_STYLE, musicStyle)
@@ -200,6 +205,7 @@ public final class Config {
                 .put(KEY_STATUS_DATE, statusBarDate)
                 .put(KEY_SYSTEM_FONT, systemFont)
                 .put(KEY_NDOT_QS, ndotQuickSettings)
+                .put(KEY_QS_AMBER, qsAmber)
                 .put(KEY_UI_SOUNDS, uiSounds)
                 .put(KEY_MUSIC, music)
                 .put(KEY_MUSIC_STYLE, musicStyle)
@@ -221,6 +227,7 @@ public final class Config {
         config.statusBarDate = json.optBoolean(KEY_STATUS_DATE, false);
         config.systemFont = json.optString(KEY_SYSTEM_FONT, "");
         config.ndotQuickSettings = json.optBoolean(KEY_NDOT_QS, false);
+        config.qsAmber = json.optBoolean(KEY_QS_AMBER, false);
         config.uiSounds = json.optBoolean(KEY_UI_SOUNDS, false);
         config.music = json.optBoolean(KEY_MUSIC, false);
         config.musicStyle = json.optString(KEY_MUSIC_STYLE, "HOME_MENU");

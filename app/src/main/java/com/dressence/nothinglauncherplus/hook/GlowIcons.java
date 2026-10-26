@@ -38,6 +38,9 @@ final class GlowIcons {
     private static final float SMALL_TEXT_SP = 10;
     /** On tiles that are on, the background lit the deep green of a retro display. */
     private static final int RETRO_GREEN = 0xFF1C5230;
+    /** Or the warm amber of a retro car dashboard, its icon a bright glowing amber. */
+    private static final int DASH_AMBER = 0xFF6B4500;
+    private static final int DASH_ICON = 0xFFFFC233;
     /** The glow round tile labels: as round the clock's. */
     private static final int LABEL_GLOW = 0xAA2BE86A;
     /** The glow's reach round a tile icon, in icon heights. */
@@ -198,8 +201,9 @@ final class GlowIcons {
     }
 
     /**
-     * The tiles' colours: labels green, and a tile that is on lit retro-display green where it
-     * was white (the whole tile, or the icon's part of a tile with two targets). Set as each
+     * The tiles' colours: labels green, and a tile that is on lit retro-display green (or
+     * dashboard amber, its icon amber too) where it was white (the whole tile, or the icon's
+     * part of a tile with two targets). Set as each
      * {@code TileColors} is made: the functions choosing them are inlined into their callers.
      */
     private static void hookTileColours(ClassLoader cl, ConfigStore store) {
@@ -211,11 +215,16 @@ final class GlowIcons {
                     return;
                 }
                 Object c = param.thisObject;
+                boolean amber = store.get().qsAmber;
+                boolean on = false;
                 for (String field : new String[] {"background", "iconBackground"}) {
                     if (light(getLong(c, field))) {
-                        setLong(c, field, composeColour(RETRO_GREEN));
+                        setLong(c, field, composeColour(amber ? DASH_AMBER : RETRO_GREEN));
+                        on = true;
                     }
                 }
+                // The icon's tint: what the icon is lit (see GlowDrawable).
+                setLong(c, "icon", composeColour(on && amber ? DASH_ICON : GreenGlow.GREEN));
                 setLong(c, "label", composeColour(GreenGlow.GREEN));
                 setLong(c, "secondaryLabel", composeColour(0xB34CFF7A));
             }
