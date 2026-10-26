@@ -753,18 +753,18 @@
 🫛	3	JELLY	SHINE	pea pod
 🍄‍🟫	3	JELLY	SHINE	brown mushroom
 🫜	3	JELLY	SHINE	root vegetable
-🍞	3	JELLY	STEAM	bread
-🥐	3	JELLY	STEAM	croissant
-🥖	3	JELLY	STEAM	baguette bread
-🫓	3	JELLY	STEAM	flatbread
-🥨	3	JELLY	STEAM	pretzel
-🥯	3	JELLY	STEAM	bagel
+🍞	3	JELLY	SHINE	bread
+🥐	3	JELLY	SHINE	croissant
+🥖	3	JELLY	SHINE	baguette bread
+🫓	3	JELLY	SHINE	flatbread
+🥨	3	JELLY	SHINE	pretzel
+🥯	3	JELLY	SHINE	bagel
 🥞	3	JELLY	STEAM	pancakes
 🧇	3	JELLY	STEAM	waffle
 🧀	3	JELLY	SHINE	cheese wedge
 🍖	3	JELLY	STEAM	meat on bone
 🍗	3	JELLY	STEAM	poultry leg
-🥩	3	JELLY	STEAM	cut of meat
+🥩	3	JELLY	SHINE	cut of meat
 🥓	3	JELLY	STEAM	bacon
 🍔	3	JELLY	STEAM	hamburger
 🍟	3	JELLY	STEAM	french fries
@@ -783,7 +783,7 @@
 🫕	3	JELLY	BURNER	fondue
 🥣	3	FLAP	STEAM	bowl with spoon
 🥗	3	JELLY	SHINE	green salad
-🍿	3	JELLY	CONFETTI	popcorn
+🍿	3	JELLY	POPCORN	popcorn
 🧈	3	JELLY	SHINE	butter
 🧂	3	JELLY	SHINE	salt
 🥫	3	JELLY	SHINE	canned food

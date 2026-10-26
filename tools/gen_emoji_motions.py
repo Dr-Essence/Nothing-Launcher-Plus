@@ -637,6 +637,10 @@ EFFECT_REVIEW = {
     "person bouncing ball": "PADDLE:0.12,0.72,0.12,0.97,0.5,1,2",
     "man bouncing ball": "PADDLE:0.12,0.72,0.12,0.97,0.5,1,2",
     "woman bouncing ball": "PADDLE:0.16,0.75,0.16,0.97,0.5,1,2",
+    # Only hot food steams.
+    "bread": "SHINE", "croissant": "SHINE", "baguette bread": "SHINE", "flatbread": "SHINE",
+    "pretzel": "SHINE", "bagel": "SHINE", "cut of meat": "SHINE", "sandwich": "SHINE",
+    "popcorn": "POPCORN",
     "person walking": "STRIDE:0.5,0.56,14,1.1",
     "man walking": "STRIDE:0.5,0.56,14,1.1",
     "woman walking": "STRIDE:0.5,0.56,14,1.1",

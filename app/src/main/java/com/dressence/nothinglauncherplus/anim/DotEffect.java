@@ -374,6 +374,40 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * Popcorn popping: now and then a kernel near the top of the heap bursts open, a white
+     * puff that swells and settles.
+     */
+    POPCORN {
+        @Override
+        void apply(Scene s) {
+            Regions r = s.regions;
+            for (int k = 0; k < 3; k++) {
+                float period = 1.1f + 0.3f * k;
+                float life = cycle(s, period, k * 0.47f);
+                int cyc = (int) ((s.t + k * 0.47f + (s.seed & 0xFF) * 0.013f) / period);
+                int col = r.minX + 3 + (int) (Scene.hash(k, cyc, s.seed)
+                        * Math.max(1, r.maxX - r.minX - 6));
+                int top = 0;
+                while (top < r.size && !r.ink[top * r.size + col]) {
+                    top++;
+                }
+                if (top >= r.size) {
+                    continue;
+                }
+                // It bursts open where it lies: a quick white puff that settles.
+                float y = top + 1.5f + Scene.hash(k, cyc, 9) * 3;
+                if (life < 0.35f) {
+                    float q = life / 0.35f;
+                    float size = 1.3f * ObjectEffects.spring(Math.min(1, q * 1.4f));
+                    s.ball(col + 0.5f, y, Math.max(0.3f, size), 0xFFFFFAEE, false);
+                    s.blob(col + 0.5f, y, 2.2f, 0xFFFFFFFF, 0.5f * (1 - q));
+                }
+            }
+            s.busy = true;
+        }
+    },
+
     /** Fizzy drinks: tiny bubbles stream up through the drink and burst at its top. */
     FIZZ {
         @Override
