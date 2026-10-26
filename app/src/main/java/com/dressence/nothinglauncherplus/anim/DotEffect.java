@@ -220,6 +220,17 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * A shower running: light rushes along each of its jets away from the head, each jet's
+     * end flickers longer and shorter as the water breaks up, and drops fly off the ends.
+     */
+    SHOWER {
+        @Override
+        void apply(Scene s) {
+            shower(s);
+        }
+    },
+
     /** Fizzy drinks: tiny bubbles stream up through the drink and burst at its top. */
     FIZZ {
         @Override
@@ -2286,6 +2297,136 @@ public enum DotEffect {
             }
         }
         return java.util.Arrays.copyOf(out, k);
+    }
+
+    private static void shower(Scene s) {
+        Regions r = s.regions;
+        float[][] jets = (float[][]) r.memo.get("jets");
+        int[] owner = (int[]) r.memo.get("jetOwner");
+        if (jets == null) {
+            owner = new int[r.size * r.size];
+            jets = findJets(r, owner);
+            r.memo.put("jets", jets);
+            r.memo.put("jetOwner", owner);
+        }
+        if (jets.length == 0) {
+            RAIN.apply(s);
+            return;
+        }
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0 || owner[ri] < 0) {
+                continue;
+            }
+            float[] j = jets[owner[ri]];
+            int k = owner[ri];
+            float dx = j[2] - j[0];
+            float dy = j[3] - j[1];
+            float len = Math.max(1, (float) Math.sqrt(dx * dx + dy * dy));
+            float f = ((ri % r.size - j[0]) * dx + (ri / r.size - j[1]) * dy) / (len * len);
+            // The water breaks up at the end, the jet now longer, now shorter.
+            float reach = 0.78f + 0.2f * (float) Math.sin(s.t * 17 + k * 2.1f)
+                    * (float) Math.sin(s.t * 6.3f + k);
+            float a = f < reach ? 1 : Math.max(0, 1 - (f - reach) / 0.15f);
+            // Pulses of light rushing out along it.
+            float w = (float) Math.sin(f * len * 1.1f - s.t * 18 + k * 1.7f);
+            int c = s.dots[i];
+            if (w > 0.4f) {
+                c = Scene.mix(c, 0xFFE8FBFF, 0.55f * (w - 0.4f) / 0.6f);
+            }
+            s.dots[i] = Scene.alpha(c, Math.round((s.dots[i] >>> 24) * a));
+        }
+        // Drops thrown off each jet's end, on the way the water goes, falling.
+        for (int k = 0; k < jets.length; k++) {
+            float[] j = jets[k];
+            float dx = j[2] - j[0];
+            float dy = j[3] - j[1];
+            float len = Math.max(1, (float) Math.sqrt(dx * dx + dy * dy));
+            if (j[5] < 6) {
+                continue; // A broken-off bit of spray, not a jet.
+            }
+            for (int n = 0; n < 1; n++) {
+                float life = cycle(s, 0.55f, k * 0.19f + n * 0.27f);
+                float go = 1.5f + 4 * life;
+                float x = j[2] + dx / len * go;
+                float y = j[3] + dy / len * go + 2.5f * life * life;
+                s.blob(x + 0.5f, y + 0.5f, 0.55f, 0xFF000000 | (int) j[4], 0.85f * (1 - life * life));
+            }
+        }
+        s.busy = true;
+    }
+
+    /**
+     * The jets of water: thin blue streaks. Per jet its start (nearest the head, the side of
+     * the drawing's middle), its end and its colour; {@code owner} gets each dot's jet.
+     */
+    private static float[][] findJets(Regions r, int[] owner) {
+        int n = r.size * r.size;
+        java.util.Arrays.fill(owner, -1);
+        boolean[] seen = new boolean[n];
+        float cx = (r.minX + r.maxX) / 2f;
+        float cy = (r.minY + r.maxY) / 2f;
+        java.util.List<float[]> jets = new java.util.ArrayList<>();
+        for (int start = 0; start < n; start++) {
+            if (seen[start] || !jetDot(r, start)) {
+                continue;
+            }
+            java.util.List<Integer> comp = new java.util.ArrayList<>();
+            java.util.ArrayDeque<Integer> queue = new java.util.ArrayDeque<>();
+            queue.add(start);
+            seen[start] = true;
+            while (!queue.isEmpty()) {
+                int i = queue.poll();
+                comp.add(i);
+                for (int j : around(r, i)) {
+                    if (!seen[j] && jetDot(r, j)) {
+                        seen[j] = true;
+                        queue.add(j);
+                    }
+                }
+            }
+            if (comp.size() < 3) {
+                continue;
+            }
+            int bright = comp.get(0);
+            for (int p : comp) {
+                if (r.luma[p] * r.sat[p] > r.luma[bright] * r.sat[bright]) {
+                    bright = p;
+                }
+            }
+            // Its two ends: the dots farthest apart; the start is the one nearer the middle.
+            int a = comp.get(0);
+            int b = a;
+            float best = -1;
+            for (int p : comp) {
+                for (int q : comp) {
+                    float ddx = p % r.size - q % r.size;
+                    float ddy = p / r.size - q / r.size;
+                    if (ddx * ddx + ddy * ddy > best) {
+                        best = ddx * ddx + ddy * ddy;
+                        a = p;
+                        b = q;
+                    }
+                }
+            }
+            float da = (a % r.size - cx) * (a % r.size - cx) + (a / r.size - cy) * (a / r.size - cy);
+            float db = (b % r.size - cx) * (b % r.size - cx) + (b / r.size - cy) * (b / r.size - cy);
+            if (db < da) {
+                int t = a;
+                a = b;
+                b = t;
+            }
+            for (int p : comp) {
+                owner[p] = jets.size();
+            }
+            jets.add(new float[] {a % r.size, a / r.size, b % r.size, b / r.size,
+                    r.rest[bright] & 0xFFFFFF, comp.size()});
+        }
+        return jets.toArray(new float[0][]);
+    }
+
+    private static boolean jetDot(Regions r, int i) {
+        return r.ink[i] && r.hue[i] > 180 && r.hue[i] < 215 && r.sat[i] > 0.4f;
     }
 
     private static void fizz(Scene s, int count) {

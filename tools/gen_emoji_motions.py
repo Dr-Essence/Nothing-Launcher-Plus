@@ -624,7 +624,7 @@ EFFECT_REVIEW = {
     "diya lamp": "BURN:0.58,0,0.95,0.62,0.56", "heart on fire": "BURN:0,0,1,1,1,20",
     "birthday cake": "BURN:0.25,0,0.75,0.2,0.17",
     "fireworks": "FIREWORKS:0,0.5,0.47,0.78", "sparkler": "FIREWORKS:1,0.48,0.52,0.6,2",
-    "firecracker": "FIREWORKS:1,0.87,0.14,0.18,1",
+    "firecracker": "FIREWORKS:1,0.87,0.14,0.18,1", "shower": "SHOWER",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 
@@ -642,7 +642,7 @@ EXACT.update({name: "NONE" for name in [
     "downwards button", "japanese “prohibited” button", "japanese “no vacancy” button",
     "joystick", "yin yang", "wheel of dharma", "ferris wheel", "atom symbol",
     "electric plug", "bicycle", "dna", "pool 8 ball", "optical disk", "dvd",
-    "birthday cake", "candle", "diya lamp", "fireworks", "sparkler", "firecracker",
+    "birthday cake", "candle", "diya lamp", "fireworks", "sparkler", "firecracker", "shower",
 ]})
 
 # Balls: round ones are kicked up and spin in the air (their effect turns the surface with the
