@@ -221,6 +221,11 @@ final class Detach {
         return new Detach(board, object);
     }
 
+    /** {@code pixels} with {@code hole} filled in from round it (see {@link #patched}). */
+    static int[] fill(int[] pixels, int size, boolean[] hole) {
+        return patched(pixels, size, hole, hole).board;
+    }
+
     /**
      * The board with the {@code hole} filled in from its rim inward, ring by ring, from the
      * solid pixels round it; where the hole reaches open air its edge follows a circle fitted

@@ -1065,9 +1065,9 @@
 🌊	4	ROCK	RIPPLE	water wave
 🎃	5	FLICKER	FLAME	jack-o-lantern
 🎄	5	PARTY	TWINKLE	Christmas tree
-🎆	5	EXPLODE	FIREWORKS	fireworks
-🎇	5	TWINKLE	FIREWORKS	sparkler
-🧨	5	EXPLODE	FIREWORKS	firecracker
+🎆	5	NONE	FIREWORKS:0,0.5,0.47,0.78	fireworks
+🎇	5	NONE	FIREWORKS:1,0.48,0.52,0.6,2	sparkler
+🧨	5	NONE	FIREWORKS:1,0.87,0.14,0.18,1	firecracker
 ✨️	5	TWINKLE	TWINKLE	sparkles
 🎈	5	FLOAT	SHINE	balloon
 🎉	5	PARTY	CONFETTI	party popper

@@ -199,6 +199,7 @@ final class DotMatrix {
         scene.sphereTurn = Float.NaN;
         scene.earthCentre = Float.NaN;
         scene.flameT = Float.NaN;
+        scene.burstMode = -1;
         scene.busy = false;
         if (effects) {
             scene.t = time;
@@ -210,7 +211,8 @@ final class DotMatrix {
             effect.pose(scene);
         }
         boolean still = p.isRest() && scene.partCount == 0 && !scene.detached
-                && scene.sphereTurn != scene.sphereTurn && scene.flameT != scene.flameT;
+                && scene.sphereTurn != scene.sphereTurn && scene.flameT != scene.flameT
+                && scene.burstMode < 0;
         if (still) {
             System.arraycopy(restDots, 0, dots, 0, dots.length);
         } else {
@@ -303,7 +305,8 @@ final class DotMatrix {
                 keepInside(pose);
             }
             glyphPaint.setAlpha(p == null ? 255 : Math.round(Math.min(1, p.alpha) * 255));
-            if (p != null && (scene.sphereTurn == scene.sphereTurn || scene.flameT == scene.flameT)) {
+            if (p != null && (scene.sphereTurn == scene.sphereTurn || scene.flameT == scene.flameT
+                    || scene.burstMode >= 0)) {
                 drawSphere();
             } else if (p == null || scene.partCount == 0 && !scene.detached) {
                 renderCanvas.drawBitmap(glyph, pose, glyphPaint);
@@ -589,6 +592,10 @@ final class DotMatrix {
             drawFlame();
             return;
         }
+        if (scene.burstMode >= 0) {
+            drawBurst();
+            return;
+        }
         float cx = scene.sphereX * SUPERSAMPLE;
         float cy = scene.sphereY * SUPERSAMPLE;
         float radius = scene.sphereRadius * SUPERSAMPLE;
@@ -634,22 +641,12 @@ final class DotMatrix {
             earth = new Earth(views, GLYPH);
         }
         if (earthRest == null || sphereFrame == null) {
-            earthRest = new int[RENDER * RENDER];
-            render.eraseColor(Color.TRANSPARENT);
-            renderCanvas.drawBitmap(glyph, restPose, glyphPaint);
-            render.getPixels(earthRest, 0, RENDER, 0, 0, RENDER, RENDER);
-            render.eraseColor(Color.TRANSPARENT);
+            earthRest = restRender();
             earthPixels = new int[RENDER * RENDER];
             sphereFrame = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
         }
         earth.render(earthRest, RENDER, scene.earthCentre, earthPixels);
-        sphereFrame.setPixels(earthPixels, 0, RENDER, 0, 0, RENDER, RENDER);
-        partMatrix.set(restInverse);
-        partMatrix.postConcat(pose);
-        renderCanvas.save();
-        renderCanvas.concat(partMatrix);
-        renderCanvas.drawBitmap(sphereFrame, 0, 0, glyphPaint);
-        renderCanvas.restore();
+        drawSurface();
     }
 
     private Flame flame;
@@ -662,17 +659,45 @@ final class DotMatrix {
                 b[3] * SUPERSAMPLE, 0, b[4] * SUPERSAMPLE};
         String key = glyphKey + "|" + Arrays.toString(b);
         if (flame == null || !key.equals(flameKey) || sphereFrame == null) {
-            int[] rest = new int[RENDER * RENDER];
-            render.eraseColor(Color.TRANSPARENT);
-            renderCanvas.drawBitmap(glyph, restPose, glyphPaint);
-            render.getPixels(rest, 0, RENDER, 0, 0, RENDER, RENDER);
-            render.eraseColor(Color.TRANSPARENT);
-            flame = new Flame(rest, RENDER, box[0], box[1], box[2], box[3], box[5], b[5]);
+            flame = new Flame(restRender(), RENDER, box[0], box[1], box[2], box[3], box[5], b[5]);
             flameKey = key;
             earthPixels = new int[RENDER * RENDER];
             sphereFrame = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
         }
         flame.render(scene.flameT, earthPixels);
+        drawSurface();
+    }
+
+    private Burst burst;
+    private String burstKey;
+
+    /** The drawing with its burst going off (see {@link Burst}). */
+    private void drawBurst() {
+        float[] b = scene.burstSpec;
+        String key = glyphKey + "|" + Arrays.toString(b);
+        if (burst == null || !key.equals(burstKey) || sphereFrame == null) {
+            burst = new Burst(restRender(), RENDER, b[0] * SUPERSAMPLE, b[1] * SUPERSAMPLE,
+                    b[2] * SUPERSAMPLE, Math.round(b[3]));
+            burstKey = key;
+            earthPixels = new int[RENDER * RENDER];
+            sphereFrame = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
+        }
+        burst.render(scene.burstMode, scene.burstLife, scene.burstT, earthPixels);
+        drawSurface();
+    }
+
+    /** The glyph at rest, as supersampled pixels. */
+    private int[] restRender() {
+        int[] rest = new int[RENDER * RENDER];
+        render.eraseColor(Color.TRANSPARENT);
+        renderCanvas.drawBitmap(glyph, restPose, glyphPaint);
+        render.getPixels(rest, 0, RENDER, 0, 0, RENDER, RENDER);
+        render.eraseColor(Color.TRANSPARENT);
+        return rest;
+    }
+
+    /** Draws the surface just computed (in rest render pixels) under the emoji's pose. */
+    private void drawSurface() {
         sphereFrame.setPixels(earthPixels, 0, RENDER, 0, 0, RENDER, RENDER);
         partMatrix.set(restInverse);
         partMatrix.postConcat(pose);

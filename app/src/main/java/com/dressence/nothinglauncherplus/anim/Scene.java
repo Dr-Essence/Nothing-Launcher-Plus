@@ -223,6 +223,13 @@ final class Scene {
      * reddest hue that is still flame (0: any warm colour).
      */
     final float[] flameBox = new float[6];
+    /** A drawn burst going off (see {@link Burst}): its mode, -1 for none. */
+    int burstMode = -1;
+    /** Through one bloom (0..1), or the crackle's time. */
+    float burstLife;
+    float burstT;
+    /** The burst's centre, reach (resting grid units) and 1 for warm colours only. */
+    final float[] burstSpec = new float[4];
     /** How far the emoji's motion has rolled it, in radians (see {@link Pose#roll}). */
     float poseRoll;
     float sphereX;

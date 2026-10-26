@@ -1192,8 +1192,17 @@ public enum DotEffect {
     /** Fireworks: a flash, then sparks burst outward, fall and fade. */
     FIREWORKS {
         @Override
+        void pose(Scene s) {
+            burstPose(s);
+        }
+
+        @Override
         void apply(Scene s) {
-            fireworks(s);
+            if (s.burstMode < 0) {
+                fireworks(s);
+            } else if (s.burstMode == Burst.BLOOM) {
+                shell(s);
+            }
         }
     },
 
@@ -3102,6 +3111,51 @@ public enum DotEffect {
     }
 
     /** Two bursts at a time: a flash, sparks flying out and falling, trailing, fading. */
+    /** One firework: the shell rises, then the burst blooms, droops and burns out. */
+    private static final float SHELL = 0.5f;
+    private static final float BLOOM_TIME = 2.0f;
+    private static final float FIREWORK = SHELL + BLOOM_TIME + 0.5f;
+
+    /**
+     * The drawn burst going off (see {@link Burst}). Anchors: mode (0 a firework, 1 crackling),
+     * the centre x, y and reach (fractions of the emoji's width), and the kind of spark (see
+     * {@link Burst}).
+     */
+    static void burstPose(Scene s) {
+        Regions r = s.regions;
+        float[] a = s.anchor;
+        if (a == null || a.length < 4) {
+            return;
+        }
+        float w = r.maxX - r.minX + 1;
+        s.burstMode = Math.round(a[0]);
+        s.burstSpec[0] = r.minX + a[1] * w;
+        s.burstSpec[1] = r.minY + a[2] * (r.maxY - r.minY + 1);
+        s.burstSpec[2] = a[3] * w;
+        s.burstSpec[3] = a.length > 4 ? a[4] : 0;
+        float t = (s.t + (s.seed & 0xFF) * 0.013f) % FIREWORK;
+        s.burstLife = t < SHELL ? 0 : (t - SHELL) / BLOOM_TIME;
+        s.burstT = s.t;
+        s.busy = true;
+    }
+
+    /** The shell of a firework climbing to where it bursts, its trail glowing behind it. */
+    private static void shell(Scene s) {
+        float t = (s.t + (s.seed & 0xFF) * 0.013f) % FIREWORK;
+        float x = s.burstSpec[0];
+        float y1 = s.burstSpec[1];
+        float y0 = s.regions.maxY - 1;
+        if (t < SHELL) {
+            float q = ObjectEffects.easeOut(t / SHELL);
+            float y = y0 + (y1 - y0) * q;
+            s.blob(x, y, 0.8f, 0xFFFFF0C0, 1);
+            s.blob(x, y + 1.6f, 0.6f, 0xFFFFB060, 0.5f * (1 - q));
+        } else if (t < SHELL + 0.12f) {
+            // The flash of the burst.
+            s.blob(x, y1, 2.2f, 0xFFFFFFFF, 1 - (t - SHELL) / 0.12f);
+        }
+    }
+
     static void fireworks(Scene s) {
         Regions r = s.regions;
         for (int k = 0; k < 2; k++) {
