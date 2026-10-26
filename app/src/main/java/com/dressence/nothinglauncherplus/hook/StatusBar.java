@@ -32,6 +32,9 @@ final class StatusBar {
     private static final Map<TextView, Boolean> GREEN =
             Collections.synchronizedMap(new WeakHashMap<>());
 
+    /** The spacing of NDot's dots in the clock, in pixels: the status icons' dots match it. */
+    static volatile float dotPitch;
+
     private StatusBar() {
     }
 
@@ -48,7 +51,7 @@ final class StatusBar {
                     }
                 });
         Hooks.install("status bar clock", () -> hookClock(cl, store));
-        Hooks.install("dot status icons", () -> DotStatusIcons.install(store));
+        Hooks.install("dot status icons", () -> DotStatusIcons.install(cl, store));
         Hooks.install("status bar battery", () -> hookBattery(cl, store));
     }
 
@@ -59,7 +62,10 @@ final class StatusBar {
             protected void afterHookedMethod(MethodHookParam param) {
                 store.reloadIfChanged();
                 if (store.get().ndotStatusBar) {
-                    styleText((TextView) param.thisObject, true);
+                    TextView clock = (TextView) param.thisObject;
+                    styleText(clock, true);
+                    // NDot stands seven dots to its capitals' 0.7 em: a dot every tenth em.
+                    dotPitch = clock.getTextSize() * 0.1f;
                 }
             }
         };
