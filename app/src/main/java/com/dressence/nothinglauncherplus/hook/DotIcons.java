@@ -54,7 +54,7 @@ final class DotIcons {
     private static final long MAX_STAGGER_MS = 110;
     private static final int GLOW_SCALE = 4;
     /** How bright the icon shows between its dots: an LED panel's unlit dots. */
-    private static final float PLATE_DIM = 0.32f;
+    private static final float PLATE_DIM = 0.12f;
 
     /** Marks an icon that could not be converted. */
     private static final Dots FAILED = new Dots();
@@ -348,6 +348,7 @@ final class DotIcons {
         int n = w * h;
         int[] px = new int[n];
         icon.getPixels(px, 0, w, 0, 0, w, h);
+        int[] shape = px.clone();
         // The plate's edge: solid pixels next to clear ones. A white plate is white all round.
         int edge = 0;
         int white = 0;
@@ -416,15 +417,42 @@ final class DotIcons {
                 px[i] = 0;
             }
         }
+        // The icon is scaled to cover the launcher's shape (the plate's outline, a circle or
+        // whatever the launcher uses) and cut to it, so it is the same shape as every other
+        // icon, filled edge to edge.
+        int sx0 = w, sy0 = h, sx1 = -1, sy1 = -1;
+        for (int i = 0; i < n; i++) {
+            if ((shape[i] >>> 24) > 100) {
+                sx0 = Math.min(sx0, i % w);
+                sx1 = Math.max(sx1, i % w);
+                sy0 = Math.min(sy0, i / w);
+                sy1 = Math.max(sy1, i / w);
+            }
+        }
+        float sw = sx1 - sx0 + 1;
+        float sh = sy1 - sy0 + 1;
+        float cover = Math.max(sw / (x1 - x0 + 1), sh / (y1 - y0 + 1));
+        float cw = (x1 - x0 + 1) * cover;
+        float ch = (y1 - y0 + 1) * cover;
+        float mx = (sx0 + sx1 + 1) / 2f;
+        float my = (sy0 + sy1 + 1) / 2f;
         Bitmap bare = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888);
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        float fit = 0.9f * Math.min(w / (float) (x1 - x0 + 1), h / (float) (y1 - y0 + 1));
-        float cw = (x1 - x0 + 1) * fit;
-        float ch = (y1 - y0 + 1) * fit;
-        new Canvas(out).drawBitmap(bare, new Rect(x0, y0, x1 + 1, y1 + 1),
-                new android.graphics.RectF((w - cw) / 2, (h - ch) / 2, (w + cw) / 2,
-                        (h + ch) / 2), new Paint(Paint.FILTER_BITMAP_FLAG));
+        Canvas canvas = new Canvas(out);
+        canvas.drawBitmap(bare, new Rect(x0, y0, x1 + 1, y1 + 1),
+                new android.graphics.RectF(mx - cw / 2, my - ch / 2, mx + cw / 2, my + ch / 2),
+                new Paint(Paint.FILTER_BITMAP_FLAG));
         bare.recycle();
+        // Cut to the shape: the artwork covers it, so nothing inside is left see-through.
+        for (int i = 0; i < n; i++) {
+            shape[i] = (shape[i] & 0xFF000000) | 0xFFFFFF;
+        }
+        Bitmap mask = Bitmap.createBitmap(shape, w, h, Bitmap.Config.ARGB_8888);
+        Paint cut = new Paint(Paint.FILTER_BITMAP_FLAG);
+        cut.setXfermode(new android.graphics.PorterDuffXfermode(
+                android.graphics.PorterDuff.Mode.DST_IN));
+        canvas.drawBitmap(mask, 0, 0, cut);
+        mask.recycle();
         return out;
     }
 
@@ -513,8 +541,9 @@ final class DotIcons {
                     new float[] {0, 0.5f, 1}, Shader.TileMode.CLAMP));
             glow.drawCircle(cx, cy, halo, paint);
         }
-        // Behind the dots, the icon itself, dimmed, as an LED panel's unlit dots show: the icon
-        // stays solid and its own size, and the wallpaper never shows through it.
+        // Behind the dots, the icon itself, dimmed almost to black, as a dot display's glass:
+        // the icon stays solid and its own size, the wallpaper never shows through it, and
+        // white dots still read as white.
         Bitmap plateBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Paint platePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
         android.graphics.ColorMatrix dim = new android.graphics.ColorMatrix();
