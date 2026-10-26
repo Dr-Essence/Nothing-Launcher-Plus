@@ -92,8 +92,7 @@ final class DotIcons {
         Bitmap glow;
         /** The dark glass the dots sit on, in the icon's own shape. */
         Bitmap plate;
-        /** The lit dots alone. */
-        Bitmap lit;
+
         float[] x;
         float[] y;
         int[] color;
@@ -171,7 +170,7 @@ final class DotIcons {
         long now = SystemClock.uptimeMillis();
         long[] seen = SEEN.get(d);
         if (seen == null) {
-            seen = new long[3];
+            seen = new long[2];
             SEEN.put(d, seen);
         }
         Dots dots = dots(icon, d);
@@ -195,7 +194,7 @@ final class DotIcons {
             canvas.scale(scale, scale, bounds.exactCenterX(), bounds.exactCenterY());
         }
         if (t >= 1) {
-            drawWithArtifacts(canvas, bounds, dots, paint, d, icon, now, seen);
+            canvas.drawBitmap(dots.full, null, bounds, paint);
         } else {
             powerOn(canvas, bounds, dots, Math.max(0, t), paint.getAlpha());
             d.invalidateSelf();
@@ -206,119 +205,6 @@ final class DotIcons {
         canvas.restoreToCount(save);
         return true;
     }
-
-    /** Each icon's own timing of its screen's quirks, in seconds: period and offset. */
-    private static final float SCAN_EVERY = 11;
-    private static final float SCAN_TIME = 1.5f;
-    private static final float FLICKER_EVERY = 27;
-    private static final float FLICKER_TIME = 0.16f;
-    private static final float GLITCH_EVERY = 37;
-    private static final float GLITCH_TIME = 0.1f;
-    private static final Paint SCAN = new Paint();
-    static {
-        SCAN.setXfermode(new android.graphics.PorterDuffXfermode(
-                android.graphics.PorterDuff.Mode.SRC_IN));
-    }
-
-    /** One of an icon's quirks: how far through it is (0..1), or -1 if it is not on now. */
-    private static float quirk(float t, float every, float time, int seed, int which) {
-        float period = every * (0.7f + 0.6f * hash(seed, which, 1));
-        float local = (t + hash(seed, which, 2) * period) % period;
-        return local < time ? local / time : -1;
-    }
-
-    /** Seconds until that quirk next starts. */
-    private static float untilQuirk(float t, float every, float time, int seed, int which) {
-        float period = every * (0.7f + 0.6f * hash(seed, which, 1));
-        float local = (t + hash(seed, which, 2) * period) % period;
-        return local < time ? 0 : period - local;
-    }
-
-    private static float hash(int a, int b, int c) {
-        int h = a * 0x27d4eb2d ^ b * 0x165667b1 ^ c * 0x9e3779b9;
-        h ^= h >>> 15;
-        h *= 0x2c1b3c6d;
-        h ^= h >>> 12;
-        return (h & 0xFFFFFF) / (float) 0x1000000;
-    }
-
-    /**
-     * The icon at rest, with the quirks of an old dot screen, each icon on its own timing:
-     * now and then a faint green scan line rolls down the panel, the panel flickers dim for
-     * a moment, or a band of rows jumps a dot sideways and back.
-     */
-    private static void drawWithArtifacts(Canvas canvas, Rect bounds, Dots dots, Paint paint,
-            Drawable d, Bitmap icon, long now, long[] seen) {
-        int seed = System.identityHashCode(icon);
-        float t = (now % 3_600_000L) / 1000f;
-        float scan = quirk(t, SCAN_EVERY, SCAN_TIME, seed, 1);
-        float flicker = quirk(t, FLICKER_EVERY, FLICKER_TIME, seed, 2);
-        float glitch = quirk(t, GLITCH_EVERY, GLITCH_TIME, seed, 3);
-        int alpha = paint.getAlpha();
-        if (flicker >= 0) {
-            // Two quick dips, as a tired panel does.
-            float dip = (float) Math.abs(Math.sin(flicker * Math.PI * 2));
-            paint.setAlpha(Math.round(alpha * (1 - 0.28f * dip)));
-        }
-        if (glitch >= 0) {
-            float pitch = bounds.height() / (float) GRID;
-            int row = Math.round(hash(seed, (int) (t / GLITCH_EVERY), 4) * (GRID - 3));
-            float top = bounds.top + row * pitch;
-            float bottom = top + pitch * (2 + Math.round(hash(seed, 7, 5) * 2));
-            canvas.save();
-            canvas.clipOutRect(bounds.left, top, bounds.right, bottom);
-            canvas.drawBitmap(dots.full, null, bounds, paint);
-            canvas.restore();
-            canvas.save();
-            canvas.clipRect(bounds.left, top, bounds.right, bottom);
-            canvas.translate(pitch, 0);
-            canvas.drawBitmap(dots.full, null, bounds, paint);
-            canvas.restore();
-        } else if (scan >= 0) {
-            canvas.drawBitmap(dots.full, null, bounds, paint);
-            // Only the lit dots take on the line's green, as on the emoji screens.
-            int layer = canvas.saveLayer(bounds.left, bounds.top, bounds.right, bounds.bottom,
-                    null);
-            canvas.drawBitmap(dots.lit, null, bounds, paint);
-            // The line rolls from above the panel to below it, easing in and out.
-            float band = bounds.height() * 0.22f;
-            float e = scan * scan * (3 - 2 * scan);
-            float y = bounds.top - band + e * (bounds.height() + band * 2);
-            float fade = (float) Math.sin(scan * Math.PI);
-            int peak = Math.round(150 * fade) << 24 | SCAN_GREEN;
-            SCAN.setShader(new android.graphics.LinearGradient(0, y - band / 2, 0, y + band / 2,
-                    new int[] {SCAN_GREEN, peak, SCAN_GREEN}, null,
-                    android.graphics.Shader.TileMode.CLAMP));
-            canvas.drawRect(bounds.left, y - band / 2, bounds.right, y + band / 2, SCAN);
-            canvas.restoreToCount(layer);
-        } else {
-            canvas.drawBitmap(dots.full, null, bounds, paint);
-        }
-        paint.setAlpha(alpha);
-        if (scan >= 0 || flicker >= 0 || glitch >= 0) {
-            d.invalidateSelf();
-            return;
-        }
-        // Asleep until the next quirk: one redraw is booked for it.
-        float wait = Math.min(untilQuirk(t, SCAN_EVERY, SCAN_TIME, seed, 1),
-                Math.min(untilQuirk(t, FLICKER_EVERY, FLICKER_TIME, seed, 2),
-                        untilQuirk(t, GLITCH_EVERY, GLITCH_TIME, seed, 3)));
-        long at = now + Math.max(16, Math.round(wait * 1000));
-        if (seen[2] > now && seen[2] <= at) {
-            return;
-        }
-        seen[2] = at;
-        WeakReference<Drawable> ref = new WeakReference<>(d);
-        MAIN.postAtTime(() -> {
-            Drawable drawable = ref.get();
-            if (drawable != null) {
-                drawable.invalidateSelf();
-            }
-        }, at);
-    }
-
-    /** The scan line's colour (no alpha): the green of an old phosphor screen. */
-    private static final int SCAN_GREEN = 0x4CFF8A;
 
     /**
      * One frame of an icon powering on ({@code t} 0..1): the glow fades up, and each dot, from
@@ -706,14 +592,9 @@ final class DotIcons {
         Canvas full = new Canvas(fullBitmap);
         full.drawBitmap(plateBitmap, 0, 0, null);
         full.drawBitmap(glowBitmap, null, whole, smooth);
-        // The lit dots alone, for the scan line to tint.
-        Bitmap litBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas litCanvas = new Canvas(litBitmap);
         for (int i = 0; i < dots.x.length; i++) {
             paint.setColor(dots.color[i]);
             full.drawCircle(dots.x[i], dots.y[i], dots.radius, paint);
-            paint.setColor(0xFF000000 | dots.color[i]);
-            litCanvas.drawCircle(dots.x[i], dots.y[i], dots.radius, paint);
         }
         // Nothing outside the icon's own shape: no dot or glow spills past its edge, however
         // the launcher scales it (opening an app zooms the icon up).
@@ -726,7 +607,7 @@ final class DotIcons {
         // Kept on the GPU: no upload when drawn, and off the app's Java heap.
         dots.full = toHardware(fullBitmap);
         dots.plate = toHardware(plateBitmap);
-        dots.lit = toHardware(litBitmap);
+
         dots.glow = toHardware(glowBitmap);
         return dots;
     }
