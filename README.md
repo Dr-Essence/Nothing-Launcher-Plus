@@ -53,9 +53,10 @@ plus your folders.
 - **Living dots**: on top of its motion, every emoji plays an effect inside its own dots,
   chosen for what it is. A TV fills with static (and now and then colour bars), a crystal ball
   swirls with magic, faces blink (a real blink: half-closed, shut into a "‿" lash line, open),
-  tears and sweat run down the face and form again dot by dot, fire flickers, clouds rain,
+  a bead of sweat or a tear swells, hangs and runs down whole, fire flickers, clouds rain,
   coffee steams, buildings light their windows one by one, speakers pulse, notes rise, stars
-  twinkle, clocks tick, sirens flash, fish blow bubbles, and so on, mapped to every keyboard
+  twinkle, clocks tick, sirens flash, fish blow bubbles into the open water, beer fizzes
+  inside the glass, and so on, mapped to every keyboard
   emoji by the same generator as the motions.
 - **Glowing screens**: the lit dots on the emoji screen throw a soft halo of their own colour
   into the glass (the frame stretched with smooth filtering, plus a half-resolution copy for
@@ -79,7 +80,7 @@ plus your folders.
   pulled out; ⚽ 🏀 ⚾ 🏐 roll with their shading held still and 🏈 🏉 tumble end over end;
   🎾's ball is bounced on the racket; 🎲 tumbles; 🌍 🌎 🌏 turn as globes and 🌐 is drawn afresh as a see-through wire globe whose meridians go right round, bright in front and dim behind; ⌛ ⏳ drain and
   are turned over; 🎠's horse rides its pole; 🎡 turns behind its legs; ☯️ ☸️ 🔁 turn on
-  their tiles; 🚓 🚑 🚒 flash their roof lights; 🚘 🚖 🚍 flash their headlights; 🛸's rim
+  their tiles, as do 🔃 🔄; 🚓 🚑 🚒 flash their roof lights; 🚘 🚖 🚍 flash their headlights; 🛸's rim
   lights chase; 🚲's spoked wheels turn; 🚦 🚥 cycle with a glow; ☎️ rattles its handset,
   📞 ⏰ ring, 🛎️'s plunger is struck; 🧰's clasps flip down, its lid swings open on its hinge showing the shadowed inside, drops shut and the clasps snap back with a glint; 🎛️'s knobs are turned by hand one after another; 🔌 sparks between its pins; ⚛️'s electrons orbit;
   ⚡ 🌩️ 💥 flash; 📶 🛜 fill bar by bar; buttons and keycaps are tapped; 👾 marches; 🎚️'s
@@ -89,7 +90,13 @@ plus your folders.
   do theirs.
 - **Faces and feelings**: 😍 😻 🥰 😘 💌's own hearts beat lub-dub; 😵 😵‍💫 have stars
   circling the head; 😴's drawn Zs light one after another, 😪's bubble breathes, sleepers
-  without drawn Zs give off real Z letters; 😤 huffs.
+  without drawn Zs give off real Z letters; 😤's clouds burst out with each snort; 😅 😰 😓
+  😥 🥵's sweat and 😢 🥲 😿's tears are lifted off whole and slide down, the skin under
+  them patched and the outline redrawn; 🥹's tears well and shimmer; 😗 😚 😙 😽 blow a little
+  heart; 😇 👼's halo hovers; 😈 👿 🧐 flash a glint; 😎 catches the light on its lenses; 👀
+  glance about within their whites; 💔 cracks apart and mends; 🤖's antenna lamp blinks; 🤹
+  juggles, the balls passing behind the head; only round open eyes blink, never ^ ^ or
+  brows; angry faces flush from the chin up.
 - **Particles are smooth**: steam, smoke, snow, rain, bubbles, confetti, sparks, hearts,
   glints and musical notes are drawn soft and anti-aliased between the dots, so they glide
   rather than jump; glows are a halo of the emoji's own light and never wash it out.

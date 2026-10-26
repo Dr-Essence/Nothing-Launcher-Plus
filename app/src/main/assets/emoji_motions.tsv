@@ -1407,7 +1407,7 @@
 ⚰️	6	PULSE	SHINE	coffin
 🪦	6	PULSE	SHINE	headstone
 ⚱️	6	PULSE	SHINE	funeral urn
-🧿	6	PULSE	MAGIC	nazar amulet
+🧿	6	PULSE	GLOW	nazar amulet
 🪬	6	PULSE	TWINKLE	hamsa
 🗿	6	PULSE	SHINE	moai
 🪧	6	PULSE	SHINE	placard
@@ -1452,8 +1452,8 @@
 ↪️	7	POINT_LEFT	SHINE	left arrow curving right
 ⤴️	7	POINT_RIGHT	SHINE	right arrow curving up
 ⤵️	7	POINT_RIGHT	SHINE	right arrow curving down
-🔃	7	SPIN	SHINE	clockwise vertical arrows
-🔄	7	SPIN	SHINE	counterclockwise arrows button
+🔃	7	NONE	SPIN:0.5,0.5,0.4,-120	clockwise vertical arrows
+🔄	7	NONE	SPIN:0.5,0.5,0.4,120	counterclockwise arrows button
 🔙	7	POINT_LEFT	SHINE	BACK arrow
 🔚	7	PULSE	SHINE	END arrow
 🔛	7	PULSE	SHINE	ON! arrow

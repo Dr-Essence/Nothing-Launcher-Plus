@@ -613,7 +613,8 @@ EFFECT_REVIEW = {
     "japanese dolls": "SHINE", "carp streamer": "SWAY", "red envelope": "SHINE",
     "ribbon": "SHINE", "reminder ribbon": "SHINE", "admission tickets": "SHINE",
     "ticket": "SHINE", "mirror ball": "TWINKLE", "alembic": "SHINE", "test tube": "FIZZ",
-    "petri dish": "FIZZ",
+    "petri dish": "FIZZ", "clockwise vertical arrows": "SPIN:0.5,0.5,0.4,-120",
+    "counterclockwise arrows button": "SPIN:0.5,0.5,0.4,120", "nazar amulet": "GLOW",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 
@@ -623,6 +624,7 @@ EXACT.update({name: "NONE" for name in [
     "globe showing europe-africa", "globe showing americas", "globe showing asia-australia",
     "globe with meridians", "compass", "carousel horse", "hourglass done",
     "hourglass not done", "tornado", "cyclone", "repeat button", "repeat single button",
+    "clockwise vertical arrows", "counterclockwise arrows button",
     "tennis", "bullseye", "game die", "slot machine", "level slider", "control knobs",
     "maracas", "telephone", "telephone receiver", "vibration mode", "bellhop bell",
     "film projector", "clapper board", "camera", "camera with flash", "locked", "toolbox",
