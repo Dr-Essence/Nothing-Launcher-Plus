@@ -4,36 +4,34 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
-import android.graphics.Paint;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
 
 /**
- * A quick settings tile icon drawn in NDot dots. It wraps the tile's own icon and draws it,
- * frame by frame, as dots: the tile's tint (on, off, unavailable) still colours it, and the
- * icon's own animations (Wi-Fi turning on, the torch, rotation lock) still play, now in dots.
+ * A quick settings tile icon lit the clock's green with its soft glow. It wraps the tile's own
+ * icon and draws it frame by frame, so the icon's animations (Wi-Fi turning on, the torch,
+ * rotation lock) still play, in green.
  */
-class DotDrawable extends Drawable implements Drawable.Callback {
+class GlowDrawable extends Drawable implements Drawable.Callback {
 
-    /** Dots across the icon's height. */
-    private static final int ROWS = 13;
+    /** The glow's reach, in icon heights. */
+    private static final float GLOW = 0.12f;
 
     final Drawable inner;
-    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private ColorFilter filter;
     private int alpha = 255;
     private Bitmap buffer;
 
-    DotDrawable(Drawable inner) {
+    GlowDrawable(Drawable inner) {
         this.inner = inner;
         inner.setCallback(this);
     }
 
-    /** The icon wrapped as dots, animated or not as it is. */
-    static DotDrawable wrap(Drawable inner) {
-        return inner instanceof Animatable ? new Animated(inner) : new DotDrawable(inner);
+    /** The icon wrapped in green, animated or not as it is. */
+    static GlowDrawable wrap(Drawable inner) {
+        return inner instanceof Animatable ? new Animated(inner) : new GlowDrawable(inner);
     }
 
     @Override
@@ -50,12 +48,10 @@ class DotDrawable extends Drawable implements Drawable.Callback {
         buffer.eraseColor(Color.TRANSPARENT);
         inner.setBounds(0, 0, w, h);
         inner.draw(new Canvas(buffer));
-        paint.setColorFilter(filter);
         canvas.save();
         canvas.translate(b.left, b.top);
-        // Tinted by the tile: white dots the tint recolours. Untinted: the icon's colours.
-        DotGlyph.draw(canvas, buffer, h / (float) ROWS, filter != null ? Color.WHITE : 0,
-                alpha / 255f, paint);
+        // Green whatever the tile's tint: the tint is set (setColorFilter) but not drawn.
+        GreenGlow.draw(canvas, buffer, h * GLOW, alpha / 255f);
         canvas.restore();
     }
 
@@ -127,8 +123,8 @@ class DotDrawable extends Drawable implements Drawable.Callback {
         unscheduleSelf(what);
     }
 
-    /** An animated icon: its animation started and stopped through the dots. */
-    private static final class Animated extends DotDrawable implements Animatable {
+    /** An animated icon: its animation started and stopped through the wrapper. */
+    private static final class Animated extends GlowDrawable implements Animatable {
 
         Animated(Drawable inner) {
             super(inner);

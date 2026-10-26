@@ -32,8 +32,8 @@ final class StatusBar {
     private static final Map<TextView, Boolean> GREEN =
             Collections.synchronizedMap(new WeakHashMap<>());
 
-    /** The spacing of NDot's dots in the clock, in pixels: the status icons' dots match it. */
-    static volatile float dotPitch;
+    /** The reach of the clock's glow, in pixels: the status icons glow as far. */
+    static volatile float glowRadius;
 
     private StatusBar() {
     }
@@ -51,7 +51,7 @@ final class StatusBar {
                     }
                 });
         Hooks.install("status bar clock", () -> hookClock(cl, store));
-        Hooks.install("dot status icons", () -> DotStatusIcons.install(cl, store));
+        Hooks.install("green status icons", () -> GlowIcons.install(cl, store));
         Hooks.install("status bar battery", () -> hookBattery(cl, store));
     }
 
@@ -64,8 +64,7 @@ final class StatusBar {
                 if (store.get().ndotStatusBar) {
                     TextView clock = (TextView) param.thisObject;
                     styleText(clock, true);
-                    // NDot stands seven dots to its capitals' 0.7 em: a dot every tenth em.
-                    dotPitch = clock.getTextSize() * 0.1f;
+                    glowRadius = clock.getTextSize() * 0.28f;
                 }
             }
         };
@@ -208,7 +207,7 @@ final class StatusBar {
         }
         GREEN.put(view, green);
         view.setTextColor(green ? LED_GREEN : 0xFFFFFFFF);
-        float glow = view.getTextSize() * 0.28f;
+        float glow = view.getTextSize() * 0.28f; // As glowRadius.
         view.setShadowLayer(glow, 0, 0, green ? GLOW : 0xAAFFFFFF);
         // The glow reaches past the text: let it show rather than be cut at the edges.
         view.setClipToOutline(false);

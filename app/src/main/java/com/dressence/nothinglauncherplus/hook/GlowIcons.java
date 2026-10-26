@@ -2,13 +2,9 @@ package com.dressence.nothinglauncherplus.hook;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,36 +25,27 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
 /**
- * The status bar's and quick settings' icons drawn in NDot. In the status bar each icon is
- * redrawn as NDot's own dots, at the very pitch of the NDot clock beside it, lit the clock's
- * green with the same soft glow. On the quick settings tiles (Android 16 draws them with
- * Compose) each tile's icon is wrapped so that it draws as dots in the tile's own colours,
- * its on and off animations still playing.
+ * The status bar's and quick settings' icons lit the green of the NDot clock, with its soft
+ * glow: their own shapes, crisp, only the colour changed. The quick settings tiles (Android 16
+ * draws them with Compose) have each icon wrapped so it draws green, its animations playing.
  */
-final class DotStatusIcons {
+final class GlowIcons {
 
     private static final int NONE = 0;
     private static final int STATUS = 1;
     private static final int TILE = 2;
-    /** Dots across a tile icon's height (tiles drawn with views, on older releases). */
-    private static final int ROWS_TILE = 13;
-    private static final int GREEN = 0xFF4CFF7A;
-    /** The glow round the lit dots: as round the clock's. */
-    private static final int GLOW = 0xAA2BE86A;
+    /** The glow's reach round a tile icon, in icon heights. */
+    private static final float GLOW = 0.12f;
 
-    private static final String PKG_TILES = "com.android.systemui.qs.panels.ui.compose.infinitegrid";
+    private static final String PKG_TILES =
+            "com.android.systemui.qs.panels.ui.compose.infinitegrid";
     private static final String CLS_ICON = "com.android.systemui.common.shared.model.Icon";
 
     /** Per view: which kind of icon it is, worked out once it is in its window. */
     private static final Map<View, Integer> KIND = new WeakHashMap<>();
-    private static final Map<ImageView, Bitmap[]> BUFFERS = new WeakHashMap<>();
-    private static final Paint DOT = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private static final Paint GREEN_DOTS = new Paint(Paint.FILTER_BITMAP_FLAG);
-    private static final Paint HALO = new Paint(Paint.FILTER_BITMAP_FLAG);
-    private static final Paint BLUR = new Paint();
-    private static float blurPitch;
+    private static final Map<ImageView, Bitmap> BUFFERS = new WeakHashMap<>();
 
-    /** Tile icons already wrapped as dots, by the icon they were: each wrapped only once. */
+    /** Tile icons already wrapped in green, by the icon they were: each wrapped only once. */
     private static final Map<Object, Object> TILE_ICONS =
             Collections.synchronizedMap(new LinkedHashMap<Object, Object>(64, 0.75f, true) {
                 @Override
@@ -68,12 +55,7 @@ final class DotStatusIcons {
             });
     private static boolean loggedTiles;
 
-    static {
-        GREEN_DOTS.setColorFilter(new PorterDuffColorFilter(GREEN, PorterDuff.Mode.SRC_IN));
-        HALO.setColorFilter(new PorterDuffColorFilter(GLOW, PorterDuff.Mode.SRC_IN));
-    }
-
-    private DotStatusIcons() {
+    private GlowIcons() {
     }
 
     static void install(ClassLoader cl, ConfigStore store) {
@@ -105,14 +87,14 @@ final class DotStatusIcons {
                         }
                     }
                 });
-        Hooks.install("dot quick settings tiles", () -> hookComposeTiles(cl, store));
+        Hooks.install("green quick settings tiles", () -> hookComposeTiles(cl, store));
     }
 
     // ---- Quick settings tiles drawn with Compose (Android 16) ----
 
     /**
      * Every tile icon goes through {@code SmallTileContent(iconProvider, ...)}: its provider is
-     * wrapped so the icon it gives is the same icon as dots. And the icon that tiles get from
+     * wrapped so the icon it gives is the same icon in green. And the icon that tiles get from
      * their state ({@code getTileIcon}), where it is still there to hook.
      */
     private static void hookComposeTiles(ClassLoader cl, ConfigStore store) {
@@ -129,21 +111,21 @@ final class DotStatusIcons {
                     for (int i = 0; i < param.args.length; i++) {
                         Object arg = param.args[i];
                         if (function1.isInstance(arg) && !Proxy.isProxyClass(arg.getClass())) {
-                            param.args[i] = dotProvider(cl, function1, arg, store);
+                            param.args[i] = greenProvider(cl, function1, arg, store);
                         }
                     }
                 }
             });
             hooked++;
         }
-        Hooks.log("dot quick settings: " + hooked + " tile icon hooks");
+        Hooks.log("green quick settings: " + hooked + " tile icon hooks");
         try {
             Class<?> tile = XposedHelpers.findClass(PKG_TILES + ".TileKt", cl);
             XposedBridge.hookAllMethods(tile, "getTileIcon", new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
                     if (store.get().ndotQuickSettings && param.args[0] instanceof Context) {
-                        param.setResult(asDots((Context) param.args[0], param.getResult(), cl));
+                        param.setResult(inGreen((Context) param.args[0], param.getResult(), cl));
                     }
                 }
             });
@@ -152,8 +134,8 @@ final class DotStatusIcons {
         }
     }
 
-    /** {@code provider} (a {@code Context.() -> Icon}) giving its icon as dots. */
-    private static Object dotProvider(ClassLoader cl, Class<?> function1, Object provider,
+    /** {@code provider} (a {@code Context.() -> Icon}) giving its icon in green. */
+    private static Object greenProvider(ClassLoader cl, Class<?> function1, Object provider,
             ConfigStore store) {
         return Proxy.newProxyInstance(cl, new Class<?>[] {function1}, (proxy, method, args) -> {
             switch (method.getName()) {
@@ -161,7 +143,7 @@ final class DotStatusIcons {
                     Object icon = method.invoke(provider, args);
                     if (store.get().ndotQuickSettings && args != null && args.length == 1
                             && args[0] instanceof Context) {
-                        return asDots((Context) args[0], icon, cl);
+                        return inGreen((Context) args[0], icon, cl);
                     }
                     return icon;
                 case "equals":
@@ -178,10 +160,10 @@ final class DotStatusIcons {
 
     /**
      * A tile's {@code Icon} (a resource or a loaded drawable) as a loaded icon whose drawable is
-     * that icon in dots. The same icon always gives the same dots, so Compose keeps it and its
+     * that icon in green. The same icon always gives the same drawable, so Compose keeps it and its
      * animation rather than starting it again on every redraw.
      */
-    private static Object asDots(Context context, Object icon, ClassLoader cl) {
+    private static Object inGreen(Context context, Object icon, ClassLoader cl) {
         if (icon == null) {
             return null;
         }
@@ -196,7 +178,7 @@ final class DotStatusIcons {
                 drawable = context.getDrawable((Integer) XposedHelpers.callMethod(icon, "getRes"));
             } else if (name.equals(CLS_ICON + "$Loaded")) {
                 drawable = (Drawable) XposedHelpers.callMethod(icon, "getDrawable");
-                if (drawable instanceof DotDrawable) {
+                if (drawable instanceof GlowDrawable) {
                     return icon;
                 }
             } else {
@@ -206,15 +188,15 @@ final class DotStatusIcons {
                 return icon;
             }
             Object description = XposedHelpers.callMethod(icon, "getContentDescription");
-            Object dots = loaded(cl, DotDrawable.wrap(drawable), description);
-            TILE_ICONS.put(icon, dots);
+            Object green = loaded(cl, GlowDrawable.wrap(drawable), description);
+            TILE_ICONS.put(icon, green);
             if (!loggedTiles) {
                 loggedTiles = true;
-                Hooks.log("dot quick settings: tile icons drawn in dots");
+                Hooks.log("green quick settings: tile icons drawn green");
             }
-            return dots;
+            return green;
         } catch (Throwable t) {
-            Hooks.log("dot quick settings: " + t);
+            Hooks.log("green quick settings: " + t);
             return icon;
         }
     }
@@ -287,7 +269,7 @@ final class DotStatusIcons {
         return kind;
     }
 
-    /** Draws {@code view}'s icon as dots; false to let it draw itself. */
+    /** Draws {@code view}'s icon green and glowing; false to let it draw itself. */
     private static boolean draw(ImageView view, Canvas canvas, int kind) {
         Drawable d = view.getDrawable();
         int w = view.getWidth();
@@ -295,15 +277,13 @@ final class DotStatusIcons {
         if (d == null || w <= 0 || h <= 0 || w > 512 || h > 512) {
             return false;
         }
-        Bitmap[] buffers = BUFFERS.get(view);
-        if (buffers == null || buffers[0].getWidth() != w || buffers[0].getHeight() != h) {
-            buffers = new Bitmap[] {Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888),
-                    Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)};
-            BUFFERS.put(view, buffers);
+        Bitmap icon = BUFFERS.get(view);
+        if (icon == null || icon.getWidth() != w || icon.getHeight() != h) {
+            icon = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            BUFFERS.put(view, icon);
         }
-        Bitmap icon = buffers[0];
         icon.eraseColor(Color.TRANSPARENT);
-        // The icon exactly as the view would draw it: padding, scaling and tint included.
+        // The icon exactly as the view would draw it: padding, scaling and state included.
         Canvas c = new Canvas(icon);
         c.translate(view.getPaddingLeft(), view.getPaddingTop());
         Matrix m = view.getImageMatrix();
@@ -311,29 +291,9 @@ final class DotStatusIcons {
             c.concat(m);
         }
         d.draw(c);
-        float alpha = view.getImageAlpha() / 255f;
-        if (kind == TILE) {
-            int content = Math.max(1, h - view.getPaddingTop() - view.getPaddingBottom());
-            DotGlyph.draw(canvas, icon, content / (float) ROWS_TILE, 0, alpha, DOT);
-            return true;
-        }
-        // The status bar: dots at the clock's own dot pitch, lit green, glowing as it does.
-        float pitch = StatusBar.dotPitch > 0 ? StatusBar.dotPitch : h / 13f;
-        Bitmap dots = buffers[1];
-        dots.eraseColor(Color.TRANSPARENT);
-        DotGlyph.draw(new Canvas(dots), icon, pitch, Color.WHITE, 1, DOT);
-        if (blurPitch != pitch) {
-            blurPitch = pitch;
-            BLUR.setMaskFilter(new BlurMaskFilter(pitch * 1.1f, BlurMaskFilter.Blur.NORMAL));
-        }
-        int[] offset = new int[2];
-        Bitmap glow = dots.extractAlpha(BLUR, offset);
-        int a = Math.round(255 * alpha);
-        HALO.setAlpha(a);
-        canvas.drawBitmap(glow, offset[0], offset[1], HALO);
-        glow.recycle();
-        GREEN_DOTS.setAlpha(a);
-        canvas.drawBitmap(dots, 0, 0, GREEN_DOTS);
+        float radius = kind == STATUS && StatusBar.glowRadius > 0 ? StatusBar.glowRadius
+                : h * GLOW;
+        GreenGlow.draw(canvas, icon, radius, view.getImageAlpha() / 255f);
         letGlowShow(view);
         return true;
     }

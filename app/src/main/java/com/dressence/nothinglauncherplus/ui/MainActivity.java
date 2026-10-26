@@ -89,12 +89,12 @@ public class MainActivity extends Activity {
                     store.save(this);
                 });
         ui.switchRow("Ndot status bar",
-                "Clock, battery and every status icon in glowing green Ndot dots",
+                "Ndot clock and date, every status icon in glowing green",
                 config.ndotStatusBar, checked -> {
                     config.ndotStatusBar = checked;
                     store.save(this);
                 });
-        ui.switchRow("Ndot quick settings", "Quick settings icons drawn as dot-matrix icons",
+        ui.switchRow("Green quick settings", "Quick settings icons in glowing green",
                 config.ndotQuickSettings, checked -> {
                     config.ndotQuickSettings = checked;
                     store.save(this);
