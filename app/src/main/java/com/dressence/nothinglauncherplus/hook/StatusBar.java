@@ -48,6 +48,7 @@ final class StatusBar {
                     }
                 });
         Hooks.install("status bar clock", () -> hookClock(cl, store));
+        Hooks.install("dot status icons", () -> DotStatusIcons.install(store));
         Hooks.install("status bar battery", () -> hookBattery(cl, store));
     }
 
@@ -189,7 +190,12 @@ final class StatusBar {
     }
 
     /** NDot, lit green (or white, for a view drawn through the green filter), glowing. */
-    private static void styleText(TextView view, boolean green) {
+    /** True once {@code view} has been set in green NDot. */
+    static boolean styled(TextView view) {
+        return GREEN.containsKey(view);
+    }
+
+    static void styleText(TextView view, boolean green) {
         Typeface ndot = NdotFont.get(view.getContext());
         if (ndot != null && view.getTypeface() != ndot) {
             view.setTypeface(ndot);

@@ -109,6 +109,11 @@ plus your folders.
   glance about within their whites; 💔 cracks apart and mends; 🤖's antenna lamp blinks; 🤹
   juggles, the balls passing behind the head; only round open eyes blink, never ^ ^ or
   brows; angry faces flush from the chin up.
+- **Dot-matrix status and quick settings icons** (options): every status bar icon (network
+  type, signal, Wi-Fi, airplane mode, headphones, alarm, notifications...) is drawn as round
+  NDot dots in the glowing green of the clock, and the quick settings tile icons as dots in
+  their own on/off colours. Each icon is redrawn as dots every frame, so state changes and
+  the tiles' animations still play.
 - **Ndot status bar** (option): System UI is in the module's scope; the status bar clock and
   battery are drawn in Nothing's NDot, lit the green of the folder name panels with a soft
   glow, on any wallpaper. Another option puts the date before the time. Restart System UI
