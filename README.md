@@ -63,8 +63,11 @@ plus your folders.
   the wider falloff), redone every frame so the glow moves with the animation.
 - **Dot-matrix app icons** (option): every app icon the launcher draws, on the home screen, in
   the drawer, in folders and in search, is redrawn as a 22 x 22 panel of round dots in the
-  icon's own colours, each lit dot glowing softly on solid dark glass in the icon's own shape,
-  so icons stay opaque and the wallpaper never shows through them. One hook on the launcher's icon drawable
+  icon's own colours on dark glass in the icon's own shape, every dot of the panel showing
+  (the unlit ones faint), the lit ones blooming softly into the glass. Like an old dot
+  screen, each icon on its own timing now and then rolls a faint green scan line down,
+  flickers dim for a moment or jumps a band of rows a dot sideways; the emoji folder
+  screens do the same. One hook on the launcher's icon drawable
   covers every surface; each icon is converted once and cached. When icons come into view
   (the drawer opening, going home, a folder opening) each powers on like a little screen: dots
   light from the centre outwards on a spring with a brief white LED flash, the glow fading up

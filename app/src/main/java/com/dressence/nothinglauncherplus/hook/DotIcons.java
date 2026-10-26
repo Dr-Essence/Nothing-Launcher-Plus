@@ -5,9 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.RadialGradient;
 import android.graphics.Rect;
-import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -53,8 +51,9 @@ final class DotIcons {
     private static final float POWER_ON_MS = 560;
     private static final long MAX_STAGGER_MS = 110;
     private static final int GLOW_SCALE = 4;
-    /** How bright the icon shows between its dots: an LED panel's unlit dots. */
-    private static final float PLATE_DIM = 0.12f;
+    /** The glass between the dots, and an unlit dot on it. */
+    private static final int GLASS = 0xFF060606;
+    private static final int UNLIT = 0xFF1C1C1C;
 
     /** Marks an icon that could not be converted. */
     private static final Dots FAILED = new Dots();
@@ -170,7 +169,7 @@ final class DotIcons {
         long now = SystemClock.uptimeMillis();
         long[] seen = SEEN.get(d);
         if (seen == null) {
-            seen = new long[2];
+            seen = new long[3];
             SEEN.put(d, seen);
         }
         Dots dots = dots(icon, d);
@@ -194,7 +193,7 @@ final class DotIcons {
             canvas.scale(scale, scale, bounds.exactCenterX(), bounds.exactCenterY());
         }
         if (t >= 1) {
-            canvas.drawBitmap(dots.full, null, bounds, paint);
+            drawWithArtifacts(canvas, bounds, dots, paint, d, icon, now, seen);
         } else {
             powerOn(canvas, bounds, dots, Math.max(0, t), paint.getAlpha());
             d.invalidateSelf();
@@ -205,6 +204,117 @@ final class DotIcons {
         canvas.restoreToCount(save);
         return true;
     }
+
+    /** Each icon's own timing of its screen's quirks, in seconds: period and offset. */
+    private static final float SCAN_EVERY = 11;
+    private static final float SCAN_TIME = 1.5f;
+    private static final float FLICKER_EVERY = 27;
+    private static final float FLICKER_TIME = 0.16f;
+    private static final float GLITCH_EVERY = 37;
+    private static final float GLITCH_TIME = 0.1f;
+    private static final Paint SCAN = new Paint();
+    static {
+        SCAN.setXfermode(new android.graphics.PorterDuffXfermode(
+                android.graphics.PorterDuff.Mode.SRC_ATOP));
+    }
+
+    /** One of an icon's quirks: how far through it is (0..1), or -1 if it is not on now. */
+    private static float quirk(float t, float every, float time, int seed, int which) {
+        float period = every * (0.7f + 0.6f * hash(seed, which, 1));
+        float local = (t + hash(seed, which, 2) * period) % period;
+        return local < time ? local / time : -1;
+    }
+
+    /** Seconds until that quirk next starts. */
+    private static float untilQuirk(float t, float every, float time, int seed, int which) {
+        float period = every * (0.7f + 0.6f * hash(seed, which, 1));
+        float local = (t + hash(seed, which, 2) * period) % period;
+        return local < time ? 0 : period - local;
+    }
+
+    private static float hash(int a, int b, int c) {
+        int h = a * 0x27d4eb2d ^ b * 0x165667b1 ^ c * 0x9e3779b9;
+        h ^= h >>> 15;
+        h *= 0x2c1b3c6d;
+        h ^= h >>> 12;
+        return (h & 0xFFFFFF) / (float) 0x1000000;
+    }
+
+    /**
+     * The icon at rest, with the quirks of an old dot screen, each icon on its own timing:
+     * now and then a faint green scan line rolls down the panel, the panel flickers dim for
+     * a moment, or a band of rows jumps a dot sideways and back.
+     */
+    private static void drawWithArtifacts(Canvas canvas, Rect bounds, Dots dots, Paint paint,
+            Drawable d, Bitmap icon, long now, long[] seen) {
+        int seed = System.identityHashCode(icon);
+        float t = (now % 3_600_000L) / 1000f;
+        float scan = quirk(t, SCAN_EVERY, SCAN_TIME, seed, 1);
+        float flicker = quirk(t, FLICKER_EVERY, FLICKER_TIME, seed, 2);
+        float glitch = quirk(t, GLITCH_EVERY, GLITCH_TIME, seed, 3);
+        int alpha = paint.getAlpha();
+        if (flicker >= 0) {
+            // Two quick dips, as a tired panel does.
+            float dip = (float) Math.abs(Math.sin(flicker * Math.PI * 2));
+            paint.setAlpha(Math.round(alpha * (1 - 0.28f * dip)));
+        }
+        if (glitch >= 0) {
+            float pitch = bounds.height() / (float) GRID;
+            int row = Math.round(hash(seed, (int) (t / GLITCH_EVERY), 4) * (GRID - 3));
+            float top = bounds.top + row * pitch;
+            float bottom = top + pitch * (2 + Math.round(hash(seed, 7, 5) * 2));
+            canvas.save();
+            canvas.clipOutRect(bounds.left, top, bounds.right, bottom);
+            canvas.drawBitmap(dots.full, null, bounds, paint);
+            canvas.restore();
+            canvas.save();
+            canvas.clipRect(bounds.left, top, bounds.right, bottom);
+            canvas.translate(pitch, 0);
+            canvas.drawBitmap(dots.full, null, bounds, paint);
+            canvas.restore();
+        } else if (scan >= 0) {
+            int layer = canvas.saveLayer(bounds.left, bounds.top, bounds.right, bounds.bottom,
+                    null);
+            canvas.drawBitmap(dots.full, null, bounds, paint);
+            // The line rolls from above the panel to below it, easing in and out.
+            float band = bounds.height() * 0.22f;
+            float e = scan * scan * (3 - 2 * scan);
+            float y = bounds.top - band + e * (bounds.height() + band * 2);
+            float fade = (float) Math.sin(scan * Math.PI);
+            int peak = Math.round(110 * fade) << 24 | SCAN_GREEN;
+            SCAN.setShader(new android.graphics.LinearGradient(0, y - band / 2, 0, y + band / 2,
+                    new int[] {SCAN_GREEN, peak, SCAN_GREEN}, null,
+                    android.graphics.Shader.TileMode.CLAMP));
+            canvas.drawRect(bounds.left, y - band / 2, bounds.right, y + band / 2, SCAN);
+            canvas.restoreToCount(layer);
+        } else {
+            canvas.drawBitmap(dots.full, null, bounds, paint);
+        }
+        paint.setAlpha(alpha);
+        if (scan >= 0 || flicker >= 0 || glitch >= 0) {
+            d.invalidateSelf();
+            return;
+        }
+        // Asleep until the next quirk: one redraw is booked for it.
+        float wait = Math.min(untilQuirk(t, SCAN_EVERY, SCAN_TIME, seed, 1),
+                Math.min(untilQuirk(t, FLICKER_EVERY, FLICKER_TIME, seed, 2),
+                        untilQuirk(t, GLITCH_EVERY, GLITCH_TIME, seed, 3)));
+        long at = now + Math.max(16, Math.round(wait * 1000));
+        if (seen[2] > now && seen[2] <= at) {
+            return;
+        }
+        seen[2] = at;
+        WeakReference<Drawable> ref = new WeakReference<>(d);
+        MAIN.postAtTime(() -> {
+            Drawable drawable = ref.get();
+            if (drawable != null) {
+                drawable.invalidateSelf();
+            }
+        }, at);
+    }
+
+    /** The scan line's colour (no alpha): the green of an old phosphor screen. */
+    private static final int SCAN_GREEN = 0x4CFF8A;
 
     /**
      * One frame of an icon powering on ({@code t} 0..1): the glow fades up, and each dot, from
@@ -334,6 +444,24 @@ final class DotIcons {
             });
         });
         return null;
+    }
+
+    /** The dots drawn at 1/{@code down} size, {@code radius} each: blurred when stretched. */
+    private static Bitmap bloom(Dots dots, int w, int h, int down, float radius) {
+        Bitmap b = Bitmap.createBitmap(Math.max(1, w / down), Math.max(1, h / down),
+                Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(b);
+        c.scale(b.getWidth() / (float) w, b.getHeight() / (float) h);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        for (int i = 0; i < dots.x.length; i++) {
+            int col = dots.color[i];
+            // Bright colours bloom more than dim ones.
+            float luma = (0.3f * ((col >> 16) & 0xFF) + 0.59f * ((col >> 8) & 0xFF)
+                    + 0.11f * (col & 0xFF)) / 255f;
+            p.setColor(col & 0xFFFFFF | Math.round(255 * (0.35f + 0.65f * luma)) << 24);
+            c.drawCircle(dots.x[i], dots.y[i], radius, p);
+        }
+        return b;
     }
 
     /**
@@ -476,6 +604,8 @@ final class DotIcons {
         float pitch = w / (float) GRID;
         int rows = Math.max(1, Math.round(h / pitch));
         int[] cells = new int[GRID * rows];
+        // Cells inside the icon's shape that stay dark: the panel's unlit dots.
+        boolean[] off = new boolean[GRID * rows];
         int lit = 0;
         for (int gy = 0; gy < rows; gy++) {
             int y0 = Math.round(gy * pitch);
@@ -501,6 +631,7 @@ final class DotIcons {
                 }
                 float coverage = a / (255f * n);
                 if (coverage < OFF_BELOW) {
+                    off[gy * GRID + gx] = coverage > 0.25f;
                     continue;
                 }
                 int level = Math.min(LEVEL_ALPHA.length,
@@ -516,46 +647,55 @@ final class DotIcons {
         dots.x = new float[lit];
         dots.y = new float[lit];
         dots.color = new int[lit];
-        // The glow is a blur anyway: a quarter of the size, stretched smoothly when drawn.
+        int k = 0;
+        for (int i = 0; i < cells.length; i++) {
+            if (cells[i] != 0) {
+                dots.x[k] = (i % GRID + 0.5f) * pitch;
+                dots.y[k] = (i / GRID + 0.5f) * pitch;
+                dots.color[k] = cells[i];
+                k++;
+            }
+        }
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        Paint smooth = new Paint(Paint.FILTER_BITMAP_FLAG);
+        Rect whole = new Rect(0, 0, w, h);
+        // The glass: near black in the icon's shape, with every dot of the panel showing, the
+        // unlit ones a faint grey, so it reads as a little screen even where it is dark.
+        Bitmap plateBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas plate = new Canvas(plateBitmap);
+        Paint glass = new Paint(Paint.FILTER_BITMAP_FLAG);
+        glass.setColorFilter(new android.graphics.PorterDuffColorFilter(GLASS,
+                android.graphics.PorterDuff.Mode.SRC_IN));
+        plate.drawBitmap(icon, 0, 0, glass);
+        paint.setColor(UNLIT);
+        for (int i = 0; i < cells.length; i++) {
+            if (cells[i] != 0 || off[i]) {
+                plate.drawCircle((i % GRID + 0.5f) * pitch, (i / GRID + 0.5f) * pitch,
+                        dots.radius, paint);
+            }
+        }
+        // The glow: light from the dots spreading into the glass, soft near and wide, as a
+        // bloom (the dots drawn small and stretched smoothly back up), brightest where the
+        // dots are brightest.
+        Bitmap near = bloom(dots, w, h, 5, pitch * 1.1f);
+        Bitmap wide = bloom(dots, w, h, 11, pitch * 1.6f);
         Bitmap glowBitmap = Bitmap.createBitmap(Math.max(1, w / GLOW_SCALE),
                 Math.max(1, h / GLOW_SCALE), Bitmap.Config.ARGB_8888);
         Canvas glow = new Canvas(glowBitmap);
-        glow.scale(glowBitmap.getWidth() / (float) w, glowBitmap.getHeight() / (float) h);
-        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        float halo = pitch * 1.5f;
-        int k = 0;
-        for (int i = 0; i < cells.length; i++) {
-            int c = cells[i];
-            if (c == 0) {
-                continue;
-            }
-            float cx = (i % GRID + 0.5f) * pitch;
-            float cy = (i / GRID + 0.5f) * pitch;
-            dots.x[k] = cx;
-            dots.y[k] = cy;
-            dots.color[k] = c;
-            k++;
-            int rgb = c & 0xFFFFFF;
-            paint.setShader(new RadialGradient(cx, cy, halo,
-                    new int[] {rgb | 0x40000000, rgb | 0x14000000, rgb},
-                    new float[] {0, 0.5f, 1}, Shader.TileMode.CLAMP));
-            glow.drawCircle(cx, cy, halo, paint);
-        }
-        // Behind the dots, the icon itself, dimmed almost to black, as a dot display's glass:
-        // the icon stays solid and its own size, the wallpaper never shows through it, and
-        // white dots still read as white.
-        Bitmap plateBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Paint platePaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
-        android.graphics.ColorMatrix dim = new android.graphics.ColorMatrix();
-        dim.setScale(PLATE_DIM, PLATE_DIM, PLATE_DIM, 1);
-        platePaint.setColorFilter(new android.graphics.ColorMatrixColorFilter(dim));
-        new Canvas(plateBitmap).drawBitmap(icon, 0, 0, platePaint);
+        Rect small = new Rect(0, 0, glowBitmap.getWidth(), glowBitmap.getHeight());
+        Paint add = new Paint(Paint.FILTER_BITMAP_FLAG);
+        add.setXfermode(new android.graphics.PorterDuffXfermode(
+                android.graphics.PorterDuff.Mode.ADD));
+        add.setAlpha(150);
+        glow.drawBitmap(wide, null, small, add);
+        add.setAlpha(110);
+        glow.drawBitmap(near, null, small, add);
+        near.recycle();
+        wide.recycle();
         Bitmap fullBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas full = new Canvas(fullBitmap);
         full.drawBitmap(plateBitmap, 0, 0, null);
-        full.drawBitmap(glowBitmap, null, new Rect(0, 0, w, h),
-                new Paint(Paint.FILTER_BITMAP_FLAG));
-        paint.setShader(null);
+        full.drawBitmap(glowBitmap, null, whole, smooth);
         for (int i = 0; i < dots.x.length; i++) {
             paint.setColor(dots.color[i]);
             full.drawCircle(dots.x[i], dots.y[i], dots.radius, paint);
@@ -566,10 +706,8 @@ final class DotIcons {
         mask.setXfermode(new android.graphics.PorterDuffXfermode(
                 android.graphics.PorterDuff.Mode.DST_IN));
         full.drawBitmap(icon, 0, 0, mask);
-        new Canvas(glowBitmap).drawBitmap(icon, null,
-                new Rect(0, 0, glowBitmap.getWidth(), glowBitmap.getHeight()), mask);
-        new Canvas(glowBitmap).drawBitmap(icon, null,
-                new Rect(0, 0, glowBitmap.getWidth(), glowBitmap.getHeight()), mask);
+        plate.drawBitmap(icon, 0, 0, mask);
+        glow.drawBitmap(icon, null, small, mask);
         // Kept on the GPU: no upload when drawn, and off the app's Java heap.
         dots.full = toHardware(fullBitmap);
         dots.plate = toHardware(plateBitmap);

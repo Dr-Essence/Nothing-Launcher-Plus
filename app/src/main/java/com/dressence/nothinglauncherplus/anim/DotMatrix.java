@@ -230,6 +230,7 @@ final class DotMatrix {
             }
             effect.apply(scene);
             System.arraycopy(scene.dots, 0, dots, 0, dots.length);
+            artifacts(time, seed ^ glyphKey.hashCode());
         }
         if (Arrays.equals(dots, shown)) {
             return false;
@@ -311,6 +312,71 @@ final class DotMatrix {
     private static float soft(float over) {
         final float k = SUPERSAMPLE * 0.6f;
         return over > 8 * k ? over : k * (float) Math.log(1 + Math.exp(over / k));
+    }
+
+    /** The green of an old phosphor screen, for its scan line. */
+    private static final int SCAN_GREEN = 0xFF4CFF8A;
+    private final int[] glitchRow = new int[GRID];
+
+    /**
+     * The quirks of an old dot screen, each cover on its own timing ({@code seed}): now and
+     * then a faint green scan line rolls down the panel, the panel flickers dim for a moment,
+     * or a band of rows jumps a dot sideways and back.
+     */
+    private void artifacts(float time, int seed) {
+        float scan = quirk(time, 12, 1.6f, seed, 1);
+        float flicker = quirk(time, 29, 0.16f, seed, 2);
+        float glitch = quirk(time, 41, 0.1f, seed, 3);
+        if (scan >= 0) {
+            float e = scan * scan * (3 - 2 * scan);
+            float y = -4 + e * (GRID + 8);
+            float fade = (float) Math.sin(scan * Math.PI);
+            for (int i = 0; i < dots.length; i++) {
+                int c = dots[i];
+                if ((c >>> 24) == 0) {
+                    continue;
+                }
+                float d = (i / GRID + 0.5f - y) / 2.2f;
+                float k = 0.42f * fade * (float) Math.exp(-d * d);
+                if (k > 0.01f) {
+                    dots[i] = (Scene.mix(c, SCAN_GREEN, k) & 0xFFFFFF) | (c & 0xFF000000);
+                }
+            }
+        }
+        if (flicker >= 0) {
+            float dip = 1 - 0.3f * (float) Math.abs(Math.sin(flicker * Math.PI * 2));
+            for (int i = 0; i < dots.length; i++) {
+                int c = dots[i];
+                dots[i] = (c & 0xFFFFFF) | Math.round((c >>> 24) * dip) << 24;
+            }
+        }
+        if (glitch >= 0) {
+            int row = Math.round(hash(seed, (int) (time / 41), 4) * (GRID - 4));
+            int rows = 2 + Math.round(hash(seed, 7, 5) * 2);
+            for (int y = row; y < Math.min(GRID, row + rows); y++) {
+                System.arraycopy(dots, y * GRID, glitchRow, 0, GRID);
+                for (int x = 0; x < GRID; x++) {
+                    dots[y * GRID + x] = x == 0 ? 0 : glitchRow[x - 1];
+                }
+            }
+        }
+        if (scan >= 0 || flicker >= 0 || glitch >= 0) {
+            scene.busy = true;
+        }
+    }
+
+    private static float quirk(float t, float every, float length, int seed, int which) {
+        float period = every * (0.7f + 0.6f * hash(seed, which, 1));
+        float local = (t + hash(seed, which, 2) * period) % period;
+        return local < length ? local / length : -1;
+    }
+
+    private static float hash(int a, int b, int c) {
+        int h = a * 0x27d4eb2d ^ b * 0x165667b1 ^ c * 0x9e3779b9;
+        h ^= h >>> 15;
+        h *= 0x2c1b3c6d;
+        h ^= h >>> 12;
+        return (h & 0xFFFFFF) / (float) 0x1000000;
     }
 
     /** Draws the glyph posed by {@code p} (null: at rest) and samples it into the dots. */
