@@ -34,6 +34,12 @@ final class GlowIcons {
     private static final int NONE = 0;
     private static final int STATUS = 1;
     private static final int TILE = 2;
+    /** Texts smaller than this (in sp) are too small for NDot's dots. */
+    private static final float SMALL_TEXT_SP = 10;
+    /** On tiles that are on, the background lit the deep green of a retro display. */
+    private static final int RETRO_GREEN = 0xFF1C5230;
+    /** The glow round tile labels: as round the clock's. */
+    private static final int LABEL_GLOW = 0xAA2BE86A;
     /** The glow's reach round a tile icon, in icon heights. */
     private static final float GLOW = 0.12f;
 
@@ -75,7 +81,9 @@ final class GlowIcons {
                         }
                     }
                 });
-        // The status bar's small texts (network speed and the like) in green NDot too.
+        // The status bar's other texts (the date over quick settings, network speed) in glowing
+        // green too: in NDot, but the tiny ones (network speed's two stacked lines) in a plain
+        // face, as NDot's dots at that size run together.
         XposedHelpers.findAndHookMethod(TextView.class, "onDraw", Canvas.class,
                 new XC_MethodHook() {
                     @Override
@@ -83,7 +91,13 @@ final class GlowIcons {
                         TextView view = (TextView) param.thisObject;
                         if (kind(view) == STATUS && store.get().ndotStatusBar
                                 && !StatusBar.styled(view)) {
-                            StatusBar.styleText(view, true);
+                            float sp = view.getTextSize()
+                                    / view.getResources().getDisplayMetrics().scaledDensity;
+                            if (sp < SMALL_TEXT_SP) {
+                                StatusBar.styleSmallText(view);
+                            } else {
+                                StatusBar.styleText(view, true);
+                            }
                         }
                     }
                 });
@@ -102,7 +116,7 @@ final class GlowIcons {
         Class<?> common = XposedHelpers.findClass(PKG_TILES + ".CommonTileKt", cl);
         int hooked = 0;
         for (Method m : common.getDeclaredMethods()) {
-            if (!m.getName().startsWith("SmallTileContent")) {
+            if (!m.getName().startsWith("SmallTileContent") || !composable(m)) {
                 continue;
             }
             XposedBridge.hookMethod(m, new XC_MethodHook() {
@@ -132,6 +146,168 @@ final class GlowIcons {
         } catch (Throwable t) {
             // Folded into its callers on this build: the provider hook covers it.
         }
+        Hooks.install("green quick settings colours", () -> hookTileColours(cl, store));
+        Hooks.install("glowing quick settings labels", () -> hookTileLabels(cl, store, common));
+    }
+
+    /** True for a composable function itself, not a lambda named after it: it takes a Composer. */
+    private static boolean composable(Method m) {
+        if (m.getName().contains("$")) {
+            return false;
+        }
+        for (Class<?> t : m.getParameterTypes()) {
+            if (t.getName().equals("androidx.compose.runtime.Composer")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Sets {@code o}'s long field {@code name}, final or not. */
+    private static void setLong(Object o, String name, long value) {
+        for (Class<?> c = o.getClass(); c != null; c = c.getSuperclass()) {
+            try {
+                java.lang.reflect.Field f = c.getDeclaredField(name);
+                f.setAccessible(true);
+                f.setLong(o, value);
+                return;
+            } catch (ReflectiveOperationException e) {
+                // Not declared here: look in the superclass.
+            }
+        }
+    }
+
+    /** A Compose {@code Color} (its packed value) from an ARGB colour. */
+    private static long composeColour(int argb) {
+        return (argb & 0xFFFFFFFFL) << 32;
+    }
+
+    /**
+     * The tiles' colours: labels green, and a tile that is on lit retro-display green where it
+     * was white (the whole tile, or the icon's part of a tile with two targets).
+     */
+    private static void hookTileColours(ClassLoader cl, ConfigStore store) {
+        Class<?> defaults = XposedHelpers.findClass(PKG_TILES + ".TileDefaults", cl);
+        XposedBridge.hookAllMethods(defaults, "getColorForState", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                Object colours = param.getResult();
+                if (colours == null || !store.get().ndotQuickSettings) {
+                    return;
+                }
+                int state = (Integer) XposedHelpers.callMethod(param.args[0], "getState");
+                boolean iconOnly = param.args[1] instanceof Boolean && (Boolean) param.args[1];
+                if (state == 2) { // Tile.STATE_ACTIVE
+                    if (iconOnly) {
+                        setLong(colours, "background",
+                                composeColour(RETRO_GREEN));
+                    }
+                    setLong(colours, "iconBackground",
+                            composeColour(RETRO_GREEN));
+                }
+                setLong(colours, "label", composeColour(GreenGlow.GREEN));
+                setLong(colours, "secondaryLabel",
+                        composeColour(0xB34CFF7A));
+            }
+        });
+    }
+
+    /** Tile labels glowing as the clock does: their text style given the same soft shadow. */
+    private static void hookTileLabels(ClassLoader cl, ConfigStore store, Class<?> common) {
+        Class<?> textStyle = XposedHelpers.findClass("androidx.compose.ui.text.TextStyle", cl);
+        Map<Object, Object> glowing = Collections.synchronizedMap(new WeakHashMap<>());
+        int hooked = 0;
+        for (Method m : common.getDeclaredMethods()) {
+            if (!m.getName().startsWith("TileLabel") || !composable(m)) {
+                continue;
+            }
+            XposedBridge.hookMethod(m, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (!store.get().ndotQuickSettings) {
+                        return;
+                    }
+                    for (int i = 0; i < param.args.length; i++) {
+                        Object style = param.args[i];
+                        if (!textStyle.isInstance(style)) {
+                            continue;
+                        }
+                        Object glow = glowing.get(style);
+                        if (glow == null) {
+                            glow = withGlow(cl, style);
+                            glowing.put(style, glow);
+                        }
+                        param.args[i] = glow;
+                    }
+                }
+            });
+            hooked++;
+        }
+        Hooks.log("green quick settings: " + hooked + " label hooks");
+    }
+
+    /**
+     * {@code style} with a soft green shadow: a copy of it, and of its span style, whose shadow
+     * is set (Compose builds both only through constructors with mangled names, so the copies
+     * are made field by field).
+     */
+    private static Object withGlow(ClassLoader cl, Object style) {
+        try {
+            Object span = XposedHelpers.getObjectField(style, "spanStyle");
+            Class<?> shadowClass = XposedHelpers.findClass("androidx.compose.ui.graphics.Shadow",
+                    cl);
+            Constructor<?> make = null;
+            for (Constructor<?> c : shadowClass.getDeclaredConstructors()) {
+                Class<?>[] t = c.getParameterTypes();
+                if (t.length >= 3 && t[0] == long.class && t[1] == long.class
+                        && t[2] == float.class) {
+                    make = c;
+                    break;
+                }
+            }
+            if (make == null) {
+                return style;
+            }
+            Object[] args = new Object[make.getParameterTypes().length];
+            args[0] = composeColour(LABEL_GLOW);
+            args[1] = 0L; // No offset: a glow all round.
+            args[2] = 4 * android.content.res.Resources.getSystem().getDisplayMetrics().density;
+            make.setAccessible(true);
+            Object shadow = make.newInstance(args);
+            Object spanCopy = shallowCopy(span);
+            XposedHelpers.setObjectField(spanCopy, "shadow", shadow);
+            Object styleCopy = shallowCopy(style);
+            XposedHelpers.setObjectField(styleCopy, "spanStyle", spanCopy);
+            return styleCopy;
+        } catch (Throwable t) {
+            Hooks.log("green quick settings: label glow: " + t);
+            return style;
+        }
+    }
+
+    /** A new object of {@code o}'s class with all its fields the same. */
+    private static Object shallowCopy(Object o) throws ReflectiveOperationException {
+        Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
+        java.lang.reflect.Field theUnsafe;
+        try {
+            theUnsafe = unsafeClass.getDeclaredField("THE_ONE");
+        } catch (NoSuchFieldException e) {
+            theUnsafe = unsafeClass.getDeclaredField("theUnsafe");
+        }
+        theUnsafe.setAccessible(true);
+        Object unsafe = theUnsafe.get(null);
+        Object copy = unsafeClass.getMethod("allocateInstance", Class.class)
+                .invoke(unsafe, o.getClass());
+        for (Class<?> c = o.getClass(); c != null && c != Object.class; c = c.getSuperclass()) {
+            for (java.lang.reflect.Field f : c.getDeclaredFields()) {
+                if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
+                    continue;
+                }
+                f.setAccessible(true);
+                f.set(copy, f.get(o));
+            }
+        }
+        return copy;
     }
 
     /** {@code provider} (a {@code Context.() -> Icon}) giving its icon in green. */
@@ -247,6 +423,11 @@ final class GlowIcons {
         }
         int kind = NONE;
         int depth = 0;
+        if (view instanceof TextView && view.getClass().getSimpleName().contains("DateView")) {
+            // The date over the pulled-down quick settings: green like the clock beside it.
+            KIND.put(view, STATUS);
+            return STATUS;
+        }
         for (ViewParent p = view.getParent(); p instanceof View && depth < 14;
                 p = p.getParent(), depth++) {
             String name = p.getClass().getSimpleName();
@@ -293,7 +474,7 @@ final class GlowIcons {
         d.draw(c);
         float radius = kind == STATUS && StatusBar.glowRadius > 0 ? StatusBar.glowRadius
                 : h * GLOW;
-        GreenGlow.draw(canvas, icon, radius, view.getImageAlpha() / 255f);
+        GreenGlow.draw(canvas, icon, radius, view.getImageAlpha() / 255f, kind == TILE);
         letGlowShow(view);
         return true;
     }

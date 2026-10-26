@@ -30,8 +30,11 @@ final class GreenGlow {
     private GreenGlow() {
     }
 
-    /** Draws {@code icon} at the canvas origin in green, glowing {@code radius} round it. */
-    static void draw(Canvas canvas, Bitmap icon, float radius, float alpha) {
+    /**
+     * Draws {@code icon} at the canvas origin in green, glowing {@code radius} round it; a
+     * {@code strong} glow (on the quick settings' dark tiles) twice as bright.
+     */
+    static void draw(Canvas canvas, Bitmap icon, float radius, float alpha, boolean strong) {
         int a = Math.round(255 * alpha);
         if (radius >= 1) {
             if (blurRadius != radius) {
@@ -42,6 +45,9 @@ final class GreenGlow {
             Bitmap glow = icon.extractAlpha(BLUR, offset);
             HALO.setAlpha(a);
             canvas.drawBitmap(glow, offset[0], offset[1], HALO);
+            if (strong) {
+                canvas.drawBitmap(glow, offset[0], offset[1], HALO);
+            }
             glow.recycle();
         }
         ICON.setAlpha(a);

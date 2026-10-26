@@ -201,9 +201,31 @@ final class StatusBar {
     }
 
     static void styleText(TextView view, boolean green) {
-        Typeface ndot = NdotFont.get(view.getContext());
-        if (ndot != null && view.getTypeface() != ndot) {
-            view.setTypeface(ndot);
+        styleText(view, green, NdotFont.get(view.getContext()));
+    }
+
+    /**
+     * A text too small for NDot's dots (network speed's two stacked lines): green and glowing,
+     * in a plain face. Roboto, read straight from its file, as the system's own sans-serif may
+     * itself be NDot (the System font option).
+     */
+    static void styleSmallText(TextView view) {
+        if (plain == null) {
+            try {
+                plain = Typeface.create(Typeface.createFromFile("/system/fonts/Roboto-Regular.ttf"),
+                        500, false);
+            } catch (RuntimeException e) {
+                plain = Typeface.DEFAULT;
+            }
+        }
+        styleText(view, true, plain);
+    }
+
+    private static Typeface plain;
+
+    private static void styleText(TextView view, boolean green, Typeface face) {
+        if (face != null && view.getTypeface() != face) {
+            view.setTypeface(face);
         }
         GREEN.put(view, green);
         view.setTextColor(green ? LED_GREEN : 0xFFFFFFFF);

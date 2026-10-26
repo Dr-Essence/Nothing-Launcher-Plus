@@ -16,8 +16,12 @@ import android.graphics.drawable.Drawable;
  */
 class GlowDrawable extends Drawable implements Drawable.Callback {
 
-    /** The glow's reach, in icon heights. */
-    private static final float GLOW = 0.12f;
+    /**
+     * The glow's reach, in icon heights. Compose clips an icon to its bounds, so the icon is
+     * drawn a little in from them ({@link #INSET}) to leave the glow room to show.
+     */
+    private static final float GLOW = 0.08f;
+    private static final float INSET = 0.09f;
 
     final Drawable inner;
     private ColorFilter filter;
@@ -46,12 +50,13 @@ class GlowDrawable extends Drawable implements Drawable.Callback {
             buffer = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         }
         buffer.eraseColor(Color.TRANSPARENT);
-        inner.setBounds(0, 0, w, h);
+        int inset = Math.round(h * INSET);
+        inner.setBounds(inset, inset, w - inset, h - inset);
         inner.draw(new Canvas(buffer));
         canvas.save();
         canvas.translate(b.left, b.top);
         // Green whatever the tile's tint: the tint is set (setColorFilter) but not drawn.
-        GreenGlow.draw(canvas, buffer, h * GLOW, alpha / 255f);
+        GreenGlow.draw(canvas, buffer, h * GLOW, alpha / 255f, true);
         canvas.restore();
     }
 
