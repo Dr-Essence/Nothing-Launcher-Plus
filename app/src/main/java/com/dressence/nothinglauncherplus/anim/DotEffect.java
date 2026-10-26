@@ -519,6 +519,35 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * A raised hand waving hello: the hand (its skin colour, round where it is) is lifted
+     * off and rocks to and fro about the wrist, a few quick waves, then rests. Anchors: the
+     * hand (x, y) and its reach (fractions of the emoji), the wrist (x, y), how far it rocks
+     * (degrees).
+     */
+    GREET {
+        @Override
+        void pose(Scene s) {
+            float[] a = s.anchor;
+            if (a == null || a.length < 6) {
+                return;
+            }
+            Regions r = s.regions;
+            float t = s.since < 2 ? s.since : (s.t + 0.6f) % 3.4f;
+            float wave = t < 1.5f ? (float) Math.sin(t / 1.5f * Math.PI * 4)
+                    * (float) Math.sin(t / 1.5f * Math.PI) : 0;
+            s.liftHue(45, 16, 0.45f, MusicEffects.ax(s, 0), MusicEffects.ay(s, 1),
+                    a[2] * (r.maxX - r.minX + 1));
+            s.addLayer(1, MusicEffects.ax(s, 3), MusicEffects.ay(s, 4), a[5] * wave, 0, 0, 1);
+            s.busy = t < 1.5f;
+        }
+
+        @Override
+        void apply(Scene s) {
+            blink(s);
+        }
+    },
+
     /** Fizzy drinks: tiny bubbles stream up through the drink and burst at its top. */
     FIZZ {
         @Override

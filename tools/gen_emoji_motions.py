@@ -614,7 +614,10 @@ EFFECT_REVIEW = {
     "ribbon": "SHINE", "reminder ribbon": "SHINE", "admission tickets": "SHINE",
     "ticket": "SHINE", "mirror ball": "TWINKLE", "yo-yo": "SHINE", "kite": "SHINE",
     "recycling symbol": "SHINE", "empty nest": "SHINE", "nest with eggs": "SHINE",
-    "chart increasing with yen": "SHINE", "mate": "SHINE", "mate": "SHINE", "leaf fluttering in wind": "SWAY", "hot pepper": "SHINE", "wind chime": "SWAY:1", "carp streamer": "FLAG:0.1,0,0.62",
+    "chart increasing with yen": "SHINE", "mate": "SHINE",
+    "person raising hand": "GREET:0.22,0.13,0.2,0.2,0.32,14",
+    "man raising hand": "GREET:0.22,0.13,0.2,0.2,0.32,14",
+    "woman raising hand": "GREET:0.22,0.13,0.2,0.2,0.32,14", "mate": "SHINE", "leaf fluttering in wind": "SWAY", "hot pepper": "SHINE", "wind chime": "SWAY:1", "carp streamer": "FLAG:0.1,0,0.62",
     "bouquet": "SWAY",
     "cherry blossom": "SWAY",
     "white flower": "SWAY",
@@ -765,7 +768,8 @@ EXACT.update({name: "NONE" for name in [
 # Balls: round ones are kicked up and spin in the air (their effect turns the surface with the
 # motion, the light held still); long ones are tossed end over end.
 EXACT.update({
-    "yo-yo": "YOYO", "money bag": "RATTLE", "person biking": "DRIVE", "man biking": "DRIVE", "woman biking": "DRIVE", "person mountain biking": "DRIVE", "man mountain biking": "DRIVE", "woman mountain biking": "DRIVE", "parachute": "SWING", "suspension railway": "SWING", "mountain cableway": "SWING", "aerial tramway": "SWING",
+    "yo-yo": "YOYO", "money bag": "RATTLE", "person raising hand": "NONE",
+    "man raising hand": "NONE", "woman raising hand": "NONE", "person biking": "DRIVE", "man biking": "DRIVE", "woman biking": "DRIVE", "person mountain biking": "DRIVE", "man mountain biking": "DRIVE", "woman mountain biking": "DRIVE", "parachute": "SWING", "suspension railway": "SWING", "mountain cableway": "SWING", "aerial tramway": "SWING",
     "bouquet": "NONE",
     "cherry blossom": "NONE",
     "white flower": "NONE",

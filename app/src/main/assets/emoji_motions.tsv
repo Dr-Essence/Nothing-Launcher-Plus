@@ -273,9 +273,9 @@
 💁	1	NOD	BLINK	person tipping hand
 💁‍♂️	1	NOD	BLINK	man tipping hand
 💁‍♀️	1	NOD	BLINK	woman tipping hand
-🙋	1	NOD	BLINK	person raising hand
-🙋‍♂️	1	NOD	BLINK	man raising hand
-🙋‍♀️	1	NOD	BLINK	woman raising hand
+🙋	1	NONE	GREET:0.22,0.13,0.2,0.2,0.32,14	person raising hand
+🙋‍♂️	1	NONE	GREET:0.22,0.13,0.2,0.2,0.32,14	man raising hand
+🙋‍♀️	1	NONE	GREET:0.22,0.13,0.2,0.2,0.32,14	woman raising hand
 🧏	1	NOD	BLINK	deaf person
 🧏‍♂️	1	NOD	BLINK	deaf man
 🧏‍♀️	1	NOD	BLINK	deaf woman
