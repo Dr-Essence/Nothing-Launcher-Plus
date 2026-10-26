@@ -660,15 +660,15 @@
 🐠	2	SWIM	BUBBLES	tropical fish
 🐡	2	SWIM	BUBBLES	blowfish
 🦈	2	SWIM	RIPPLE	shark
-🐙	2	SWIM	BUBBLES	octopus
+🐙	2	SWIM	SHINE	octopus
 🐚	2	SWIM	SHINE	spiral shell
-🪸	2	SWIM	BUBBLES	coral
+🪸	2	SWIM	SWAY	coral
 🪼	2	SWIM	GLOW	jellyfish
-🦀	2	SWIM	BUBBLES	crab
-🦞	2	SWIM	BUBBLES	lobster
-🦐	2	SWIM	BUBBLES	shrimp
-🦑	2	SWIM	BUBBLES	squid
-🦪	2	SWIM	BUBBLES	oyster
+🦀	2	SWIM	SHINE	crab
+🦞	2	SWIM	SHINE	lobster
+🦐	2	SWIM	SHINE	shrimp
+🦑	2	SWIM	SHINE	squid
+🦪	2	SWIM	SHINE	oyster
 🐌	2	CRAWL	SWAY	snail
 🦋	2	FLUTTER	SPARKLE	butterfly
 🐛	2	CRAWL	SWAY	bug
@@ -1461,17 +1461,17 @@
 🔝	7	NONE	ARROW:0,-1	TOP arrow
 🛐	7	ROCK	GLOW	place of worship
 ⚛️	7	NONE	ATOM:0.5,0.5,0.36,0.13	atom symbol
-🕉️	7	PULSE	GLOW	om
+🕉️	7	NONE	GLOW	om
 ✡️	7	NONE	TWINKLE	star of David
 ☸️	7	NONE	SPIN:0.5,0.5,0.43,30	wheel of dharma
 ☯️	7	NONE	SPIN:0.5,0.51,0.41,40	yin yang
-✝️	7	PULSE	GLOW	latin cross
-☦️	7	PULSE	GLOW	orthodox cross
+✝️	7	NONE	GLOW	latin cross
+☦️	7	NONE	GLOW	orthodox cross
 ☪️	7	NONE	TWINKLE	star and crescent
-☮️	7	PULSE	GLOW	peace symbol
-🕎	7	PULSE	GLOW	menorah
-🔯	7	TWINKLE	TWINKLE	dotted six-pointed star
-🪯	7	PULSE	GLOW	khanda
+☮️	7	NONE	GLOW	peace symbol
+🕎	7	NONE	GLOW	menorah
+🔯	7	NONE	TWINKLE	dotted six-pointed star
+🪯	7	NONE	GLOW	khanda
 ♈️	7	TWINKLE	TWINKLE	Aries
 ♉️	7	TWINKLE	TWINKLE	Taurus
 ♊️	7	TWINKLE	TWINKLE	Gemini
