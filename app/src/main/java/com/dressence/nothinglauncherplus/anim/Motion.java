@@ -215,9 +215,8 @@ public enum Motion {
         @Override
         void pose(float t, Pose p) {
             hop(p, t, 0.08f, 0.32f);
-            // Turn around the centre; the hop's bottom pivot would swing it in an arc.
-            p.pivotY = 0.5f;
-            p.spin = 360 * ease(seg(t, 0.12f, 0.9f));
+            // A happy wiggle as it lands.
+            p.rotation = 8 * sin(TAU * 3 * seg(t, 0.4f, 1.3f)) * hump(seg(t, 0.4f, 1.3f));
         }
     },
     COOL("Cool", 2.2f, 1.4f) {
@@ -849,21 +848,16 @@ public enum Motion {
             p.scaleX = 1 + 0.03f * g;
         }
     },
-    SEND("Send", 1.7f, 1.6f) {
+    SEND("Send", 1.5f, 1.6f) {
         @Override
         void pose(float t, Pose p) {
-            if (t < 0.25f) {
-                p.tx = -0.02f * ease(t / 0.25f);
-            } else if (t < 0.6f) {
-                float l = easeIn(seg(t, 0.25f, 0.6f));
-                p.tx = -0.02f + 0.14f * l;
-                p.rotation = -6 * l;
-                p.alpha = 1 - ease(seg(t, 0.3f, 0.56f));
-            } else {
-                float r = 1 - spring(t - 0.6f, 1.6f, 0.55f);
-                p.tx = -0.10f * r;
-                p.alpha = seg(t, 0.62f, 0.82f);
-            }
+            // Picked up, tipped forward and pushed off, then springs back: sent.
+            float lift = hump(seg(t, 0, 0.7f));
+            float push = t < 0.45f ? ease(seg(t, 0.1f, 0.45f))
+                    : 1 - spring(t - 0.45f, 2.2f, 0.4f);
+            p.ty = -0.04f * lift;
+            p.tx = 0.06f * push;
+            p.rotation = -7 * push;
         }
     },
     FLAG("Wave flag", 2.2f, 0.8f) {

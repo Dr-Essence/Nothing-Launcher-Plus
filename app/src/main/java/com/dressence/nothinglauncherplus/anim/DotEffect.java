@@ -408,6 +408,33 @@ public enum DotEffect {
         }
     },
 
+    /**
+     * Fog: billows of light and shade roll slowly across the pale fog, each band its own
+     * way, so the fog seems to drift; anything else in it (a bridge) stands still.
+     */
+    FOG {
+        @Override
+        void apply(Scene s) {
+            Regions r = s.regions;
+            for (int i = 0; i < s.dots.length; i++) {
+                int ri = s.restIndex(i);
+                if (ri < 0 || !r.ink[ri] || r.luma[ri] < 0.62f || r.sat[ri] > 0.2f) {
+                    continue;
+                }
+                float x = ri % r.size;
+                float y = ri / r.size;
+                float band = (float) Math.sin(y * 0.45f);
+                float w = (float) (Math.sin(x * 0.42f - s.t * (0.9f + 0.4f * band) + y * 0.3f)
+                        * 0.65 + Math.sin(x * 0.23f + s.t * 0.55f - y * 0.5f) * 0.35);
+                int c = s.dots[i];
+                c = w > 0 ? Scene.mix(c, 0xFFFFFFFF, 0.55f * w)
+                        : Scene.mix(c, 0xFF7F95A3, 0.5f * -w);
+                s.dots[i] = Scene.alpha(c, s.dots[i] >>> 24);
+            }
+            s.busy = true;
+        }
+    },
+
     /** Fizzy drinks: tiny bubbles stream up through the drink and burst at its top. */
     FIZZ {
         @Override
