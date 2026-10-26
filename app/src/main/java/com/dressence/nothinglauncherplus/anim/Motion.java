@@ -830,6 +830,33 @@ public enum Motion {
             p.spin = 360 * ease(Math.max(0, Math.min(1, (t - 0.12f) / 0.48f)));
         }
     },
+    /**
+     * A yo-yo thrown: it drops fast to the end of its string, spins there a moment, and
+     * climbs back up, slowing as it reaches the hand.
+     */
+    /** Hanging from above (a parachute, a cable car): it swings from where it hangs. */
+    SWING("Swing", 3.2f, 0.6f) {
+        @Override
+        void pose(float t, Pose p) {
+            p.pivotY = 0;
+            p.rotation = 7 * sin(TAU * t / 1.6f) * envelope(t, duration, 0.6f, 0.9f);
+        }
+    },
+    YOYO("Yo-yo", 1.6f, 1.4f) {
+        @Override
+        void pose(float t, Pose p) {
+            float drop;
+            if (t < 0.32f) {
+                drop = easeIn(t / 0.32f);
+            } else if (t < 0.6f) {
+                drop = 1 + 0.04f * sin(TAU * (t - 0.32f) / 0.28f);
+            } else {
+                drop = 1 - ease(seg(t, 0.6f, 1.25f));
+            }
+            p.ty = 0.1f * drop;
+            p.rotation = 4 * sin(TAU * t * 1.5f) * drop;
+        }
+    },
     GROW("Grow", 1.4f, 1.6f) {
         @Override
         void pose(float t, Pose p) {

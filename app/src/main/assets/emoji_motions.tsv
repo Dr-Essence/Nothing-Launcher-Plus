@@ -662,58 +662,58 @@
 🦈	2	SWIM	RIPPLE	shark
 🐙	2	SWIM	SHINE	octopus
 🐚	2	SWIM	SHINE	spiral shell
-🪸	2	SWIM	SWAY	coral
+🪸	2	NONE	SWAY	coral
 🪼	2	SWIM	GLOW	jellyfish
 🦀	2	SWIM	SHINE	crab
 🦞	2	SWIM	SHINE	lobster
 🦐	2	SWIM	SHINE	shrimp
 🦑	2	SWIM	SHINE	squid
 🦪	2	SWIM	SHINE	oyster
-🐌	2	CRAWL	SWAY	snail
+🐌	2	CRAWL	NONE	snail
 🦋	2	FLUTTER	SPARKLE	butterfly
-🐛	2	CRAWL	SWAY	bug
-🐜	2	CRAWL	SWAY	ant
-🐝	2	FLUTTER	SWAY	honeybee
-🪲	2	FLUTTER	SWAY	beetle
-🐞	2	FLUTTER	SWAY	lady beetle
-🦗	2	FLUTTER	SWAY	cricket
-🪳	2	FLUTTER	SWAY	cockroach
-🕷️	2	CRAWL	SWAY	spider
+🐛	2	CRAWL	NONE	bug
+🐜	2	CRAWL	NONE	ant
+🐝	2	FLUTTER	NONE	honeybee
+🪲	2	FLUTTER	NONE	beetle
+🐞	2	FLUTTER	NONE	lady beetle
+🦗	2	FLUTTER	NONE	cricket
+🪳	2	FLUTTER	NONE	cockroach
+🕷️	2	CRAWL	NONE	spider
 🕸️	2	CRAWL	SHINE	spider web
-🦂	2	CRAWL	SWAY	scorpion
-🦟	2	FLUTTER	SWAY	mosquito
-🪰	2	FLUTTER	SWAY	fly
-🪱	2	CRAWL	SWAY	worm
-🦠	2	CRAWL	SWAY	microbe
-💐	2	SWAY	SWAY	bouquet
-🌸	2	SWAY	SWAY	cherry blossom
-💮	2	SWAY	SWAY	white flower
-🪷	2	SWAY	SWAY	lotus
+🦂	2	CRAWL	NONE	scorpion
+🦟	2	FLUTTER	NONE	mosquito
+🪰	2	FLUTTER	NONE	fly
+🪱	2	CRAWL	NONE	worm
+🦠	2	CRAWL	NONE	microbe
+💐	2	NONE	SWAY	bouquet
+🌸	2	NONE	SWAY	cherry blossom
+💮	2	NONE	SWAY	white flower
+🪷	2	NONE	SWAY	lotus
 🏵️	2	POP	SWAY	rosette
-🌹	2	SWAY	SWAY	rose
-🥀	2	SWAY	SWAY	wilted flower
-🌺	2	SWAY	SWAY	hibiscus
-🌻	2	SWAY	SWAY	sunflower
-🌼	2	SWAY	SWAY	blossom
-🌷	2	SWAY	SWAY	tulip
-🪻	2	SWAY	SWAY	hyacinth
-🌱	2	SWAY	SWAY	seedling
-🪴	2	SWAY	SWAY	potted plant
-🌲	2	SWAY	SWAY	evergreen tree
-🌳	2	SWAY	SWAY	deciduous tree
-🌴	2	SWAY	SWAY	palm tree
-🌵	2	SWAY	SWAY	cactus
-🌾	2	SWAY	SWAY	sheaf of rice
-🌿	2	SWAY	SWAY	herb
-☘️	2	SETTLE	SWAY	shamrock
-🍀	2	SWAY	SWAY	four leaf clover
+🌹	2	NONE	SWAY	rose
+🥀	2	NONE	SWAY	wilted flower
+🌺	2	NONE	SWAY	hibiscus
+🌻	2	NONE	SWAY	sunflower
+🌼	2	NONE	SWAY	blossom
+🌷	2	NONE	SWAY	tulip
+🪻	2	NONE	SWAY	hyacinth
+🌱	2	NONE	SWAY	seedling
+🪴	2	NONE	SWAY	potted plant
+🌲	2	NONE	SWAY	evergreen tree
+🌳	2	NONE	SWAY	deciduous tree
+🌴	2	NONE	SWAY	palm tree
+🌵	2	NONE	SWAY	cactus
+🌾	2	NONE	SWAY	sheaf of rice
+🌿	2	NONE	SWAY	herb
+☘️	2	NONE	SWAY	shamrock
+🍀	2	NONE	SWAY	four leaf clover
 🍁	2	DRIFT	SWAY	maple leaf
 🍂	2	DRIFT	SWAY	fallen leaf
 🍃	2	DRIFT	SMOKE	leaf fluttering in wind
-🪹	2	SWAY	SWAY	empty nest
-🪺	2	SWAY	SWAY	nest with eggs
-🍄	2	SWAY	SWAY	mushroom
-🪾	2	SWAY	SWAY	leafless tree
+🪹	2	SWAY	SHINE	empty nest
+🪺	2	SWAY	SHINE	nest with eggs
+🍄	2	NONE	SWAY	mushroom
+🪾	2	NONE	SWAY	leafless tree
 🍇	3	JELLY	SHINE	grapes
 🍈	3	JELLY	SHINE	melon
 🍉	3	JELLY	SHINE	watermelon
@@ -974,12 +974,12 @@
 🛩️	4	FLY	SMOKE:0.2,0.75,-0.8,0.6	small airplane
 🛫	4	FLY	SMOKE:0.04,0.3,-1,0.35	airplane departure
 🛬	4	FLY	SMOKE:0.04,0.2,-1,-0.3	airplane arrival
-🪂	4	FLY	SWAY	parachute
+🪂	4	SWING	NONE	parachute
 💺	4	FLY	SHINE	seat
 🚁	4	FLY	ROTOR	helicopter
-🚟	4	FLY	SWAY	suspension railway
-🚠	4	FLY	SWAY	mountain cableway
-🚡	4	FLY	SWAY	aerial tramway
+🚟	4	SWING	NONE	suspension railway
+🚠	4	SWING	NONE	mountain cableway
+🚡	4	SWING	NONE	aerial tramway
 🛰️	4	FLY	TWINKLE	satellite
 🚀	4	LAUNCH	FLAME:0.14,0.86,-0.7,0.7	rocket
 🛸	4	FLY	CHASE	flying saucer
@@ -1072,11 +1072,11 @@
 🎈	5	FLOAT	SHINE	balloon
 🎉	5	PARTY	CONFETTI	party popper
 🎊	5	PARTY	CONFETTI	confetti ball
-🎋	5	PARTY	SWAY	tanabata tree
-🎍	5	PARTY	SWAY	pine decoration
+🎋	5	NONE	SWAY	tanabata tree
+🎍	5	NONE	SWAY	pine decoration
 🎎	5	PARTY	SHINE	Japanese dolls
-🎏	5	PARTY	SWAY	carp streamer
-🎐	5	PARTY	SWAY	wind chime
+🎏	5	NONE	FLAG:0.1,0,0.62	carp streamer
+🎐	5	NONE	SWAY:1	wind chime
 🎑	5	ROCK	GLOW	moon viewing ceremony
 🧧	5	SEND	SHINE	red envelope
 🎀	5	PARTY	SHINE	ribbon
@@ -1118,8 +1118,8 @@
 🛷	5	BOUNCE	SHINE	sled
 🥌	5	BOUNCE	SHINE	curling stone
 🎯	5	NONE	DARTS:0.4625,0.5,0.4625,-29,31	bullseye
-🪀	5	BOUNCE	SPARKLE	yo-yo
-🪁	5	FLY	SPARKLE	kite
+🪀	5	YOYO	SHINE	yo-yo
+🪁	5	FLY	SHINE	kite
 🔫	5	HAMMER	DRIP	water pistol
 🎱	5	NONE	GLOBE	pool 8 ball
 🔮	5	TWINKLE	MAGIC	crystal ball
@@ -1529,7 +1529,7 @@
 💱	7	COIN	SHINE	currency exchange
 💲	7	COIN	SHINE	heavy dollar sign
 ⚕️	7	POP	SHINE	medical symbol
-♻️	7	SPIN	SWAY	recycling symbol
+♻️	7	SPIN	SHINE	recycling symbol
 ⚜️	7	POP	SHINE	fleur-de-lis
 🔱	7	POP	SHINE	trident emblem
 📛	7	POP	SHINE	name badge

@@ -1253,22 +1253,24 @@ public enum DotEffect {
     /** Plants: the top sways more than the stem. */
     SWAY {
         @Override
-        void apply(Scene s) {
+        void pose(Scene s) {
+            // Plants: bent by the wind from the root up, in gusts that build and die away.
             Regions r = s.regions;
-            float h = Math.max(1, r.maxY - r.minY);
-            for (int i = 0; i < s.dots.length; i++) {
-                if (Float.isNaN(s.srcX[i])) {
-                    continue;
-                }
-                float lift = 1 - (s.srcY[i] - r.minY) / h;
-                int sx = Math.round(s.srcX[i] - (float) Math.sin(s.t * (1.6f + 2 * s.boost)) * lift * 1.8f);
-                int sy = Math.round(s.srcY[i]);
-                if (sx < 0 || sy < 0 || sx >= r.size || sy >= r.size) {
-                    s.dots[i] = 0;
-                    continue;
-                }
-                s.dots[i] = r.ink[sy * r.size + sx] ? r.rest[sy * r.size + sx] : 0;
-            }
+            float t = s.t + (s.seed & 0xFF) * 0.05f;
+            float gust = 0.55f + 0.45f * (float) Math.sin(t * 0.45f);
+            float wave = (float) (Math.sin(t * 1.7f) * 0.75 + Math.sin(t * 3.1f + 1.3f) * 0.25);
+            float height = r.maxY - r.minY + 1;
+            s.bendAmount = (0.6f + 0.06f * height) * (0.35f + 0.65f * gust) * wave
+                    * (1 + 0.8f * s.boost);
+            // Anchor 1: it hangs from its top (a wind chime) and its bottom swings.
+            boolean hanging = s.anchor != null && s.anchor.length > 0 && s.anchor[0] == 1;
+            s.bendTop = hanging ? r.maxY + 1 : r.minY;
+            s.bendRoot = hanging ? r.minY : r.maxY + 1;
+            s.busy = true;
+        }
+
+        @Override
+        void apply(Scene s) {
         }
     },
 

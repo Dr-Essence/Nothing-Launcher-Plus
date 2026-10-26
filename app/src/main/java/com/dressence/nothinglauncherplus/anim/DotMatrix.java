@@ -200,6 +200,7 @@ final class DotMatrix {
         scene.earthCentre = Float.NaN;
         scene.flameT = Float.NaN;
         scene.burstMode = -1;
+        scene.bendAmount = Float.NaN;
         scene.busy = false;
         if (effects) {
             scene.t = time;
@@ -212,7 +213,7 @@ final class DotMatrix {
         }
         boolean still = p.isRest() && scene.partCount == 0 && !scene.detached
                 && scene.sphereTurn != scene.sphereTurn && scene.flameT != scene.flameT
-                && scene.burstMode < 0;
+                && scene.burstMode < 0 && scene.bendAmount != scene.bendAmount;
         if (still) {
             System.arraycopy(restDots, 0, dots, 0, dots.length);
         } else {
@@ -331,7 +332,7 @@ final class DotMatrix {
             }
             glyphPaint.setAlpha(p == null ? 255 : Math.round(Math.min(1, p.alpha) * 255));
             if (p != null && (scene.sphereTurn == scene.sphereTurn || scene.flameT == scene.flameT
-                    || scene.burstMode >= 0)) {
+                    || scene.burstMode >= 0 || scene.bendAmount == scene.bendAmount)) {
                 drawSphere();
             } else if (p == null || scene.partCount == 0 && !scene.detached) {
                 renderCanvas.drawBitmap(glyph, pose, glyphPaint);
@@ -652,6 +653,10 @@ final class DotMatrix {
             drawBurst();
             return;
         }
+        if (scene.bendAmount == scene.bendAmount) {
+            drawBend();
+            return;
+        }
         float cx = scene.sphereX * SUPERSAMPLE;
         float cy = scene.sphereY * SUPERSAMPLE;
         float radius = scene.sphereRadius * SUPERSAMPLE;
@@ -739,6 +744,22 @@ final class DotMatrix {
             sphereFrame = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
         }
         burst.render(scene.burstMode, scene.burstLife, scene.burstT, earthPixels);
+        drawSurface();
+    }
+
+    private int[] bendRest;
+    private String bendKey;
+
+    /** The drawing bent in the wind (see {@link Bend}). */
+    private void drawBend() {
+        if (bendRest == null || !glyphKey.equals(bendKey) || sphereFrame == null) {
+            bendRest = restRender();
+            bendKey = glyphKey;
+            earthPixels = new int[RENDER * RENDER];
+            sphereFrame = Bitmap.createBitmap(RENDER, RENDER, Bitmap.Config.ARGB_8888);
+        }
+        Bend.render(bendRest, RENDER, scene.bendTop * SUPERSAMPLE,
+                scene.bendRoot * SUPERSAMPLE, scene.bendAmount * SUPERSAMPLE, earthPixels);
         drawSurface();
     }
 

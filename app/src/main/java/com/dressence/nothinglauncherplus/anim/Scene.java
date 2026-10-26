@@ -257,6 +257,13 @@ final class Scene {
      * reddest hue that is still flame (0: any warm colour).
      */
     final float[] flameBox = new float[6];
+    /**
+     * A plant bending in the wind (see {@link Bend}): how far its top leans, in dots (NaN for
+     * none), and the rows of its top and its root (resting grid units).
+     */
+    float bendAmount = Float.NaN;
+    float bendTop;
+    float bendRoot;
     /** A drawn burst going off (see {@link Burst}): its mode, -1 for none. */
     int burstMode = -1;
     /** Through one bloom (0..1), or the crackle's time. */
