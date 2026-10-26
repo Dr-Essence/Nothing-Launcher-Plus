@@ -158,6 +158,9 @@ final class SystemFont {
                     .append(choice.title.replace("'", ""))
                     .append(" as the system font\\n' > $M/module.prop\n");
             Set<String> targets = defaultFontFiles();
+            // Whatever another font module (one that worked, such as a zFont one) replaces,
+            // this one replaces too.
+            targets.addAll(otherModuleFonts());
             replaced = targets.size();
             for (String target : targets) {
                 String dest = target.startsWith("/product/") ? "$M/system" + target
@@ -288,6 +291,82 @@ final class SystemFont {
     private static String read(String path) {
         try (InputStream in = new FileInputStream(path)) {
             return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * The system font files other font modules put in place, on or off: their
+     * system/fonts, system/product/fonts and system/system_ext/fonts, as the live paths.
+     */
+    static Set<String> otherModuleFonts() {
+        Set<String> out = new LinkedHashSet<>();
+        String list = suOutput("for d in /data/adb/modules/*/system/fonts "
+                + "/data/adb/modules/*/system/product/fonts "
+                + "/data/adb/modules/*/system/system_ext/fonts; do "
+                + "case \"$d\" in */nlplus_systemfont/*) continue;; esac; "
+                + "[ -d \"$d\" ] && ls \"$d\" | sed \"s|^|$d/|\"; done");
+        if (list == null) {
+            return out;
+        }
+        for (String line : list.split("\n")) {
+            line = line.trim();
+            String lower = line.toLowerCase(Locale.ROOT);
+            if (!(lower.endsWith(".ttf") || lower.endsWith(".otf"))) {
+                continue;
+            }
+            int at = line.indexOf("/system/");
+            if (at < 0) {
+                continue;
+            }
+            String path = line.substring(at); // /system/fonts/x, /system/product/fonts/x
+            path = path.replaceFirst("^/system/(product|system_ext)/", "/$1/");
+            if (new File(path).exists()) {
+                out.add(path);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Checks each replaced file as every app now sees it: how many are the chosen font. A
+     * line per file, for the report.
+     */
+    static String verify(Context context) {
+        File font = new File(context.getCacheDir(), "nlplus_systemfont.ttf");
+        StringBuilder script = new StringBuilder();
+        for (String target : defaultFontFiles()) {
+            script.append("if cmp -s '").append(font.getAbsolutePath()).append("' '")
+                    .append(target).append("'; then echo \"OK ").append(target)
+                    .append("\"; else echo \"-- ").append(target).append("\"; fi\n");
+        }
+        for (String target : otherModuleFonts()) {
+            script.append("if cmp -s '").append(font.getAbsolutePath()).append("' '")
+                    .append(target).append("'; then echo \"OK ").append(target)
+                    .append("\"; else echo \"-- ").append(target).append("\"; fi\n");
+        }
+        script.append("echo; echo \"Root: $(magisk -v 2>/dev/null || ksud -V 2>/dev/null"
+                + " || apd -V 2>/dev/null)\"\n");
+        script.append("echo \"Module files: $(find /data/adb/modules/nlplus_systemfont/system"
+                + " -type f 2>/dev/null | wc -l)\"\n");
+        script.append("ls /data/adb/modules/nlplus_systemfont 2>/dev/null | tr '\\n' ' '\n");
+        String out = suOutput(script.toString());
+        return out == null ? "Root access was refused" : out;
+    }
+
+    /** Runs {@code script} as root and returns what it printed, or null without root. */
+    private static String suOutput(String script) {
+        try {
+            Process p = new ProcessBuilder("su").redirectErrorStream(true).start();
+            try (OutputStream in = p.getOutputStream()) {
+                in.write(script.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                in.write("\nexit\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            String output = new String(p.getInputStream().readAllBytes(),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            p.waitFor();
+            return output;
         } catch (Exception e) {
             return null;
         }
