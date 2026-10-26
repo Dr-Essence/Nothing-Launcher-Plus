@@ -1288,6 +1288,7 @@ public enum DotEffect {
 
         @Override
         void apply(Scene s) {
+            ObjectEffects.wireGlobe(s);
         }
     },
 

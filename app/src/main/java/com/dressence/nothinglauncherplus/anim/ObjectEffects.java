@@ -1506,6 +1506,10 @@ final class ObjectEffects {
      */
     static void globePose(Scene s) {
         Regions r = s.regions;
+        if (s.anchor != null && s.anchor.length > 0 && s.anchor[0] == 2) {
+            s.busy = true; // A wire globe is drawn afresh each frame (see wireGlobe).
+            return;
+        }
         float cx = (r.minX + r.maxX + 1) / 2f;
         float cy = (r.minY + r.maxY + 1) / 2f;
         float radius = Math.max(r.maxX - r.minX + 1, r.maxY - r.minY + 1) / 2f + 0.5f;
@@ -1991,6 +1995,86 @@ final class ObjectEffects {
         s.boardDy = -1.6f * (float) Math.sin(s.t * Math.PI * 2 / 2.4f);
         s.addLayer(1, 0, 0, 0, 0, 0, 1);
         s.busy = true;
+    }
+
+    /** Wire globe: the meridians' spacing, and the parallels' latitudes, in degrees. */
+    private static final float MERIDIANS = 60;
+    private static final float[] PARALLELS = {-32, 0, 32};
+
+    /**
+     * 🌐 turning ({@code anchor} 2): the wire globe is drawn afresh as a real sphere, so every
+     * line keeps the same width: the rim, the parallels (straight, as seen from the equator)
+     * and the meridians, which travel round and fade as they reach the edge.
+     */
+    static void wireGlobe(Scene s) {
+        Regions r = s.regions;
+        if (s.anchor == null || s.anchor.length < 1 || s.anchor[0] != 2) {
+            return;
+        }
+        float cx = (r.minX + r.maxX + 1) / 2f;
+        float cy = (r.minY + r.maxY + 1) / 2f;
+        float radius = Math.max(r.maxX - r.minX + 1, r.maxY - r.minY + 1) / 2f;
+        int color = r.brightest != 0 ? r.brightest | 0xFF000000 : 0xFF01B3F7;
+        // Clear the drawing; the globe is drawn in its place.
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0) {
+                continue;
+            }
+            float dx = ri % r.size + 0.5f - cx;
+            float dy = ri / r.size + 0.5f - cy;
+            if (dx * dx + dy * dy <= (radius + 1) * (radius + 1)) {
+                s.dots[i] = 0;
+            }
+        }
+        // The width the lines show at; the drawing pads each line by a soft edge of its own.
+        float line = Math.max(1.8f, radius * 0.14f);
+        // The drawing works in dot indices (a dot's centre is half a dot in): the globe's own
+        // centre in those terms, so it sits exactly where the emoji's circle is.
+        float ox = cx - 0.5f;
+        float oy = cy - 0.5f;
+        float stroke = line - 0.6f;
+        float inner = radius - line * 0.5f - 0.3f;
+        s.ring(ox, oy, inner, stroke - 0.1f, color, 1);
+        // Parallels: straight lines across, ending at the rim.
+        for (float lat : PARALLELS) {
+            double l = Math.toRadians(lat);
+            // On a row boundary, so each parallel is two whole rows of dots, crisp and equal.
+            float y = Math.round(cy - (float) Math.sin(l) * inner) - 0.5f;
+            float half = (float) Math.cos(l) * inner;
+            s.strip(ox, y, half * 2 - line, stroke, 0, color, 1);
+        }
+        // Meridians: half ellipses, those on the near side, fading in and out at the rim.
+        float turn = (float) Math.toDegrees(s.t * 0.45f + 2 * Math.PI
+                * ease(Math.min(1, s.since / 1.6f)));
+        for (float m = 0; m < 360; m += MERIDIANS) {
+            double lon = Math.toRadians(m + turn);
+            float facing = (float) Math.cos(lon);
+            if (facing <= 0) {
+                continue;
+            }
+            // Gone before it reaches the rim, so it never doubles it.
+            float strength = ease((facing - 0.3f) / 0.4f);
+            if (strength <= 0) {
+                continue;
+            }
+            float sx = (float) Math.sin(lon) * inner;
+            // From where the rim begins at the top to where it begins at the bottom: the
+            // meridians stop short of the poles rather than bunching into a knot there.
+            double reach = Math.asin(Math.min(1, (inner - line * 0.8f) / inner));
+            float px = ox + sx * (float) Math.cos(reach);
+            float py = oy - (float) Math.sin(reach) * inner;
+            for (int k = 1; k <= 20; k++) {
+                double lat = reach - 2 * reach * k / 20;
+                float x = ox + sx * (float) Math.cos(lat);
+                float y = oy - (float) Math.sin(lat) * inner;
+                float len = (float) Math.hypot(x - px, y - py);
+                s.strip((x + px) / 2, (y + py) / 2, len, stroke,
+                        (float) Math.atan2(y - py, x - px), color, strength);
+                px = x;
+                py = y;
+            }
+        }
     }
 
     // -------------------------------------------------------------------------------------

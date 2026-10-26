@@ -503,7 +503,7 @@ EFFECT_OBJECTS = {
     "helicopter": "ROTOR", "ferris wheel": "CHASE:0.49,0.45",
     "barber pole": "POLE:0.17,0.27,0.83,0.73",
     "globe showing europe-africa": "GLOBE", "globe showing americas": "GLOBE",
-    "globe showing asia-australia": "GLOBE", "globe with meridians": "GLOBE",
+    "globe showing asia-australia": "GLOBE", "globe with meridians": "GLOBE:2",
     "keyboard": "TYPING", "computer mouse": "CLICK", "printer": "PRINT",
     "optical disk": "SHINE", "dvd": "SHINE",
 }

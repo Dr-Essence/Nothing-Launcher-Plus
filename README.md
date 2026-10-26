@@ -77,7 +77,7 @@ plus your folders.
   like a real padlock, the free leg popping out while the long leg stays in the body, then
   snaps shut; 🎯 has a dart thrown into the bull, quivering as it lands with its shadow, then
   pulled out; ⚽ 🏀 ⚾ 🏐 roll with their shading held still and 🏈 🏉 tumble end over end;
-  🎾's ball is bounced on the racket; 🎲 tumbles; 🌍 🌎 🌏 🌐 turn as globes; ⌛ ⏳ drain and
+  🎾's ball is bounced on the racket; 🎲 tumbles; 🌍 🌎 🌏 turn as globes and 🌐 is drawn afresh as a turning wire globe, every line the same width; ⌛ ⏳ drain and
   are turned over; 🎠's horse rides its pole; 🎡 turns behind its legs; ☯️ ☸️ 🔁 turn on
   their tiles; 🚓 🚑 🚒 flash their roof lights; 🚘 🚖 🚍 flash their headlights; 🛸's rim
   lights chase; 🚲's spoked wheels turn; 🚦 🚥 cycle with a glow; ☎️ rattles its handset,
