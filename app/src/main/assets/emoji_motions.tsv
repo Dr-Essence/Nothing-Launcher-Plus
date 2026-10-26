@@ -75,7 +75,7 @@
 🥸	0	COOL	SHINE	disguised face
 😎	0	COOL	SHINE:1	smiling face with sunglasses
 🤓	0	NOD	BLINK	nerd face
-🧐	0	SEARCH	LOOK	face with monocle
+🧐	0	SEARCH	GLEAM	face with monocle
 😕	0	TILT	BLINK	confused face
 🫤	0	TILT	BLINK	face with diagonal mouth
 😟	0	DROOP	BLINK	worried face
@@ -123,7 +123,7 @@
 😹	0	LAUGH	TEARS	cat with tears of joy
 😻	0	LOVE	HEARTS	smiling cat with heart-eyes
 😼	0	ROLL	BLINK	cat with wry smile
-😽	0	KISS	HEARTS	kissing cat
+😽	0	KISS	KISS:0.6,0.68	kissing cat
 🙀	0	SCREAM	BLINK	weary cat
 😿	0	SOB	TEARS	crying cat
 😾	0	RAGE	ANGRY	pouting cat
@@ -157,7 +157,7 @@
 🤍	0	HEARTBEAT	HEARTBEAT	white heart
 💋	0	KISS	HEARTS	kiss mark
 💯	0	STAMP	SHINE	hundred points
-💢	0	RAGE	ANGRY	anger symbol
+💢	0	RAGE	HEARTBEAT	anger symbol
 💥	0	EXPLODE	ZAP	collision
 💫	0	SPIN	TWINKLE	dizzy
 💦	0	DRIP	DRIP	sweat droplets
@@ -166,7 +166,7 @@
 💬	0	FLOAT	TYPING_DOTS	speech balloon
 👁️‍🗨️	0	BLINK	LOOK	eye in speech bubble
 🗨️	0	FLOAT	SHINE	left speech bubble
-🗯️	0	RAGE	ANGRY	right anger bubble
+🗯️	0	RAGE	HEARTBEAT	right anger bubble
 💭	0	FLOAT	SHINE	thought balloon
 💤	0	SLEEP	SLEEPY	ZZZ
 👋	1	WAVE	SHINE	waving hand

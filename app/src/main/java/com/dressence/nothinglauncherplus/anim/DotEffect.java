@@ -900,6 +900,9 @@ public enum DotEffect {
                 BLINK.apply(s);
                 return;
             }
+            if (glance(s)) {
+                return;
+            }
             float look = (float) Math.sin(s.t * 0.9f + Scene.hash(s.seed, 3, 3) * 6);
             int dx = Math.round(look * 1.6f);
             int pupil = 0xFF1A1A1A;
@@ -1946,6 +1949,8 @@ public enum DotEffect {
         // Out from the lips, up and to the side, swaying a little as it floats.
         float hx = x + 1 + 8 * rise + 0.7f * (float) Math.sin(q * Math.PI * 2.4f);
         float hy = y - 8 * rise;
+        // Fades out before it would reach the frame's edge.
+        hx = Math.min(hx, s.size - 3.5f);
         float across = 2.4f + 2.6f * ObjectEffects.easeOut(Math.min(1, q / 0.3f));
         float strength = q < 0.12f ? q / 0.12f : q > 0.6f ? (1 - q) / 0.4f : 1;
         s.heart(hx, hy, across, 0xFFF2384F, strength);
@@ -1975,6 +1980,203 @@ public enum DotEffect {
         float gy = (y0 + y1) / 2 + (float) Math.sin(a) * ((y1 - y0) / 2 - 0.8f) - 0.6f - 0.9f * bob;
         s.glint(gx, gy, 1.6f, 0xFFFFFFFF, (float) Math.sin(q * Math.PI));
         s.busy = true;
+    }
+
+    /** Where the eyes look, in turn: ahead, left, ahead, right, a little up; seconds each. */
+    private static final int[][] GAZE = {{0, 0}, {-1, 0}, {0, 0}, {1, 0}, {0, -1}, {1, 0}};
+    private static final float[] GAZE_HOLD = {1.4f, 0.9f, 0.7f, 1.0f, 0.8f, 0.6f};
+
+    /**
+     * Eyes with whites (👀): the pupils dart from one place to the next as real eyes do, a
+     * whole dot or two at a time, never leaving the white. False if the eyes have no whites.
+     */
+    private static boolean glance(Scene s) {
+        Regions r = s.regions;
+        int[][] eyes = (int[][]) r.memo.get("eyeWhites");
+        if (eyes == null) {
+            eyes = eyeWhites(r);
+            r.memo.put("eyeWhites", eyes);
+        }
+        if (eyes.length == 0) {
+            return false;
+        }
+        float total = 0;
+        for (float h : GAZE_HOLD) {
+            total += h;
+        }
+        float t = (s.t + Scene.hash(s.seed, 3, 3) * total) % total;
+        int step = 0;
+        while (t > GAZE_HOLD[step]) {
+            t -= GAZE_HOLD[step];
+            step++;
+        }
+        int[] want = GAZE[step];
+        // As far as every pupil can go that way, one or two dots.
+        int dx = 0;
+        int dy = 0;
+        for (int reach = 2; reach >= 1 && dx == 0 && dy == 0; reach--) {
+            if (fits(r, eyes, want[0] * reach, want[1] * reach)) {
+                dx = want[0] * reach;
+                dy = want[1] * reach;
+            }
+        }
+        // eyes[0]: per dot, which eye's white it is in (or -1); eyes[1]: pupil dots; eyes[2]:
+        // the colour of each eye's white.
+        for (int i = 0; i < s.dots.length; i++) {
+            int ri = s.restIndex(i);
+            if (ri < 0 || eyes[0][ri] < 0) {
+                continue;
+            }
+            int x = ri % r.size;
+            int y = ri / r.size;
+            int sx = x - dx;
+            int sy = y - dy;
+            int from = sx >= 0 && sy >= 0 && sx < r.size && sy < r.size ? sy * r.size + sx : -1;
+            int c;
+            if (from >= 0 && eyes[1][from] == 1 && eyes[0][from] == eyes[0][ri]) {
+                c = r.rest[from];
+            } else if (eyes[1][ri] == 1) {
+                c = eyes[2][eyes[0][ri]];
+            } else {
+                continue;
+            }
+            s.dots[i] = (c & 0xFFFFFF) | (s.dots[i] & 0xFF000000);
+        }
+        return true;
+    }
+
+    /** True if every pupil moved by dx, dy stays inside its white. */
+    private static boolean fits(Regions r, int[][] eyes, int dx, int dy) {
+        for (int i = 0; i < r.size * r.size; i++) {
+            if (eyes[1][i] != 1) {
+                continue;
+            }
+            int x = i % r.size + dx;
+            int y = i / r.size + dy;
+            if (x < 0 || y < 0 || x >= r.size || y >= r.size
+                    || eyes[0][y * r.size + x] != eyes[0][i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** The whites round the dark pupils (see glance); empty if a pupil has none. */
+    private static int[][] eyeWhites(Regions r) {
+        int n = r.size * r.size;
+        int[] owner = new int[n];
+        int[] pupil = new int[n];
+        java.util.Arrays.fill(owner, -1);
+        java.util.List<Integer> whites = new java.util.ArrayList<>();
+        boolean[] seen = new boolean[n];
+        int count = 0;
+        for (int start = 0; start < n; start++) {
+            if (!r.eyes[start] || seen[start]) {
+                continue;
+            }
+            java.util.ArrayDeque<Integer> queue = new java.util.ArrayDeque<>();
+            java.util.List<Integer> comp = new java.util.ArrayList<>();
+            queue.add(start);
+            seen[start] = true;
+            while (!queue.isEmpty()) {
+                int i = queue.poll();
+                comp.add(i);
+                for (int j : around(r, i)) {
+                    if (r.eyes[j] && !seen[j]) {
+                        seen[j] = true;
+                        queue.add(j);
+                    }
+                }
+            }
+            // The white: light dots joined to the pupil.
+            java.util.List<Integer> white = new java.util.ArrayList<>();
+            boolean[] in = new boolean[n];
+            for (int i : comp) {
+                in[i] = true;
+            }
+            queue.clear();
+            for (int i : comp) {
+                for (int j : around(r, i)) {
+                    if (!in[j] && r.ink[j] && r.luma[j] > 0.7f && r.sat[j] < 0.25f) {
+                        in[j] = true;
+                        queue.add(j);
+                    }
+                }
+            }
+            while (!queue.isEmpty()) {
+                int i = queue.poll();
+                white.add(i);
+                for (int j : around(r, i)) {
+                    if (!in[j] && r.ink[j] && r.luma[j] > 0.6f && r.sat[j] < 0.25f) {
+                        in[j] = true;
+                        queue.add(j);
+                    }
+                }
+            }
+            if (white.size() < comp.size()) {
+                return new int[0][];
+            }
+            // The light caught in the pupil goes with it: light dots with pupil on both sides.
+            java.util.List<Integer> caught = new java.util.ArrayList<>();
+            for (int i : white) {
+                boolean left = false, right = false, up = false, down = false;
+                int x = i % r.size;
+                int y = i / r.size;
+                for (int d = 1; d <= 3; d++) {
+                    left |= x - d >= 0 && comp.contains(y * r.size + x - d);
+                    right |= x + d < r.size && comp.contains(y * r.size + x + d);
+                    up |= y - d >= 0 && comp.contains((y - d) * r.size + x);
+                    down |= y + d < r.size && comp.contains((y + d) * r.size + x);
+                }
+                if (left && right || up && down) {
+                    caught.add(i);
+                }
+            }
+            white.removeAll(caught);
+            comp.addAll(caught);
+            long cr = 0, cg = 0, cb = 0;
+            for (int i : white) {
+                int c = r.rest[i];
+                cr += (c >> 16) & 0xFF;
+                cg += (c >> 8) & 0xFF;
+                cb += c & 0xFF;
+            }
+            int m = white.size();
+            whites.add(0xFF000000 | (int) (cr / m) << 16 | (int) (cg / m) << 8 | (int) (cb / m));
+            for (int i : white) {
+                owner[i] = count;
+            }
+            for (int i : comp) {
+                owner[i] = count;
+                pupil[i] = 1;
+            }
+            count++;
+        }
+        if (count == 0) {
+            return new int[0][];
+        }
+        int[] colours = new int[count];
+        for (int k = 0; k < count; k++) {
+            colours[k] = whites.get(k);
+        }
+        return new int[][] {owner, pupil, colours};
+    }
+
+    private static int[] around(Regions r, int i) {
+        int x = i % r.size;
+        int y = i / r.size;
+        int[] out = new int[8];
+        int k = 0;
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                int nx = x + dx;
+                int ny = y + dy;
+                if ((dx != 0 || dy != 0) && nx >= 0 && ny >= 0 && nx < r.size && ny < r.size) {
+                    out[k++] = ny * r.size + nx;
+                }
+            }
+        }
+        return java.util.Arrays.copyOf(out, k);
     }
 
     /** Light running down large water (small drops get their own shine as they slide). */
@@ -2133,11 +2335,26 @@ public enum DotEffect {
         for (int k = 0; k < count; k++) {
             float life = cycle(s, 1.9f, k * 0.71f);
             int cyc = (int) ((s.t + k * 0.71f + (s.seed & 0xFF) * 0.013f) / 1.9f);
-            float angle = Scene.hash(k, cyc, s.seed) * (float) (Math.PI * 2);
             float rx = (r.maxX - r.minX) / 2f + 1.5f;
             float ry = (r.maxY - r.minY) / 2f + 1.5f;
-            float x = (r.minX + r.maxX) / 2f + (float) Math.cos(angle) * rx;
-            float y = (r.minY + r.maxY) / 2f + (float) Math.sin(angle) * ry;
+            // Only where a whole star fits, in the clear: never cut off at the frame's edge.
+            float x = -1;
+            float y = -1;
+            for (int tryNo = 0; tryNo < 8 && x < 0; tryNo++) {
+                float angle = Scene.hash(k + 7 * tryNo, cyc, s.seed) * (float) (Math.PI * 2);
+                float cx = (r.minX + r.maxX) / 2f + (float) Math.cos(angle) * rx;
+                float cy = (r.minY + r.maxY) / 2f + (float) Math.sin(angle) * ry;
+                int gx = Math.round(cx - 0.5f);
+                int gy = Math.round(cy - 0.5f);
+                if (cx >= 2.5f && cy >= 2.5f && cx <= r.size - 2.5f && cy <= r.size - 2.5f
+                        && !r.ink[gy * r.size + gx]) {
+                    x = cx;
+                    y = cy;
+                }
+            }
+            if (x < 0) {
+                continue;
+            }
             float env = (float) Math.sin(life * Math.PI);
             env *= env;
             s.glint(x, y, 0.6f + 1.4f * env, color, env);

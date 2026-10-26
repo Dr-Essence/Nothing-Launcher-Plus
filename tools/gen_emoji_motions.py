@@ -597,7 +597,9 @@ EFFECT_REVIEW = {
     "smiling face with sunglasses": "SHINE:1", "disguised face": "SHINE",
     "broken heart": "BREAK:0.8,0.3,0.5,0.97", "face holding back tears": "TEARS:1",
     "smiling face with horns": "GLEAM", "angry face with horns": "GLEAM",
-    "face with steam from nose": "HUFF",
+    "face with steam from nose": "HUFF", "kissing cat": "KISS:0.6,0.68",
+    "anger symbol": "HEARTBEAT", "right anger bubble": "HEARTBEAT",
+    "face with monocle": "GLEAM",
 }
 EFFECT_EXACT.update(EFFECT_REVIEW)
 
