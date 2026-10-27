@@ -61,7 +61,8 @@ final class LabelScroll {
             }
             return;
         }
-        if (label.getEllipsize() != null || !label.getHorizontallyScrolling()) {
+        // The two are always set together: no ellipsis means it already scrolls.
+        if (label.getEllipsize() != null) {
             label.setEllipsize(null);
             label.setHorizontallyScrolling(true);
         }
