@@ -402,14 +402,18 @@ public class MainActivity extends Activity {
             fonts.add(null); // The phone's own font.
             fonts.addAll(SystemFont.find(this));
             List<Typeface> faces = new ArrayList<>();
+            List<Boolean> lowercase = new ArrayList<>();
             for (SystemFont.Choice font : fonts) {
-                faces.add(SystemFont.typeface(this, font));
+                Typeface face = SystemFont.typeface(this, font);
+                faces.add(face);
+                lowercase.add(face == null || FontPreview.hasLowercase(face));
             }
-            runOnUiThread(() -> showFontChooser(fonts, faces));
+            runOnUiThread(() -> showFontChooser(fonts, faces, lowercase));
         }).start();
     }
 
-    private void showFontChooser(List<SystemFont.Choice> fonts, List<Typeface> faces) {
+    private void showFontChooser(List<SystemFont.Choice> fonts, List<Typeface> faces,
+            List<Boolean> lowercase) {
         if (isFinishing()) {
             return;
         }
@@ -433,6 +437,7 @@ public class MainActivity extends Activity {
                     new ColorDrawable(Color.WHITE)));
             TextView title = new TextView(this);
             title.setText(font == null ? "Phone default" : font.title
+                    + (lowercase.get(i) ? "" : "  · capitals only")
                     + (font.needsAdding() ? "  · after one restart" : ""));
             title.setTextColor(Ui.TEXT);
             title.setTextSize(15);

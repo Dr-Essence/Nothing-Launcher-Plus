@@ -29,9 +29,13 @@ final class FontPreview extends View {
 
     static final String SAMPLE = "Nothing 12:45";
 
-    /** The screen's height, and the dot rows around a dot font's letters. */
-    private static final int HEIGHT_DP = 54;
-    private static final int MARGIN_ROWS = 2;
+    /**
+     * The screen's height, and the dot rows over a dot font's capitals and under them (where
+     * lowercase letters such as g and p reach).
+     */
+    private static final int HEIGHT_DP = 58;
+    private static final int MARGIN_TOP = 2;
+    private static final int MARGIN_BOTTOM = 3;
     /** The rows of the high-definition screen for other fonts. */
     private static final int HD_ROWS = 34;
     /** Blank dots between the end of scrolling text and its next start. */
@@ -88,13 +92,13 @@ final class FontPreview extends View {
         float baseline;
         if (grid != null) {
             // The font's dots on the screen's: its spacing is the screen's dot spacing.
-            rows = grid.rows + 2 * MARGIN_ROWS;
+            rows = MARGIN_TOP + grid.rows + MARGIN_BOTTOM;
             pitch = wholePixels(height / rows);
             radius = pitch * Math.min(0.5f, grid.dotSize / 2);
             float scale = pitch / grid.pitch;
             text.setTextSize(DotGrid.REF * scale);
             x0 = pitch / 2 - grid.x * scale;
-            baseline = pitch * (MARGIN_ROWS + 0.5f) - grid.y * scale;
+            baseline = pitch * (MARGIN_TOP + 0.5f) - grid.y * scale;
             stepMs = STEP_MS;
         } else {
             rows = HD_ROWS;
@@ -114,6 +118,53 @@ final class FontPreview extends View {
         removeCallbacks(step);
         updateScrolling();
         invalidate();
+    }
+
+    /**
+     * True if {@code typeface} has lowercase letters of its own: some fonts (dot fonts often)
+     * draw "a" as "A", and are capitals only, whatever is typed.
+     */
+    static boolean hasLowercase(Typeface typeface) {
+        Paint paint = new Paint();
+        paint.setTypeface(typeface);
+        paint.setTextSize(64);
+        for (char c = 'a'; c <= 'z'; c++) {
+            if (!sameGlyph(paint, String.valueOf(c), String.valueOf(Character.toUpperCase(c)))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * True if {@code a} and {@code b} are drawn alike: differing in under a twentieth of their
+     * ink (a capital redrawn as lowercase may differ by a few edge pixels).
+     */
+    private static boolean sameGlyph(Paint paint, String a, String b) {
+        byte[] one = glyph(paint, a);
+        byte[] two = glyph(paint, b);
+        int ink = 0;
+        int differ = 0;
+        for (int i = 0; i < one.length; i++) {
+            int x = one[i] & 0xFF;
+            int y = two[i] & 0xFF;
+            if (x > 128 || y > 128) {
+                ink++;
+                if (Math.abs(x - y) > 128) {
+                    differ++;
+                }
+            }
+        }
+        return differ * 20 <= ink;
+    }
+
+    private static byte[] glyph(Paint paint, String letter) {
+        Bitmap bitmap = Bitmap.createBitmap(96, 96, Bitmap.Config.ALPHA_8);
+        new Canvas(bitmap).drawText(letter, 8, 72, paint);
+        byte[] alpha = new byte[bitmap.getRowBytes() * bitmap.getHeight()];
+        bitmap.copyPixelsToBuffer(ByteBuffer.wrap(alpha));
+        bitmap.recycle();
+        return alpha;
     }
 
     /** Dot spacing on whole pixels, so the repeated unlit dots stay on one grid. */
