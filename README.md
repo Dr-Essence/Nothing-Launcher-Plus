@@ -240,26 +240,30 @@ Around the home screen:
   wallpaper) are locked to portrait in Nothing's manifest; with rotation on they follow the
   device too.
 - **Nothing's widget cards** (Calm / breathing, battery, photos, …) and their settings open in
-  landscape. Nothing Widgets (`com.nothing.hearthstone`) and NothingCardService lock every screen
-  to portrait, so cards opened from a landscape home screen were drawn on their side. Tick both
-  apps in the module's LSPosed scope for this.
+  landscape. Nothing Widgets (`com.nothing.hearthstone`) and NothingCardService declare every
+  screen portrait-only, and Android applies that as a card launches, so cards opened from a
+  landscape home screen showed on their side. The lock is lifted in system_server as the card's
+  activity is created (System Framework in scope), on that activity's own copy of its info, and
+  again in the apps themselves (tick both apps in the module's LSPosed scope).
 - **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
 
 ### Landscape grid
 
-A portrait page of C columns × R rows is shown in landscape as **2C × ⌈R/2⌉**: the top half
-of the page on the left, the bottom half on the right (a 4×6 page becomes 8×3). Cells keep
-almost exactly their portrait shape, so icons, folders and widgets look as they do in portrait.
+Arranged the way One UI does it: a portrait page of C columns × R rows turns with the screen
+into **R × C** (a 4×6 page becomes 6×4), so cells keep their shape and icons, folders and
+widgets look as they do in portrait. The items are realigned onto it, the largest first,
+filling from the left corner column by column; items of the same size keep their portrait
+reading order. A widget taller than the landscape page is shown as tall as the page.
 
-- Only the presentation changes. Positions go through AOSP's `CellPosMapper` (the hook tablets
-  use for two-panel pages), so whatever you move, add or resize in landscape is saved in portrait
-  coordinates, and rotating back shows your portrait layout.
-- Items that sit across the middle row are shown on the half that holds most of them, in a free
-  spot. Widgets taller than half the page are shown at half-page height; their real size is kept.
-- The launcher deletes items that overlap or leave the grid when it next loads. Every landscape
-  edit is therefore checked against the portrait page: anything that wouldn't fit there (a widget
-  dropped across the middle, for example) is moved to the nearest free portrait spot and the page
-  refreshes.
+- Only the presentation changes: the launcher database keeps the portrait layout, and that
+  stays the one you arrange. Moving or resizing an item within its page in landscape leaves its
+  portrait place as it is (the landscape page arranges itself).
+- An item added in landscape, or moved onto another page there, goes to a free spot of the
+  portrait page: the launcher deletes items that overlap or leave the grid when it next loads,
+  so every landscape write is checked against the portrait page.
+- **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
+  many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
+  sheet gives the list at least four rows, which squeezed the name off a landscape screen).
 
 Nothing also blocks landscape outright: `NTLauncher.handleConfigurationChanged` ignores every
 change to landscape ("Skip to handle the config change for the landscape orientation"), and the

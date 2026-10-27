@@ -20,8 +20,9 @@ import de.robv.android.xposed.XposedHelpers;
  * <p>Nothing Widgets ({@code com.nothing.hearthstone}) and NothingCardService lock every screen
  * to portrait, including the cards a widget opens over the home screen (the Calm / breathing
  * card, battery and photo views). Over a landscape home screen those were drawn on their side.
- * With "Home screen rotation" on, their portrait locks are lifted: translucent cards then follow
- * the home screen behind them, full screens follow the device.
+ * With "Home screen rotation" on, their portrait locks are lifted (as they launch, by
+ * CardOrientation in the system, and here for any screen they set it on themselves):
+ * translucent cards then follow the home screen behind them, full screens follow the device.
  */
 public final class WidgetApps {
 
@@ -56,19 +57,13 @@ public final class WidgetApps {
 
     private void onCreated(Activity activity) {
         store.reloadIfChanged(); // This process has no reload receiver; check on each screen.
-        if (!store.get().allowRotation || !isPortraitLock(activity.getRequestedOrientation())) {
+        if (!store.get().allowRotation || !CardOrientation.isPortraitLock(activity.getRequestedOrientation())) {
             return;
         }
         activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         if (activity.getClass().getName().equals(BREATH_ACTIVITY)) {
             fitBreathCard(activity);
         }
-    }
-
-    private static boolean isPortraitLock(int orientation) {
-        return orientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                || orientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-                || orientation == ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT;
     }
 
     /**

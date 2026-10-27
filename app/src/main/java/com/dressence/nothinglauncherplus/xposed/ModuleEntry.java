@@ -4,6 +4,7 @@ import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.launcher.Launcher;
 import com.dressence.nothinglauncherplus.system.SystemFonts;
 import com.dressence.nothinglauncherplus.systemui.SystemUi;
+import com.dressence.nothinglauncherplus.widgets.CardOrientation;
 import com.dressence.nothinglauncherplus.widgets.WidgetApps;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
@@ -26,7 +27,9 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
             XposedHelpers.findAndHookMethod(Config.SETTINGS_ACTIVITY, cl, "isModuleActive",
                     XC_MethodReplacement.returnConstant(true));
         } else if ("android".equals(pkg)) {
-            Hooks.install("system font", () -> SystemFonts.install(cl, new ConfigStore()));
+            ConfigStore store = new ConfigStore();
+            Hooks.install("system font", () -> SystemFonts.install(cl, store));
+            Hooks.install("widget card orientation", () -> CardOrientation.install(cl, store));
         } else if (!lpparam.isFirstApplication) {
             return;
         } else if (Config.LAUNCHER_PKG.equals(pkg)) {
