@@ -47,7 +47,7 @@ final class Landscape {
      */
     private static final float SMART_TILE_TO_HEIGHT = 0.36f;
     /** Largest landscape icon relative to its cell, leaving room for folder rings and dots. */
-    private static final float ICON_TO_CELL = 0.8f;
+    private static final float ICON_TO_CELL = 0.9f;
 
     private final ClassLoader cl;
     private final ConfigStore store;

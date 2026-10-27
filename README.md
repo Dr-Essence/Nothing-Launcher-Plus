@@ -254,9 +254,10 @@ Around the home screen:
 ### Landscape grid
 
 A portrait page of C columns × R rows turns with the screen into **R × C** (a 5×9 page becomes
-9×5). Landscape cells have exactly the portrait cell's shape, scaled down only as far as the
-page needs to fit the landscape height, and the grid is centred, so widgets, icons and folders
-keep their portrait size and look. Each page's items are laid out on it in their portrait
+9×5). Landscape cells have about the portrait cell's shape: the portrait cell, scaled down only
+as far as the page needs to fit the landscape height, and widened into the room left beside it
+(never more than 1.3×), with the grid centred, so widgets, icons and folders keep their
+portrait look without empty sides. Icons take up to 90% of a cell. Each page's items are laid out on it in their portrait
 reading order, left to right and top to bottom: widgets first, then apps and folders in the
 room left. A widget taller than the landscape page is shown as tall as the page.
 
@@ -270,6 +271,12 @@ binding workspace item"). Turned cells can overlap until the page is arranged, s
 this deleted widgets for good, in portrait too. While a landscape page is bound no cell counts
 as taken, and a collision delete in landscape is refused and logged
 (`NothingLauncher+: landscape grid: kept …`).
+
+A rotation relays the launcher out and rebinds its pages, which are filled a moment later: the
+first frames on the turned screen were the old pages stretched to it, then empty pages. Android
+keeps showing the last frame while it turns the screen until the app draws, so drawing is held
+from the rebind until the pages are filled and arranged (as the launcher does at startup), for
+one second at most.
 
 The launcher's loader waits for an idle main thread between its steps (home screen, then apps,
 shortcuts and widgets), with no time limit. A view redrawn every frame keeps the main thread

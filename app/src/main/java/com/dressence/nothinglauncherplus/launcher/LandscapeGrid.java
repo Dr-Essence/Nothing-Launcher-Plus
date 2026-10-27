@@ -4,9 +4,11 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Looper;
+import android.app.Activity;
 import android.appwidget.AppWidgetHostView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 
 import com.dressence.nothinglauncherplus.xposed.Hooks;
 
@@ -61,6 +63,10 @@ final class LandscapeGrid {
     private static final int CONTAINER_DESKTOP = -100;
     private static final int CELL_LAYOUT_WORKSPACE = 0;
     private static final String CLS_WIDGET_SIZES = "com.android.launcher3.widget.util.WidgetSizes";
+    /** How much wider than the portrait cell's shape a landscape cell may be. */
+    private static final float MAX_WIDEN = 1.3f;
+    /** The longest a rotation may hold the launcher's drawing while its pages are rebuilt. */
+    private static final long HOLD_DRAW_MS = 1000;
     /** How Launcher.bindInflatedItems words the delete of an item bound onto a taken cell. */
     private static final String COLLISION_DELETE = "Collision while binding";
 
@@ -94,6 +100,10 @@ final class LandscapeGrid {
     private volatile Object bgDataModel;
 
     private boolean arrangePosted;
+    /** The draw hold of a rotation in progress, and where it is; main thread. */
+    private View heldRoot;
+    private ViewTreeObserver.OnPreDrawListener heldDraw;
+    private final Runnable releaseLater = Hooks.guard("rotation release", this::releaseDrawing);
     /** Depth of bindInflatedItems calls running in landscape; main thread. */
     private int binding;
 
@@ -121,6 +131,7 @@ final class LandscapeGrid {
         Hooks.install("landscape grid spans", this::hookSpans);
         Hooks.install("landscape grid arrangement", this::hookArrange);
         Hooks.install("landscape grid safety", this::hookModelWriter);
+        Hooks.install("clean rotation", this::hookRebindHold);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -322,6 +333,54 @@ final class LandscapeGrid {
         }
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Rotation
+    // ---------------------------------------------------------------------------------------
+
+    /**
+     * A rotation relays the launcher out and rebinds its pages, and the pages are filled a
+     * moment later: the first frames on the turned screen showed the old pages stretched to it,
+     * then empty pages, then the items. While Android turns the screen it keeps showing the
+     * last frame until the app draws, so drawing is held from the rebind until the pages are
+     * filled and arranged (as the launcher itself does at startup), for a second at most: the
+     * turn goes straight to the finished screen.
+     */
+    private void hookRebindHold() {
+        XposedHelpers.findAndHookMethod(launcherClass, "rebindCallbacks", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                holdDrawing((Activity) param.thisObject);
+            }
+        });
+        XposedBridge.hookAllMethods(launcherClass, "finishBindingItems", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                // After the arrangement, which finishBindingItems also posts.
+                main.post(Hooks.guard("rotation release", () -> releaseDrawing()));
+            }
+        });
+    }
+
+    private void holdDrawing(Activity launcher) {
+        releaseDrawing();
+        View root = launcher.getWindow().getDecorView();
+        ViewTreeObserver.OnPreDrawListener hold = () -> false;
+        root.getViewTreeObserver().addOnPreDrawListener(hold);
+        heldRoot = root;
+        heldDraw = hold;
+        main.postDelayed(releaseLater, HOLD_DRAW_MS);
+    }
+
+    private void releaseDrawing() {
+        main.removeCallbacks(releaseLater);
+        if (heldDraw != null) {
+            heldRoot.getViewTreeObserver().removeOnPreDrawListener(heldDraw);
+            heldRoot.invalidate();
+            heldDraw = null;
+            heldRoot = null;
+        }
+    }
+
     /**
      * Lays one page's items out on the turned grid in portrait reading order, left to right and
      * top to bottom: widgets first, then apps and folders in the room left.
@@ -433,9 +492,10 @@ final class LandscapeGrid {
     // ---------------------------------------------------------------------------------------
 
     /**
-     * Landscape cells have the portrait cell's shape, so every icon, folder and widget looks as
-     * it does in portrait: the portrait cell, scaled down only as far as the turned R x C page
-     * needs to fit the landscape page. The page's cells are centred on it (hookPagePadding).
+     * Landscape cells have about the portrait cell's shape, so every icon, folder and widget
+     * looks as it does in portrait: the portrait cell, scaled down only as far as the turned
+     * R x C page needs to fit the landscape page, and widened (by MAX_WIDEN at most) into the
+     * width left over. The page's cells are centred on it (hookPagePadding).
      */
     private void hookCellSize() {
         Class<?> dp = XposedHelpers.findClass(CLS_DEVICE_PROFILE, cl);
@@ -478,8 +538,12 @@ final class LandscapeGrid {
         float scale = Math.min(1f, Math.min(
                 width / (float) (grid.landscapeColumns() * portrait.x),
                 height / (float) (grid.landscapeRows() * portrait.y)));
-        return new Point(Math.max(1, (int) (portrait.x * scale)),
-                Math.max(1, (int) (portrait.y * scale)));
+        int x = (int) (portrait.x * scale);
+        int y = (int) (portrait.y * scale);
+        // Wider where the page has room, so it is not left with empty sides; never so much
+        // wider that widgets lose their portrait proportions.
+        x = Math.max(x, Math.min(width / grid.landscapeColumns(), Math.round(x * MAX_WIDEN)));
+        return new Point(Math.max(1, x), Math.max(1, y));
     }
 
     /** The cell of the portrait profile for the same display as landscape profile {@code o}. */
