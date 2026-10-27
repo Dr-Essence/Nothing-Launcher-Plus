@@ -356,12 +356,13 @@ final class DotIcons {
             IconScreen made;
             try {
                 made = bitmap != null && !bitmap.isRecycled() ? IconScreen.of(bitmap) : FAILED;
-            } catch (RuntimeException e) {
-                Hooks.log("dot icon failed: " + e);
-                made = FAILED; // Drawn as the normal icon from now on.
+            } catch (Throwable t) {
+                // Out of memory included: this one icon is drawn as it is from now on.
+                Hooks.log("dot icon failed: " + t);
+                made = FAILED;
             }
             IconScreen result = made;
-            MAIN.post(() -> {
+            MAIN.post(Hooks.guard("dot icon ready", () -> {
                 Bitmap key = source.get();
                 if (key == null) {
                     return;
@@ -376,7 +377,7 @@ final class DotIcons {
                         }
                     }
                 }
-            });
+            }));
         });
         return null;
     }
