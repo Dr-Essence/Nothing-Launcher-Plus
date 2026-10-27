@@ -34,6 +34,7 @@ public final class Launcher {
         new LandscapeSurfaces(cl, store).install();
         Hooks.install("controller", () -> Gamepad.install(cl, store));
         Hooks.install("dot-matrix icons", () -> DotIcons.install(cl, store));
+        Hooks.install("scrolling app names", () -> LabelScroll.install(cl, store));
         LauncherSounds.install(cl, store);
         Hooks.install("reload receiver", () -> hookReloadReceiver(cl, store));
     }

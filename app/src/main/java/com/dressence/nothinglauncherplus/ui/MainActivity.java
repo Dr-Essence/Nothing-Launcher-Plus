@@ -90,7 +90,7 @@ public class MainActivity extends Activity {
                     render();
                 });
         ui.switchRow("Dot-matrix app icons",
-                "Every app icon redrawn as glowing Nothing dots, colours kept",
+                "Every app icon a little dot screen in its own shape; long names scroll",
                 config.dotIcons, checked -> {
                     config.dotIcons = checked;
                     store.save(this);
