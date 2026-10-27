@@ -12,12 +12,16 @@ import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedHelpers;
 
 /** Everything the module does in Nothing Launcher. */
 public final class Launcher {
 
     private static final String CLS_LAUNCHER = "com.android.launcher3.Launcher";
+    private static final String CLS_LOADER_TASK = "com.android.launcher3.model.LoaderTask";
+    /** The longest the loader waits for an idle main thread between its steps. */
+    private static final int IDLE_WAIT_SECONDS = 3;
 
     private static boolean receiverRegistered;
 
@@ -38,6 +42,35 @@ public final class Launcher {
         Hooks.install("scrolling app names", () -> LabelScroll.install(cl, store));
         LauncherSounds.install(cl, store);
         Hooks.install("reload receiver", () -> hookReloadReceiver(cl, store));
+        Hooks.install("loader idle wait", () -> hookLoaderIdleWait(cl));
+    }
+
+    /**
+     * Between its steps (home screen, then apps, shortcuts and widgets) the launcher's loader
+     * waits for the main thread to go idle, with no time limit. While anything on screen redraws
+     * every frame the main thread never does, and apps and widgets stayed unloaded, the widget
+     * list empty, until the launcher went to the background. The wait is kept, for at most a
+     * few seconds.
+     */
+    private static void hookLoaderIdleWait(ClassLoader cl) {
+        XposedHelpers.findAndHookMethod(CLS_LOADER_TASK, cl, "waitForIdle",
+                new XC_MethodReplacement() {
+                    @Override
+                    protected Object replaceHookedMethod(MethodHookParam param) {
+                        Object task = param.thisObject;
+                        synchronized (task) {
+                            Object lock = XposedHelpers.callMethod(XposedHelpers.getObjectField(
+                                    task, "mLauncherBinder"), "newIdleLock", task);
+                            for (int i = 0; i < IDLE_WAIT_SECONDS
+                                    && !XposedHelpers.getBooleanField(task, "mStopped")
+                                    && (Boolean) XposedHelpers.callMethod(lock, "awaitLocked",
+                                            1000L); i++) {
+                                // Still not idle: wait another second.
+                            }
+                        }
+                        return null;
+                    }
+                });
     }
 
     /** The settings app's changes, applied at once (it sends this broadcast after each). */

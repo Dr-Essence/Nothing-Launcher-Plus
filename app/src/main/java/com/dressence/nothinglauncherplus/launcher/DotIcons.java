@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -74,6 +75,13 @@ final class DotIcons {
                 return t;
             });
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    /** Scratch for onScreen; main thread. */
+    private static final Rect VISIBLE = new Rect();
+    /** Icons last drawn out of view, redrawn together now and then; main thread. */
+    private static final Set<Drawable> OUT_OF_VIEW =
+            Collections.newSetFromMap(new WeakHashMap<>());
+    private static final long RECHECK_MS = 1000;
+    private static boolean recheckPosted;
     /** FastBitmapDrawable and BitmapInfo fields, looked up once. */
     private static Field fBitmapInfo;
     private static Field fIcon;
@@ -130,6 +138,48 @@ final class DotIcons {
         });
     }
 
+    /**
+     * Redraws {@code d} in a while, with every other icon drawn out of view meanwhile, so one
+     * that comes into view without being redrawn (the drawer sliding in) wakes up: one redraw a
+     * second for all of them, which leaves the launcher idle in between.
+     */
+    private static void recheckLater(Drawable d) {
+        OUT_OF_VIEW.add(d);
+        if (!recheckPosted) {
+            recheckPosted = true;
+            MAIN.postDelayed(Hooks.guard("dot icons recheck", () -> {
+                recheckPosted = false;
+                List<Drawable> due = new ArrayList<>(OUT_OF_VIEW);
+                OUT_OF_VIEW.clear();
+                for (Drawable drawable : due) {
+                    drawable.invalidateSelf();
+                }
+            }), RECHECK_MS);
+        }
+    }
+
+    /** True if {@code d}'s view is on the display and not faded out; true if it has no view. */
+    private static boolean onScreen(Drawable d) {
+        Drawable.Callback callback = d.getCallback();
+        if (!(callback instanceof View)) {
+            return true;
+        }
+        View view = (View) callback;
+        if (!view.isShown() || !view.getGlobalVisibleRect(VISIBLE)) {
+            return false;
+        }
+        float alpha = 1;
+        for (View v = view; ; v = (View) v.getParent()) {
+            alpha *= v.getAlpha();
+            if (alpha < 0.01f) {
+                return false;
+            }
+            if (!(v.getParent() instanceof View)) {
+                return true;
+            }
+        }
+    }
+
     /** Draws {@code d} as dots, as FastBitmapDrawable#draw would; false to draw it normally. */
     private static boolean draw(Drawable d, Canvas canvas) {
         String cls = d.getClass().getName();
@@ -169,6 +219,22 @@ final class DotIcons {
             // Still being converted: stay dark, and power on as soon as it is ready.
             seen[0] = now;
             seen[1] = Long.MAX_VALUE;
+            return true;
+        }
+        if (!onScreen(d)) {
+            // Laid out but not in view (the closed drawer, a page aside): one still frame. A
+            // view redrawn every frame keeps the launcher from ever going idle, and its loader
+            // waits for idle before loading apps and widgets.
+            int save = canvas.save();
+            if (scale != 1) {
+                canvas.scale(scale, scale, bounds.exactCenterX(), bounds.exactCenterY());
+            }
+            canvas.drawBitmap(dots.full, null, bounds, paint);
+            if (badge != null) {
+                badge.draw(canvas);
+            }
+            canvas.restoreToCount(save);
+            recheckLater(d);
             return true;
         }
         if (seen[1] == Long.MAX_VALUE || now - seen[0] > ASLEEP_MS) {

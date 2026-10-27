@@ -29,9 +29,10 @@ import de.robv.android.xposed.XposedHelpers;
  * <p>A portrait page of C columns and R rows is shown in landscape as R columns by C rows, so
  * cells keep about their shape and icons, folders and widgets look as they do in portrait. Each
  * page's items are laid out on it in their portrait reading order, left to right and top to
- * bottom: widgets first, then apps and folders in the room left. A widget as wide as the
- * portrait page stretches across the landscape page; one taller than the page is shown as tall
- * as the page. Sizes in the launcher's database are kept.
+ * bottom: widgets first, then apps and folders in the room left. Cells have the portrait
+ * cell's shape (scaled down only if the page needs it) and the grid is centred, so widgets keep
+ * their portrait size and look; one taller than the page is shown as tall as the page. Sizes in
+ * the launcher's database are kept.
  *
  * <p>Only the presentation changes: the launcher database keeps the portrait layout, which
  * stays the one you arrange. Moving or resizing an item within its page in landscape does not
@@ -115,6 +116,7 @@ final class LandscapeGrid {
             hookMapper();
             hookCellSize();
             hookPages();
+            hookPagePadding();
         });
         Hooks.install("landscape grid spans", this::hookSpans);
         Hooks.install("landscape grid arrangement", this::hookArrange);
@@ -405,16 +407,14 @@ final class LandscapeGrid {
 
     /**
      * The first free spot for an item of portrait spans {@code c[2]} x {@code c[3]}, row by
-     * row from the top left, marked as taken: cell x, y and the spans it is shown at. A widget
-     * as wide as the portrait page is as wide as the landscape page. If no spot holds it whole,
-     * it is shown smaller.
+     * row from the top left, marked as taken: cell x, y and the spans it is shown at, its
+     * portrait spans where they fit. If no spot holds it whole, it is shown smaller.
      */
     private static int[] place(boolean[][] taken, int[] c, Grid grid) {
         int columns = grid.landscapeColumns();
         int rows = grid.landscapeRows();
-        int wide = c[2] >= grid.columns && c[2] > 1 ? columns : Math.min(c[2], columns);
         for (int spanY = Math.min(c[3], rows); spanY >= 1; spanY--) {
-            for (int spanX = wide; spanX >= 1; spanX--) {
+            for (int spanX = Math.min(c[2], columns); spanX >= 1; spanX--) {
                 for (int y = 0; y + spanY <= rows; y++) {
                     for (int x = 0; x + spanX <= columns; x++) {
                         if (isVacant(taken, x, y, spanX, spanY)) {
@@ -432,7 +432,11 @@ final class LandscapeGrid {
     // Landscape pages and cells
     // ---------------------------------------------------------------------------------------
 
-    /** Cells are measured for the turned R x C page instead of the portrait C x R one. */
+    /**
+     * Landscape cells have the portrait cell's shape, so every icon, folder and widget looks as
+     * it does in portrait: the portrait cell, scaled down only as far as the turned R x C page
+     * needs to fit the landscape page. The page's cells are centred on it (hookPagePadding).
+     */
     private void hookCellSize() {
         Class<?> dp = XposedHelpers.findClass(CLS_DEVICE_PROFILE, cl);
         XposedHelpers.findAndHookMethod(dp, "getCellSize", Point.class, new XC_MethodHook() {
@@ -443,22 +447,115 @@ final class LandscapeGrid {
                 if (grid == null) {
                     return;
                 }
+                Point cell = landscapeCell(o, grid);
+                if (cell == null) {
+                    return;
+                }
                 Point point = param.args[0] != null ? (Point) param.args[0] : new Point();
-                Rect pad = (Rect) XposedHelpers.getObjectField(o, "cellLayoutPaddingPx");
-                Point border = (Point) XposedHelpers.getObjectField(o, "cellLayoutBorderSpacePx");
-                int width = (Integer) XposedHelpers.callMethod(o, "getCellLayoutWidth")
-                        - pad.left - pad.right;
-                int height = (Integer) XposedHelpers.callMethod(o, "getCellLayoutHeight")
-                        - pad.top - pad.bottom;
-                point.x = (Integer) XposedHelpers.callStaticMethod(dp,
-                        "calculateCellWidth", width, border.x, grid.landscapeColumns());
-                point.y = (Integer) XposedHelpers.callStaticMethod(dp,
-                        "calculateCellHeight", height, border.y, grid.landscapeRows());
+                point.set(cell.x, cell.y);
                 param.setResult(point);
             }
         });
         // getCellSize() is a one-line forwarder ART may inline into its callers.
         Hooks.deoptimizeAll(dp, "getCellSize");
+    }
+
+    /**
+     * The cell of landscape profile {@code o}: its portrait profile's cell, scaled to fit the
+     * turned page if it has to be; null if there is no portrait profile to take it from.
+     */
+    private static Point landscapeCell(Object o, Grid grid) {
+        Point portrait = portraitCell(o);
+        if (portrait == null || portrait.x <= 0 || portrait.y <= 0) {
+            return null;
+        }
+        Rect pad = (Rect) XposedHelpers.getObjectField(o, "cellLayoutPaddingPx");
+        Point border = (Point) XposedHelpers.getObjectField(o, "cellLayoutBorderSpacePx");
+        int width = (Integer) XposedHelpers.callMethod(o, "getCellLayoutWidth")
+                - pad.left - pad.right - (grid.landscapeColumns() - 1) * border.x;
+        int height = (Integer) XposedHelpers.callMethod(o, "getCellLayoutHeight")
+                - pad.top - pad.bottom - (grid.landscapeRows() - 1) * border.y;
+        float scale = Math.min(1f, Math.min(
+                width / (float) (grid.landscapeColumns() * portrait.x),
+                height / (float) (grid.landscapeRows() * portrait.y)));
+        return new Point(Math.max(1, (int) (portrait.x * scale)),
+                Math.max(1, (int) (portrait.y * scale)));
+    }
+
+    /** The cell of the portrait profile for the same display as landscape profile {@code o}. */
+    private static Point portraitCell(Object o) {
+        Object inv = XposedHelpers.getObjectField(o, "inv");
+        int shortSide = XposedHelpers.getIntField(o, "heightPx");
+        Object profiles = XposedHelpers.getObjectField(inv, "supportedProfiles");
+        if (profiles == null) {
+            return null; // Still being made.
+        }
+        for (Object profile : (Iterable<?>) profiles) {
+            if (!XposedHelpers.getBooleanField(profile, "isLandscape")
+                    && XposedHelpers.getBooleanField(profile, "isPhone")
+                    && XposedHelpers.getIntField(profile, "widthPx") == shortSide) {
+                // Not landscape, so this is the launcher's own measure.
+                return (Point) XposedHelpers.callMethod(profile, "getCellSize", new Point());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A landscape page measures its cells from its own size; it is padded so that they come out
+     * as landscapeCell, the grid centred in the room left over.
+     */
+    private void hookPagePadding() {
+        XposedHelpers.findAndHookMethod(CLS_CELL_LAYOUT, cl, "onMeasure", int.class, int.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        View layout = (View) param.thisObject;
+                        if (XposedHelpers.getIntField(layout, "mContainerType")
+                                != CELL_LAYOUT_WORKSPACE) {
+                            return;
+                        }
+                        Object launcher = createdLauncher();
+                        if (launcher == null) {
+                            return;
+                        }
+                        Object profile = XposedHelpers.callMethod(launcher, "getDeviceProfile");
+                        Rect base = (Rect) XposedHelpers.getObjectField(profile,
+                                "cellLayoutPaddingPx");
+                        Grid grid = gridFor(profile);
+                        Point cell = grid != null ? landscapeCell(profile, grid) : null;
+                        int left = base.left;
+                        int top = base.top;
+                        int right = base.right;
+                        int bottom = base.bottom;
+                        if (cell != null && XposedHelpers.getIntField(layout, "mCountX")
+                                == grid.landscapeColumns()) {
+                            Point border = (Point) XposedHelpers.getObjectField(layout,
+                                    "mBorderSpace");
+                            int columns = grid.landscapeColumns();
+                            int rows = grid.landscapeRows();
+                            int spareX = View.MeasureSpec.getSize((Integer) param.args[0])
+                                    - base.left - base.right
+                                    - columns * cell.x - (columns - 1) * border.x;
+                            int spareY = View.MeasureSpec.getSize((Integer) param.args[1])
+                                    - base.top - base.bottom
+                                    - rows * cell.y - (rows - 1) * border.y;
+                            if (spareX > 0) {
+                                left += spareX / 2;
+                                right += spareX - spareX / 2;
+                            }
+                            if (spareY > 0) {
+                                top += spareY / 2;
+                                bottom += spareY - spareY / 2;
+                            }
+                        }
+                        if (layout.getPaddingLeft() != left || layout.getPaddingTop() != top
+                                || layout.getPaddingRight() != right
+                                || layout.getPaddingBottom() != bottom) {
+                            layout.setPadding(left, top, right, bottom);
+                        }
+                    }
+                });
     }
 
     /** Home pages are created for the profile in use, so a rotation rebuilds them. */

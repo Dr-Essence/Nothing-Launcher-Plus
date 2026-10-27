@@ -254,11 +254,11 @@ Around the home screen:
 ### Landscape grid
 
 A portrait page of C columns × R rows turns with the screen into **R × C** (a 5×9 page becomes
-9×5), so cells keep about their shape and icons, folders and widgets look as they do in
-portrait. Each page's items are laid out on it in their portrait reading order, left to right
-and top to bottom: widgets first, then apps and folders in the room left. A widget as wide as
-the portrait page (a calendar, say) stretches across the landscape page; one taller than the
-page is shown as tall as the page.
+9×5). Landscape cells have exactly the portrait cell's shape, scaled down only as far as the
+page needs to fit the landscape height, and the grid is centred, so widgets, icons and folders
+keep their portrait size and look. Each page's items are laid out on it in their portrait
+reading order, left to right and top to bottom: widgets first, then apps and folders in the
+room left. A widget taller than the landscape page is shown as tall as the page.
 
 The arrangement is done on each page's own views once the launcher has put its items there,
 never by reading the launcher's model while it loads (which held the model lock on the main
@@ -270,6 +270,13 @@ binding workspace item"). Turned cells can overlap until the page is arranged, s
 this deleted widgets for good, in portrait too. While a landscape page is bound no cell counts
 as taken, and a collision delete in landscape is refused and logged
 (`NothingLauncher+: landscape grid: kept …`).
+
+The launcher's loader waits for an idle main thread between its steps (home screen, then apps,
+shortcuts and widgets), with no time limit. A view redrawn every frame keeps the main thread
+from ever going idle, and the widget list then stayed empty ("Widgets and shortcuts aren't
+available") until the launcher went to the background. Dot-matrix icons animate only while
+they are in view (the closed drawer and other pages get one still frame, rechecked once a
+second), and the loader waits for idle at most three seconds per step.
 
 - Only the presentation changes: the launcher database keeps the portrait layout, and that
   stays the one you arrange. Moving or resizing an item within its page in landscape leaves its
