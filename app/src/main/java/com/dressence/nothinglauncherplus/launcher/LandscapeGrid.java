@@ -59,10 +59,6 @@ final class LandscapeGrid {
     private static final String CLS_LAYOUT_PARAMS =
             "com.android.launcher3.celllayout.CellLayoutLayoutParams";
     private static final String CLS_DEVICE_PROFILE = "com.android.launcher3.DeviceProfile";
-    private static final String CLS_WIDGET_CONTAINER =
-            "com.android.launcher3.ShortcutAndWidgetContainer";
-    /** Nothing's own widgets (cards), which are not AppWidgetHostViews. */
-    private static final String CLS_CARD_HOST = "com.nothing.cardhost.CardWidgetHostView";
     private static final String CLS_LAUNCHER = "com.android.launcher3.Launcher";
 
     private static final int CONTAINER_DESKTOP = -100;
@@ -74,25 +70,32 @@ final class LandscapeGrid {
      * Nothing sizes its widgets with), and they take their cell from here.
      */
     private static final Map<Integer, Point> PORTRAIT_CELLS = new ConcurrentHashMap<>();
-    /** How much wider than the portrait cell's shape a landscape cell may be. */
-    private static final float MAX_WIDEN = 1.3f;
     /** The longest a rotation may hold the launcher's drawing while its pages are rebuilt. */
     private static final long HOLD_DRAW_MS = 1000;
     /** How Launcher.bindInflatedItems words the delete of an item bound onto a taken cell. */
     private static final String COLLISION_DELETE = "Collision while binding";
 
-    /** A portrait page's size; its landscape page is {@code rows} x {@code columns}. */
+    /**
+     * A portrait page's size, and its landscape page: {@code columns} rows (the portrait page
+     * turned) of cells with the portrait cell's shape, as many across as the page holds and at
+     * least {@code rows}.
+     */
     private static final class Grid {
         final int columns;
         final int rows;
+        final int landscapeColumns;
+        /** The landscape cell; null if the portrait cell is not known yet. */
+        final Point cell;
 
-        Grid(int columns, int rows) {
+        Grid(int columns, int rows, int landscapeColumns, Point cell) {
             this.columns = columns;
             this.rows = rows;
+            this.landscapeColumns = landscapeColumns;
+            this.cell = cell;
         }
 
         int landscapeColumns() {
-            return rows;
+            return landscapeColumns;
         }
 
         int landscapeRows() {
@@ -140,7 +143,6 @@ final class LandscapeGrid {
             hookPagePadding();
         });
         Hooks.install("landscape grid spans", this::hookSpans);
-        Hooks.install("landscape widget shape", this::hookWidgetShape);
         Hooks.install("landscape grid arrangement", this::hookArrange);
         Hooks.install("landscape grid safety", this::hookModelWriter);
         Hooks.install("clean rotation", this::hookRebindHold);
@@ -158,7 +160,31 @@ final class LandscapeGrid {
         Object inv = XposedHelpers.getObjectField(deviceProfile, "inv");
         int columns = XposedHelpers.getIntField(inv, "numColumns");
         int rows = XposedHelpers.getIntField(inv, "numRows");
-        return columns > 0 && rows >= 2 ? new Grid(columns, rows) : null;
+        if (columns <= 0 || rows < 2) {
+            return null;
+        }
+        Point portrait = PORTRAIT_CELLS.get(XposedHelpers.getIntField(deviceProfile, "heightPx"));
+        if (portrait == null) {
+            portrait = portraitCell(deviceProfile);
+        }
+        if (portrait == null || portrait.x <= 0 || portrait.y <= 0) {
+            return new Grid(columns, rows, rows, null);
+        }
+        Rect pad = (Rect) XposedHelpers.getObjectField(deviceProfile, "cellLayoutPaddingPx");
+        Point border = (Point) XposedHelpers.getObjectField(deviceProfile,
+                "cellLayoutBorderSpacePx");
+        int width = (Integer) XposedHelpers.callMethod(deviceProfile, "getCellLayoutWidth")
+                - pad.left - pad.right;
+        int height = (Integer) XposedHelpers.callMethod(deviceProfile, "getCellLayoutHeight")
+                - pad.top - pad.bottom;
+        // The portrait cell, smaller only if the turned page does not fit otherwise.
+        float scale = Math.min(1f, Math.min(
+                (height - (columns - 1) * border.y) / (float) (columns * portrait.y),
+                (width - (rows - 1) * border.x) / (float) (rows * portrait.x)));
+        Point cell = new Point(Math.max(1, (int) (portrait.x * scale)),
+                Math.max(1, (int) (portrait.y * scale)));
+        int across = Math.max(rows, (width + border.x) / (cell.x + border.x));
+        return new Grid(columns, rows, across, cell);
     }
 
     /** The launcher activity that is up, or null. */
@@ -373,64 +399,6 @@ final class LandscapeGrid {
         return c[2] > 1 && c[2] >= grid.columns;
     }
 
-    /**
-     * A widget keeps its portrait proportions on the wider landscape cells (a round widget
-     * stays round), centred on its cells; one as wide as the page fills them instead.
-     */
-    private void hookWidgetShape() {
-        Class<?> appWidget = AppWidgetHostView.class;
-        Class<?> card = XposedHelpers.findClassIfExists(CLS_CARD_HOST, cl);
-        XposedHelpers.findAndHookMethod(CLS_WIDGET_CONTAINER, cl, "measureChild", View.class,
-                new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) {
-                        View view = (View) param.args[0];
-                        if (!appWidget.isInstance(view) && (card == null || !card.isInstance(view))
-                                || XposedHelpers.getIntField(param.thisObject, "mContainerType")
-                                        != CELL_LAYOUT_WORKSPACE) {
-                            return;
-                        }
-                        Object launcher = createdLauncher();
-                        Object profile = launcher != null
-                                ? XposedHelpers.callMethod(launcher, "getDeviceProfile") : null;
-                        Grid grid = gridFor(profile);
-                        Point portrait = grid != null ? PORTRAIT_CELLS.get(
-                                XposedHelpers.getIntField(profile, "heightPx")) : null;
-                        if (portrait == null || !itemInfo().isInstance(view.getTag())
-                                || pageWide(cells(view.getTag()), grid)) {
-                            return;
-                        }
-                        keepShape(view, cells(view.getTag()), portrait,
-                                (Point) XposedHelpers.getObjectField(profile,
-                                        "cellLayoutBorderSpacePx"));
-                    }
-                });
-    }
-
-    private static void keepShape(View view, int[] c, Point portrait, Point border) {
-        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
-        float shape = (c[2] * portrait.x + (c[2] - 1) * border.x)
-                / (float) (c[3] * portrait.y + (c[3] - 1) * border.y);
-        int width = lp.width;
-        int height = lp.height;
-        if (width <= 0 || height <= 0) {
-            return;
-        }
-        int fitWidth = Math.min(width, Math.round(height * shape));
-        int fitHeight = Math.min(height, Math.round(fitWidth / shape));
-        if (fitWidth == width && fitHeight == height) {
-            return;
-        }
-        lp.width = fitWidth;
-        lp.height = fitHeight;
-        XposedHelpers.setIntField(lp, "x", XposedHelpers.getIntField(lp, "x")
-                + (width - fitWidth) / 2);
-        XposedHelpers.setIntField(lp, "y", XposedHelpers.getIntField(lp, "y")
-                + (height - fitHeight) / 2);
-        view.measure(View.MeasureSpec.makeMeasureSpec(fitWidth, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(fitHeight, View.MeasureSpec.EXACTLY));
-    }
-
     // ---------------------------------------------------------------------------------------
     // Rotation
     // ---------------------------------------------------------------------------------------
@@ -598,10 +566,8 @@ final class LandscapeGrid {
     // ---------------------------------------------------------------------------------------
 
     /**
-     * Landscape cells have about the portrait cell's shape, so every icon, folder and widget
-     * looks as it does in portrait: the portrait cell, scaled down only as far as the turned
-     * R x C page needs to fit the landscape page, and widened (by MAX_WIDEN at most) into the
-     * width left over. The page's cells are centred on it (hookPagePadding).
+     * Landscape cells have the portrait cell's shape, so every icon, folder and widget looks as
+     * it does in portrait (see Grid); the page's cells are centred on it (hookPagePadding).
      */
     private void hookCellSize() {
         Class<?> dp = XposedHelpers.findClass(CLS_DEVICE_PROFILE, cl);
@@ -610,15 +576,11 @@ final class LandscapeGrid {
             protected void beforeHookedMethod(MethodHookParam param) {
                 Object o = param.thisObject;
                 Grid grid = gridFor(o);
-                if (grid == null) {
-                    return;
-                }
-                Point cell = landscapeCell(o, grid);
-                if (cell == null) {
+                if (grid == null || grid.cell == null) {
                     return;
                 }
                 Point point = param.args[0] != null ? (Point) param.args[0] : new Point();
-                point.set(cell.x, cell.y);
+                point.set(grid.cell.x, grid.cell.y);
                 param.setResult(point);
             }
 
@@ -635,35 +597,6 @@ final class LandscapeGrid {
         });
         // getCellSize() is a one-line forwarder ART may inline into its callers.
         Hooks.deoptimizeAll(dp, "getCellSize");
-    }
-
-    /**
-     * The cell of landscape profile {@code o}: its portrait profile's cell, scaled to fit the
-     * turned page if it has to be; null if there is no portrait profile to take it from.
-     */
-    private static Point landscapeCell(Object o, Grid grid) {
-        Point portrait = PORTRAIT_CELLS.get(XposedHelpers.getIntField(o, "heightPx"));
-        if (portrait == null) {
-            portrait = portraitCell(o);
-        }
-        if (portrait == null || portrait.x <= 0 || portrait.y <= 0) {
-            return null;
-        }
-        Rect pad = (Rect) XposedHelpers.getObjectField(o, "cellLayoutPaddingPx");
-        Point border = (Point) XposedHelpers.getObjectField(o, "cellLayoutBorderSpacePx");
-        int width = (Integer) XposedHelpers.callMethod(o, "getCellLayoutWidth")
-                - pad.left - pad.right - (grid.landscapeColumns() - 1) * border.x;
-        int height = (Integer) XposedHelpers.callMethod(o, "getCellLayoutHeight")
-                - pad.top - pad.bottom - (grid.landscapeRows() - 1) * border.y;
-        float scale = Math.min(1f, Math.min(
-                width / (float) (grid.landscapeColumns() * portrait.x),
-                height / (float) (grid.landscapeRows() * portrait.y)));
-        int x = (int) (portrait.x * scale);
-        int y = (int) (portrait.y * scale);
-        // Wider where the page has room, so it is not left with empty sides; never so much
-        // wider that widgets lose their portrait proportions.
-        x = Math.max(x, Math.min(width / grid.landscapeColumns(), Math.round(x * MAX_WIDEN)));
-        return new Point(Math.max(1, x), Math.max(1, y));
     }
 
     /** The cell of the portrait profile for the same display as landscape profile {@code o}. */
@@ -687,7 +620,7 @@ final class LandscapeGrid {
 
     /**
      * A landscape page measures its cells from its own size; it is padded so that they come out
-     * as landscapeCell, the grid centred in the room left over.
+     * as Grid.cell, the grid centred in the room left over.
      */
     private void hookPagePadding() {
         XposedHelpers.findAndHookMethod(CLS_CELL_LAYOUT, cl, "onMeasure", int.class, int.class,
@@ -707,7 +640,7 @@ final class LandscapeGrid {
                         Rect base = (Rect) XposedHelpers.getObjectField(profile,
                                 "cellLayoutPaddingPx");
                         Grid grid = gridFor(profile);
-                        Point cell = grid != null ? landscapeCell(profile, grid) : null;
+                        Point cell = grid != null ? grid.cell : null;
                         int left = base.left;
                         int top = base.top;
                         int right = base.right;

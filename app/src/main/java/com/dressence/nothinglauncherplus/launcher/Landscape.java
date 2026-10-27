@@ -448,7 +448,9 @@ final class Landscape {
     /**
      * Nothing's grid keeps its 6-8 rows in landscape, so a row is only ~90-140 px tall while the
      * grid asks for 150+ px icons; they were drawn cut in half. After every icon sizing pass,
-     * cap the icon to what a cell can hold, drop the label and resize hotseat and folder icons.
+     * the icon is set to what a cell holds, the label dropped and hotseat and folder icons
+     * resized. Raised as well as lowered: the launcher's profiles made from other contexts
+     * came out with smaller icons, and icons set up from those were drawn at that size.
      */
     private void hookIconFit() {
         Class<?> base = XposedHelpers.findClass("com.android.launcher3.DeviceProfile", cl);
@@ -473,7 +475,7 @@ final class Landscape {
         Point cell = (Point) XposedHelpers.callMethod(o, "getCellSize");
         int fit = (int) (Math.min(cell.x, cell.y) * ICON_TO_CELL);
         int icon = XposedHelpers.getIntField(o, "iconSizePx");
-        if (fit <= 0 || icon <= fit) {
+        if (fit <= 0 || icon == fit) {
             return;
         }
         int height = overlap(o, fit);

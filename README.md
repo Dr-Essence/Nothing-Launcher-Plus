@@ -253,13 +253,13 @@ Around the home screen:
 
 ### Landscape grid
 
-A portrait page of C columns × R rows turns with the screen into **R × C** (a 5×9 page becomes
-9×5). Landscape cells have about the portrait cell's shape: the portrait cell, scaled down only
-as far as the page needs to fit the landscape height, and widened into the room left beside it
-(never more than 1.3×), with the grid centred, so the page has no empty sides. Widgets keep
-their portrait proportions on the wider cells, centred on them (a round widget stays round),
-and a widget as wide as the portrait page (a calendar) fills the landscape page's width.
-Icons take up to 90% of a cell.
+A portrait page of C columns × R rows turns with the screen: its C columns become the
+landscape page's rows. Landscape cells have exactly the portrait cell's shape, scaled down only
+as far as the page needs to fit the landscape height, and the page has as many columns as fit
+across (at least R; 11 for a 5×9 grid on a 2400×1080 screen), centred. Widgets are told the
+size they are shown at, so they keep their portrait size and look (round ones stay round,
+nothing is cut off); a widget as wide as the portrait page (a calendar) fills the landscape
+page's width. Icons take 90% of a cell, in every landscape profile the launcher makes.
 
 The launcher makes its profiles one after another and keeps a copy of each, which it copies
 its own from and Nothing sizes its widgets with. A landscape profile made before the portrait
