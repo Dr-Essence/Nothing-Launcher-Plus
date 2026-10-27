@@ -42,7 +42,7 @@ final class TileBackground extends DrawableWrapper {
 
     @Override
     public void draw(Canvas canvas) {
-        if (!store.get().ndotQuickSettings) {
+        if (!store.get().ndotQuickSettings || GlowIcons.litAtSource) {
             super.draw(canvas);
             return;
         }

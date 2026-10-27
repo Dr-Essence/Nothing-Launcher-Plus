@@ -77,6 +77,10 @@ final class GlowIcons {
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) {
                         ImageView view = (ImageView) param.thisObject;
+                        if (NetworkSpeed.inside(view)) {
+                            NetworkSpeed.tint(view, store.get().ndotStatusBar);
+                            return; // Drawn by itself, only coloured.
+                        }
                         int kind = kind(view);
                         if (kind == NONE) {
                             return;
@@ -97,7 +101,7 @@ final class GlowIcons {
                     protected void beforeHookedMethod(MethodHookParam param) {
                         TextView view = (TextView) param.thisObject;
                         if (StatusBar.keepSmall(view) || NetworkSpeed.inside(view)) {
-                            return; // The network speed keeps itself clean (NetworkSpeed).
+                            return;
                         }
                         int kind = kind(view);
                         if (kind == TILE && store.get().ndotQuickSettings
@@ -118,7 +122,77 @@ final class GlowIcons {
                         }
                     }
                 });
+        // Animated icons (airplane mode, rotation, the torch) animate on the render thread when
+        // drawn by the view itself, where a redraw into a bitmap never sees them move: they are
+        // set to animate on the main thread, frame by frame through the redraw.
+        XposedBridge.hookAllMethods(ImageView.class, "setImageDrawable", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                if (param.args.length == 1 && param.args[0] instanceof Drawable
+                        && (store.get().ndotQuickSettings || store.get().ndotStatusBar)) {
+                    animateOnUi((Drawable) param.args[0], 0);
+                }
+            }
+        });
+        Hooks.install("green quick settings tile colours", () -> hookTileViewColours(cl, store));
         Hooks.install("green quick settings tiles", () -> hookComposeTiles(cl, store));
+    }
+
+    /** {@code d}, and any animated vector inside it, animating on the main thread. */
+    private static void animateOnUi(Drawable d, int depth) {
+        if (d == null || depth > 4) {
+            return;
+        }
+        if (d instanceof android.graphics.drawable.AnimatedVectorDrawable) {
+            try {
+                d.getClass().getMethod("forceAnimationOnUI").invoke(d);
+            } catch (ReflectiveOperationException e) {
+                // Hidden on this release: the icon then shows its end state.
+            }
+        } else if (d instanceof android.graphics.drawable.DrawableWrapper) {
+            animateOnUi(((android.graphics.drawable.DrawableWrapper) d).getDrawable(), depth + 1);
+        } else if (d instanceof android.graphics.drawable.LayerDrawable) {
+            android.graphics.drawable.LayerDrawable layers =
+                    (android.graphics.drawable.LayerDrawable) d;
+            for (int i = 0; i < layers.getNumberOfLayers(); i++) {
+                animateOnUi(layers.getDrawable(i), depth + 1);
+            }
+        } else if (d instanceof android.graphics.drawable.DrawableContainer) {
+            animateOnUi(d.getCurrent(), depth + 1);
+        }
+    }
+
+    /**
+     * True once a tile has taken its colour from the hooked source: backgrounds are then left
+     * as the tiles draw them (TileBackground stands aside). Until then, and on releases where
+     * the source is not there, backgrounds are recoloured as they draw.
+     */
+    static volatile boolean litAtSource;
+
+    /**
+     * The colour a tile view gives its background for each state (the white of a tile that
+     * is on), at the source: the tile animates to it itself, at once, the moment it turns on.
+     */
+    private static void hookTileViewColours(ClassLoader cl, ConfigStore store) {
+        Class<?> tile = XposedHelpers.findClass(
+                "com.android.systemui.qs.tileimpl.QSTileViewImpl", cl);
+        int hooked = XposedBridge.hookAllMethods(tile, "getBackgroundColorForState",
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        if (!store.get().ndotQuickSettings || param.args.length == 0
+                                || !(param.args[0] instanceof Integer)
+                                || (Integer) param.args[0] != 2) { // Tile.STATE_ACTIVE
+                            return;
+                        }
+                        param.setResult(store.get().qsAmber ? DASH_AMBER : RETRO_GREEN);
+                        if (!litAtSource) {
+                            litAtSource = true;
+                            Hooks.log("green quick settings: on tiles lit at the source");
+                        }
+                    }
+                }).size();
+        Hooks.log("green quick settings: " + hooked + " tile colour hooks");
     }
 
     // ---- Quick settings tiles drawn with Compose (Android 16) ----
@@ -559,7 +633,12 @@ final class GlowIcons {
                 : h * GLOW;
         int colour = GreenGlow.GREEN;
         if (kind == TILE) {
-            wrapBackgrounds(view);
+            if (!dumpedTile) {
+                dumpTile(view);
+            }
+            if (!litAtSource) {
+                wrapBackgrounds(view);
+            }
             // A tile that is on draws its icon dark (on its white): amber, in the amber style.
             if (store.get().qsAmber && dark(icon)) {
                 colour = DASH_ICON;
@@ -576,28 +655,35 @@ final class GlowIcons {
      * time the icon draws, as a tile may set itself a new background when its state changes.
      */
     private static void wrapBackgrounds(ImageView icon) {
-        StringBuilder dump = dumpedTile ? null : new StringBuilder("tile:");
         View v = icon;
         for (int i = 0; i < 6 && v != null; i++) {
             String name = v.getClass().getSimpleName();
-            if (i > 0 && (name.contains("Layout") || name.contains("Panel")
-                    || name.contains("Page") || name.contains("Pager"))) {
+            if (i > 0 && (name.contains("TileLayout") || name.contains("Panel")
+                    || name.contains("Page"))) {
                 break; // Past the tile, into the grid holding it.
             }
             Drawable bg = v.getBackground();
-            if (dump != null) {
-                dump.append("\n  ").append(v.getClass().getName()).append(" bg=")
-                        .append(bg == null ? "none" : bg.getClass().getName());
-            }
             if (bg != null && !(bg instanceof TileBackground)) {
                 v.setBackground(new TileBackground(bg, store));
+                // This frame has drawn the old background already: draw again with the new.
+                v.post(v::invalidate);
             }
             v = v.getParent() instanceof View ? (View) v.getParent() : null;
         }
-        if (dump != null) {
-            dumpedTile = true;
-            Hooks.log(dump.toString());
+    }
+
+    /** The tile's views up from its icon, with their backgrounds: logged once. */
+    private static void dumpTile(View icon) {
+        dumpedTile = true;
+        StringBuilder dump = new StringBuilder("tile:");
+        View v = icon;
+        for (int i = 0; i < 6 && v != null; i++) {
+            Drawable bg = v.getBackground();
+            dump.append("\n  ").append(v.getClass().getName()).append(" bg=")
+                    .append(bg == null ? "none" : bg.getClass().getName());
+            v = v.getParent() instanceof View ? (View) v.getParent() : null;
         }
+        Hooks.log(dump.toString());
     }
 
     /** True if the icon's lit pixels are dark: a tile that is on. */

@@ -52,7 +52,6 @@ final class StatusBar {
                 });
         Hooks.install("status bar clock", () -> hookClock(cl, store));
         Hooks.install("green status icons", () -> GlowIcons.install(cl, store));
-        Hooks.install("network speed", () -> NetworkSpeed.install(store));
         Hooks.install("status bar battery", () -> hookBattery(cl, store));
     }
 
