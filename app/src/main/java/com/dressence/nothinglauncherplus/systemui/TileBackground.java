@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.systemui;
 
 import android.graphics.Canvas;
 import android.graphics.ColorMatrixColorFilter;
@@ -6,6 +6,8 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.DrawableWrapper;
+
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 
 /**
  * A quick settings tile's background seen through a retro display: drawn as the tile draws
@@ -42,14 +44,17 @@ final class TileBackground extends DrawableWrapper {
 
     @Override
     public void draw(Canvas canvas) {
-        if (!store.get().ndotQuickSettings || GlowIcons.litAtSource) {
+        if (!store.get().ndotQuickSettings || QuickSettings.litAtSource) {
             super.draw(canvas);
             return;
         }
         paint.setColorFilter(store.get().qsAmber ? AMBER : GREEN);
         layer.set(getBounds());
-        canvas.saveLayer(layer, paint);
-        super.draw(canvas);
-        canvas.restore();
+        int save = canvas.saveLayer(layer, paint);
+        try {
+            super.draw(canvas);
+        } finally {
+            canvas.restoreToCount(save);
+        }
     }
 }

@@ -259,7 +259,7 @@ public final class SoundEngine {
                     writeWav(file, sfx.render());
                 }
                 ids.put(sfx, soundPool.load(file.getPath(), 1));
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
                 // Skip this sound; the others still work.
             }
         }

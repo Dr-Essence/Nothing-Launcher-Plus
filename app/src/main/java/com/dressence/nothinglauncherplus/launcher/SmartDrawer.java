@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.launcher;
 
 import android.content.ComponentName;
 import android.content.Intent;
@@ -11,6 +11,8 @@ import android.widget.TextView;
 import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.anim.MotionDriver;
 import com.dressence.nothinglauncherplus.sound.Sfx;
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
+import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;

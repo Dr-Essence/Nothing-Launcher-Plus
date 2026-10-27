@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.launcher;
 
 import android.content.Context;
 import android.content.Intent;
@@ -10,6 +10,8 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
+import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -60,9 +62,19 @@ final class FolderMenu {
                 "onFinishInflate", new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) {
-                        ((View) param.thisObject).setOnLongClickListener(FolderMenu.this::show);
+                        ((View) param.thisObject).setOnLongClickListener(FolderMenu.this::safeShow);
                     }
                 });
+    }
+
+    /** The long press of a folder tile: never lets a failure reach the launcher. */
+    private boolean safeShow(View icon) {
+        try {
+            return show(icon);
+        } catch (Throwable t) {
+            Hooks.log("folder menu failed: " + t);
+            return false;
+        }
     }
 
     private boolean show(View icon) {
@@ -156,7 +168,7 @@ final class FolderMenu {
 
         Executor modelExecutor =
                 (Executor) XposedHelpers.getStaticObjectField(executorsClass, "MODEL_EXECUTOR");
-        modelExecutor.execute(() -> {
+        modelExecutor.execute(Hooks.guard("folder to home screen", () -> {
             int folderId = XposedHelpers.getIntField(folder, "id");
             if (folderId < 0) {
                 Hooks.log("folder was not added to the workspace");
@@ -166,7 +178,7 @@ final class FolderMenu {
                 XposedHelpers.callMethod(writer, "addItemToDatabase",
                         children.get(i), folderId, 0, i, 0);
             }
-        });
+        }));
 
         Object normal = XposedHelpers.getStaticObjectField(launcherStateClass, "NORMAL");
         XposedHelpers.callMethod(XposedHelpers.callMethod(launcher, "getStateManager"),

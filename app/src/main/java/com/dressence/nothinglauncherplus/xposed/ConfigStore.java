@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.xposed;
 
 import com.dressence.nothinglauncherplus.Config;
 
@@ -7,28 +7,28 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import de.robv.android.xposed.XSharedPreferences;
 
-/** The module configuration as seen from the launcher process. */
-final class ConfigStore {
+/** The module's settings as a hooked app sees them (read through XSharedPreferences). */
+public final class ConfigStore {
 
     private final XSharedPreferences prefs =
             new XSharedPreferences(Config.MODULE_PKG, Config.PREFS_NAME);
     private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
     private volatile Config config = Config.read(prefs);
 
-    Config get() {
+    public Config get() {
         return config;
     }
 
-    /** Cheap file-stat check; used on paths that are about to re-read the config anyway. */
-    void reloadIfChanged() {
+    /** Re-reads the settings if their file changed (a file stat): not for every frame. */
+    public void reloadIfChanged() {
         if (prefs.hasFileChanged()) {
             prefs.reload();
             config = Config.read(prefs);
         }
     }
 
-    /** Reloads and lets every feature refresh its UI. Call on the main thread. */
-    void reloadAndNotify() {
+    /** Re-reads the settings and lets every feature refresh. Call on the main thread. */
+    public void reloadAndNotify() {
         prefs.reload();
         config = Config.read(prefs);
         for (Runnable listener : changeListeners) {
@@ -40,7 +40,7 @@ final class ConfigStore {
         }
     }
 
-    void addChangeListener(Runnable listener) {
+    public void addChangeListener(Runnable listener) {
         changeListeners.add(listener);
     }
 }

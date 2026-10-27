@@ -1,33 +1,52 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.xposed;
 
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 
 import de.robv.android.xposed.XposedBridge;
 
-/** Logging, fault-isolated installation and deoptimization shared by all hooks. */
-final class Hooks {
+/**
+ * What every hook shares: logging, installing a feature so its failure is its own, guarding
+ * code the hooked app calls back into, and deoptimizing methods whose callees are hooked.
+ *
+ * <p>Exceptions thrown inside an Xposed hook callback are caught by the framework, but code
+ * the module hands to the app (a Runnable it posts, a listener, a receiver, a Drawable it
+ * draws) runs as the app's own: an exception there crashes the app. Such code goes through
+ * {@link #guard}.
+ */
+public final class Hooks {
 
     private static final String TAG = "NothingLauncher+: ";
 
-    interface Installer {
+    public interface Installer {
         void run() throws Throwable;
     }
 
     private Hooks() {
     }
 
-    static void log(String message) {
+    public static void log(String message) {
         XposedBridge.log(TAG + message);
     }
 
-    /** A failing feature is logged and skipped so the remaining features still work. */
-    static void install(String name, Installer installer) {
+    /** Installs one feature; if it fails it is logged and skipped, the others still work. */
+    public static void install(String name, Installer installer) {
         try {
             installer.run();
         } catch (Throwable t) {
-            log("failed to install hook '" + name + "': " + t);
+            log("failed to install " + name + ": " + t);
         }
+    }
+
+    /** {@code task}, made safe to hand to the app: what it throws is logged, not raised. */
+    public static Runnable guard(String what, Runnable task) {
+        return () -> {
+            try {
+                task.run();
+            } catch (Throwable t) {
+                log(what + " failed: " + t);
+            }
+        };
     }
 
     private static Method deoptimizeMethod;
@@ -37,7 +56,7 @@ final class Hooks {
      * Forces {@code member} to run interpreted so callees it inlined (small getters we hook) go
      * through their hooks again. LSPosed exposes this outside the public API 82 surface.
      */
-    static synchronized void deoptimize(Member member) {
+    public static synchronized void deoptimize(Member member) {
         if (!deoptimizeLookedUp) {
             deoptimizeLookedUp = true;
             try {
@@ -57,7 +76,7 @@ final class Hooks {
         }
     }
 
-    static void deoptimizeAll(Class<?> cls, String methodName) {
+    public static void deoptimizeAll(Class<?> cls, String methodName) {
         for (Method m : cls.getDeclaredMethods()) {
             if (m.getName().equals(methodName)) {
                 deoptimize(m);

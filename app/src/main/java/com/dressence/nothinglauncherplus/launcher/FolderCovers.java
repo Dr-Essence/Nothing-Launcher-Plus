@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.launcher;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -20,6 +20,8 @@ import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.anim.AnimatedEmojiView;
 import com.dressence.nothinglauncherplus.anim.DotEffect;
 import com.dressence.nothinglauncherplus.anim.Motion;
+import com.dressence.nothinglauncherplus.xposed.Hooks;
+import com.dressence.nothinglauncherplus.xposed.NdotFont;
 
 import java.io.InputStream;
 import java.util.Map;
@@ -132,19 +134,19 @@ final class FolderCovers {
         }
         cover.showImage(null);
         Context context = cover.getContext().getApplicationContext();
-        loader.execute(() -> {
+        loader.execute(Hooks.guard("cover image load", () -> {
             Bitmap bitmap = decode(context, uri);
             if (bitmap == null) {
                 return;
             }
             cache.put(key, bitmap);
-            cover.post(() -> {
+            cover.post(Hooks.guard("cover image", () -> {
                 // The tile may have been recycled for another folder meanwhile.
                 if (key.equals(cover.pendingKey)) {
                     cover.showImage(bitmap);
                 }
-            });
-        });
+            }));
+        }));
     }
 
     private static Bitmap decode(Context context, Uri uri) {

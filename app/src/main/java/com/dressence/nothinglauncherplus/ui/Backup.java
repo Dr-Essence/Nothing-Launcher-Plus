@@ -7,9 +7,6 @@ import android.util.Base64;
 import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.CoverProvider;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -18,6 +15,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * Single-file backup of all folders, options and cover images, so the setup survives a

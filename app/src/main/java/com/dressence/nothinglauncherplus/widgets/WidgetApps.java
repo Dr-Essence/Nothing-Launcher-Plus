@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.widgets;
 
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
@@ -20,10 +22,10 @@ import de.robv.android.xposed.XposedHelpers;
  * With "Home screen rotation" on, their portrait locks are lifted: translucent cards then follow
  * the home screen behind them, full screens follow the device.
  */
-final class WidgetApps {
+public final class WidgetApps {
 
-    static final String WIDGETS_PKG = "com.nothing.hearthstone";
-    static final String CARD_SERVICE_PKG = "com.nothing.cardservice";
+    private static final String WIDGETS_PKG = "com.nothing.hearthstone";
+    private static final String CARD_SERVICE_PKG = "com.nothing.cardservice";
 
     /** The breathing card: full width at 183:223, which overflows a landscape screen. */
     private static final String BREATH_ACTIVITY = WIDGETS_PKG + ".breath.ui.BreathExerciseActivity";
@@ -35,7 +37,12 @@ final class WidgetApps {
         this.store = store;
     }
 
-    static void install(ConfigStore store) {
+    /** True for the apps this part of the module is for. */
+    public static boolean handles(String pkg) {
+        return WIDGETS_PKG.equals(pkg) || CARD_SERVICE_PKG.equals(pkg);
+    }
+
+    public static void install(ConfigStore store) {
         WidgetApps apps = new WidgetApps(store);
         XposedHelpers.findAndHookMethod(Activity.class, "onCreate", Bundle.class,
                 new XC_MethodHook() {

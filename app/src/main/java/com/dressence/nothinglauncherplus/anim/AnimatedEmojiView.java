@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.os.Build;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.TextView;
@@ -32,6 +33,7 @@ import java.util.Random;
 @SuppressLint("ViewConstructor")
 public class AnimatedEmojiView extends TextView {
 
+    private static final String TAG = "NothingLauncher+";
     private static final int EFFECT_FPS = 24;
     private static final long EFFECT_FRAME_NANOS = 1_000_000_000L / EFFECT_FPS;
     private static final long REACT_NANOS = 1_400_000_000L;
@@ -77,8 +79,13 @@ public class AnimatedEmojiView extends TextView {
             int night = getResources().getConfiguration().uiMode
                     & Configuration.UI_MODE_NIGHT_MASK;
             dots = new DotMatrix(night != Configuration.UI_MODE_NIGHT_NO);
-            dots.setText(getText(), getCurrentTextColor());
-            dots.render(pose);
+            try {
+                dots.setText(getText(), getCurrentTextColor());
+                dots.render(pose);
+            } catch (RuntimeException e) {
+                fail(e);
+                return;
+            }
         } else {
             dots = null;
         }
@@ -123,9 +130,14 @@ public class AnimatedEmojiView extends TextView {
         reactStart = 0;
         setText(text);
         if (dots != null) {
-            dots.setText(text, getCurrentTextColor());
-            pose.reset();
-            dots.render(pose);
+            try {
+                dots.setText(text, getCurrentTextColor());
+                pose.reset();
+                dots.render(pose);
+            } catch (RuntimeException e) {
+                fail(e);
+                return;
+            }
             invalidate();
         }
         this.motion = motion != null ? motion : Motion.NONE;
@@ -151,7 +163,12 @@ public class AnimatedEmojiView extends TextView {
     public void setDotLabel(CharSequence text, int color, Rect area, Typeface typeface,
             float size) {
         if (dots != null) {
-            dots.setLabel(text, color, area, typeface, size);
+            try {
+                dots.setLabel(text, color, area, typeface, size);
+            } catch (RuntimeException e) {
+                fail(e);
+                return;
+            }
             invalidate();
             MotionDriver.get().wake();
         }
@@ -236,7 +253,13 @@ public class AnimatedEmojiView extends TextView {
      */
     long step(long nowNanos, float durationScale) {
         nowNanos = clock(nowNanos);
-        long wait = stepAt(nowNanos, durationScale);
+        long wait;
+        try {
+            wait = stepAt(nowNanos, durationScale);
+        } catch (RuntimeException e) {
+            fail(e);
+            return Long.MAX_VALUE;
+        }
         // Waits are in this view's time; slowed down, they last longer in real time.
         return wait == 0 || wait == Long.MAX_VALUE || speed >= 1 ? wait
                 : (long) Math.min(Long.MAX_VALUE / 2, wait / Math.max(0.05f, speed));
@@ -332,20 +355,45 @@ public class AnimatedEmojiView extends TextView {
     @Override
     protected void onDraw(Canvas canvas) {
         if (dots != null) {
-            dots.draw(canvas, getWidth(), getHeight(), dotContent, dotPanel, dotCorner);
-        } else {
-            super.onDraw(canvas);
+            try {
+                dots.draw(canvas, getWidth(), getHeight(), dotContent, dotPanel, dotCorner);
+                return;
+            } catch (RuntimeException e) {
+                fail(e);
+            }
         }
+        super.onDraw(canvas);
     }
 
     private void apply(Pose p) {
         if (dots != null) {
-            if (dots.render(p)) {
-                invalidate();
+            try {
+                if (dots.render(p)) {
+                    invalidate();
+                }
+            } catch (RuntimeException e) {
+                fail(e);
             }
             return;
         }
         applyTransforms(p);
+    }
+
+    /**
+     * Stops playing and shows the plain, still emoji. The animations run inside the app this
+     * view is shown in (the launcher): a fault in one emoji must cost only its animation, never
+     * the app. What went wrong is logged.
+     */
+    private void fail(RuntimeException e) {
+        Log.w(TAG, "emoji " + getText() + " stopped animating", e);
+        effect = DotEffect.NONE;
+        motion = Motion.NONE;
+        reactStart = 0;
+        dots = null;
+        atRest = true;
+        pose.reset();
+        applyTransforms(pose);
+        invalidate();
     }
 
     private void applyTransforms(Pose p) {

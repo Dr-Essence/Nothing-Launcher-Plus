@@ -3,6 +3,9 @@ package com.dressence.nothinglauncherplus.anim;
 import android.animation.ValueAnimator;
 import android.graphics.Rect;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.view.Choreographer;
 import android.view.View;
 import android.view.ViewParent;
@@ -36,6 +39,7 @@ public final class MotionDriver implements Choreographer.FrameCallback {
      */
     private final ArrayList<WeakReference<AnimatedEmojiView>> views = new ArrayList<>();
     private final Rect visible = new Rect();
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean scheduled;
 
     public static MotionDriver get() {
@@ -80,8 +84,17 @@ public final class MotionDriver implements Choreographer.FrameCallback {
      * to bottom so the reaction ripples across them.
      */
     public void reactAll(long delayMs) {
-        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
         handler.postDelayed(() -> {
+            try {
+                reactShown();
+            } catch (RuntimeException e) {
+                Log.w("NothingLauncher+", "emoji greeting failed", e);
+            }
+        }, delayMs);
+    }
+
+    private void reactShown() {
+        {
             ArrayList<AnimatedEmojiView> shown = new ArrayList<>();
             for (WeakReference<AnimatedEmojiView> ref : views) {
                 AnimatedEmojiView view = ref.get();
@@ -101,7 +114,7 @@ public final class MotionDriver implements Choreographer.FrameCallback {
                 AnimatedEmojiView view = shown.get(i);
                 handler.postDelayed(view::react, i * STAGGER_MS);
             }
-        }, delayMs);
+        }
     }
 
     /** Re-evaluates on the next frame (e.g. something became visible). */

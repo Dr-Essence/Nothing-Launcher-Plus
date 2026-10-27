@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.systemui;
 
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
@@ -14,13 +14,13 @@ import android.widget.ImageView;
 final class NetworkSpeed {
 
     private static final PorterDuffColorFilter GREEN =
-            new PorterDuffColorFilter(GreenGlow.GREEN, PorterDuff.Mode.SRC_IN);
+            new PorterDuffColorFilter(Led.GREEN, PorterDuff.Mode.SRC_IN);
 
     private NetworkSpeed() {
     }
 
     /** True for a view inside the indicator. */
-    static boolean inside(View view) {
+    static boolean contains(View view) {
         Object p = view.getParent();
         for (int i = 0; i < 4 && p instanceof View; i++, p = ((View) p).getParent()) {
             if (p.getClass().getName().contains("NetworkSpeed")) {
@@ -31,7 +31,7 @@ final class NetworkSpeed {
     }
 
     /** {@code image} (part of the indicator) green when {@code on}, as Nothing drew it if not. */
-    static void tint(ImageView image, boolean on) {
+    static void light(ImageView image, boolean on) {
         if (on && image.getColorFilter() != GREEN) {
             image.setColorFilter(GREEN);
         } else if (!on && image.getColorFilter() == GREEN) {

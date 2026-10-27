@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.launcher;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -7,6 +7,8 @@ import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.sound.Sfx;
 import com.dressence.nothinglauncherplus.sound.SoundEngine;
 import com.dressence.nothinglauncherplus.sound.Style;
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
+import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;

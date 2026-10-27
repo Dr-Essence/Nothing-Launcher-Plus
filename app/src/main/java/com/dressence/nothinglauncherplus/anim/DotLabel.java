@@ -67,7 +67,6 @@ final class DotLabel {
     /** Dots the panel had room for when last drawn (for deciding to scroll). */
     private int window = Integer.MAX_VALUE;
 
-
     /**
      * Shows {@code value} centred on {@code where}: in {@code typeface} (NDot) sized
      * {@code size} px if there is one, else in the compact dot font.

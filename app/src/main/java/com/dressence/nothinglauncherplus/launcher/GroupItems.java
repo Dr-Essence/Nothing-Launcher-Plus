@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.launcher;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;

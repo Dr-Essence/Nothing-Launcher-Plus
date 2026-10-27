@@ -1,7 +1,9 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.launcher;
 
 import android.graphics.Color;
 import android.view.View;
+
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;

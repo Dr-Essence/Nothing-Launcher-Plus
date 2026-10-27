@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.launcher;
 
 import android.app.Activity;
 import android.content.Context;
@@ -6,6 +6,9 @@ import android.content.pm.ActivityInfo;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.view.View;
+
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
+import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import java.util.Collections;
 import java.util.Set;

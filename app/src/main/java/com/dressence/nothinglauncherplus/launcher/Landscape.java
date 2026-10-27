@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.launcher;
 
 import android.app.Activity;
 import android.content.Context;
@@ -9,9 +9,10 @@ import android.graphics.Point;
 import android.graphics.Rect;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
+import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import java.lang.reflect.Method;
-import java.util.List;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;

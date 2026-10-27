@@ -1,10 +1,12 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.launcher;
 
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+
+import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -446,7 +448,7 @@ final class LandscapeGrid {
         writer = modelWriter;
         if (!checkPosted) {
             checkPosted = true;
-            main.post(this::checkWrittenPages);
+            main.post(Hooks.guard("landscape grid check", this::checkWrittenPages));
         }
     }
 
@@ -470,7 +472,8 @@ final class LandscapeGrid {
         }
         if (moved) {
             // Show the corrected positions: the views still sit where they were dropped.
-            main.postDelayed(this::reload, RELOAD_DELAY_MS);
+            main.postDelayed(Hooks.guard("landscape grid reload", this::reload),
+                    RELOAD_DELAY_MS);
         }
     }
 

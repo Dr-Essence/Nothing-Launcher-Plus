@@ -3,16 +3,16 @@ package com.dressence.nothinglauncherplus;
 import android.content.SharedPreferences;
 import android.net.Uri;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * Custom drawer folder configuration, shared between the settings UI (module process) and the

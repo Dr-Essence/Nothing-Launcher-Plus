@@ -264,7 +264,6 @@ public enum Style {
         }
     }
 
-
     public static Style parse(String name) {
         for (Style s : values()) {
             if (s.name().equals(name)) {

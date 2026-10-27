@@ -1,4 +1,4 @@
-package com.dressence.nothinglauncherplus.hook;
+package com.dressence.nothinglauncherplus.system;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -9,6 +9,8 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
+import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -35,7 +37,7 @@ import de.robv.android.xposed.XposedHelpers;
  * file is kept while a font is newly in use: if system_server dies before it is taken away,
  * the next start leaves the font off (until a font is chosen again) instead of crashing again.
  */
-final class SystemFonts {
+public final class SystemFonts {
 
     private static final String CLS_SERVICE =
             "com.android.server.graphics.fonts.FontManagerService";
@@ -59,7 +61,7 @@ final class SystemFonts {
     private SystemFonts() {
     }
 
-    static void install(ClassLoader cl, ConfigStore store) {
+    public static void install(ClassLoader cl, ConfigStore store) {
         if (GUARD.exists()) {
             // The last system_server died while a font was newly in use: that font stays off.
             String spec = readText(GUARD);
