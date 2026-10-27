@@ -24,19 +24,25 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
 /**
- * The landscape home screen grid, arranged the way One UI does it.
+ * The landscape home screen grid.
  *
- * <p>A portrait page of C columns and R rows is shown in landscape as R columns by C rows: the
- * grid turns with the screen, so cells keep their shape and icons, folders and widgets look
- * as they do in portrait. The items are realigned onto it, the largest first, filling from the
- * left corner column by column; items of the same size keep their portrait reading order. A
- * widget taller than the landscape page is shown as tall as the page; its size is kept.
+ * <p>A portrait page of C columns and R rows is shown in landscape as R columns by C rows, so
+ * cells keep about their shape and icons, folders and widgets look as they do in portrait. Each
+ * page's items are laid out on it in their portrait reading order, left to right and top to
+ * bottom: widgets first, then apps and folders in the room left. A widget as wide as the
+ * portrait page stretches across the landscape page; one taller than the page is shown as tall
+ * as the page. Sizes in the launcher's database are kept.
  *
  * <p>Only the presentation changes: the launcher database keeps the portrait layout, which
  * stays the one you arrange. Moving or resizing an item within its page in landscape does not
  * change where it sits in portrait (the landscape page arranges itself). An item added in
  * landscape, or moved onto another page there, is put in a free spot of the portrait page,
  * since the launcher deletes items that overlap or leave the grid when it next loads.
+ *
+ * <p>The launcher also deletes an item it binds onto a cell that is already taken ("Collision
+ * while binding"), which in landscape meant losing widgets for good. While a landscape page is
+ * bound no cell counts as taken, and such a delete is refused; the page is arranged right
+ * after.
  */
 final class LandscapeGrid {
 
@@ -54,6 +60,8 @@ final class LandscapeGrid {
     private static final int CONTAINER_DESKTOP = -100;
     private static final int CELL_LAYOUT_WORKSPACE = 0;
     private static final String CLS_WIDGET_SIZES = "com.android.launcher3.widget.util.WidgetSizes";
+    /** How Launcher.bindInflatedItems words the delete of an item bound onto a taken cell. */
+    private static final String COLLISION_DELETE = "Collision while binding";
 
     /** A portrait page's size; its landscape page is {@code rows} x {@code columns}. */
     private static final class Grid {
@@ -85,6 +93,8 @@ final class LandscapeGrid {
     private volatile Object bgDataModel;
 
     private boolean arrangePosted;
+    /** Depth of bindInflatedItems calls running in landscape; main thread. */
+    private int binding;
 
     /** Desktop items written in landscape since the last check, by portrait page; main thread. */
     private final Map<Integer, Set<Object>> written = new LinkedHashMap<>();
@@ -163,7 +173,8 @@ final class LandscapeGrid {
      * screen (portrait row as landscape column, portrait column as landscape row): always a
      * cell of the R x C page, so the launcher never drops one for being off the page, and
      * worked out from the item alone, without the launcher's model. The page is arranged as
-     * soon as it is built (see hookArrange).
+     * soon as it is built (see hookArrange). An item already on a page is where it was arranged
+     * (dragging and resizing start from there).
      */
     private void hookMapper() {
         Class<?> mapper = XposedHelpers.findClass(CLS_MAPPER, cl);
@@ -176,23 +187,57 @@ final class LandscapeGrid {
                             return;
                         }
                         Grid grid = current();
-                        if (grid != null) {
-                            int[] c = cells(item);
-                            param.setResult(cellPos.newInstance(
-                                    Math.min(c[1], grid.landscapeColumns() - 1),
-                                    Math.min(c[0], grid.landscapeRows() - 1),
-                                    XposedHelpers.getIntField(item, "screenId")));
+                        if (grid == null) {
+                            return;
                         }
+                        int screenId = XposedHelpers.getIntField(item, "screenId");
+                        View shown = shownView(item, screenId);
+                        if (shown != null) {
+                            Object lp = shown.getLayoutParams();
+                            param.setResult(cellPos.newInstance(
+                                    (Integer) XposedHelpers.callMethod(lp, "getCellX"),
+                                    (Integer) XposedHelpers.callMethod(lp, "getCellY"),
+                                    screenId));
+                            return;
+                        }
+                        int[] c = cells(item);
+                        param.setResult(cellPos.newInstance(
+                                Math.min(c[1], grid.landscapeColumns() - 1),
+                                Math.min(c[0], grid.landscapeRows() - 1), screenId));
                     }
                 });
         // A landscape cell means nothing in portrait: the portrait position is decided when
         // the item is written (see hookModelWriter), so the cell is passed on as it is.
     }
 
+    /** The view showing {@code item} on desktop page {@code screenId}, or null; main thread. */
+    private View shownView(Object item, int screenId) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            return null;
+        }
+        Object launcher = createdLauncher();
+        if (launcher == null) {
+            return null;
+        }
+        Object page = XposedHelpers.callMethod(XposedHelpers.callMethod(launcher, "getWorkspace"),
+                "getScreenWithId", screenId);
+        if (page == null) {
+            return null;
+        }
+        ViewGroup container = (ViewGroup) XposedHelpers.callMethod(page, "getShortcutsAndWidgets");
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            if (child.getTag() == item) {
+                return child;
+            }
+        }
+        return null;
+    }
+
     /**
      * Once the launcher has put a page's items on it (and after items are added), each page is
-     * arranged the One UI way: its items, from their portrait places and sizes, realigned onto
-     * the turned grid. Only the page's own views are moved; the model is not touched.
+     * arranged: its items, from their portrait places and sizes, laid out on the turned grid.
+     * Only the page's own views are moved; the model is not touched.
      */
     private void hookArrange() {
         XC_MethodHook arrange = new XC_MethodHook() {
@@ -207,6 +252,45 @@ final class LandscapeGrid {
                 "finishBindingItems"}) {
             XposedBridge.hookAllMethods(launcherClass, bind, arrange);
         }
+
+        // Items are bound onto their turned portrait cells, which may overlap until the page is
+        // arranged: none of them is a collision.
+        XposedBridge.hookAllMethods(launcherClass, "bindInflatedItems", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                binding++;
+            }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                binding--;
+            }
+        });
+        // isOccupied is small enough for ART to inline into the bind.
+        Hooks.deoptimizeAll(launcherClass, "bindInflatedItems");
+        XposedHelpers.findAndHookMethod(CLS_CELL_LAYOUT, cl, "isOccupied", int.class, int.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        if (binding > 0 && XposedHelpers.getIntField(param.thisObject,
+                                "mContainerType") == CELL_LAYOUT_WORKSPACE && current() != null) {
+                            param.setResult(false);
+                        }
+                    }
+                });
+        XposedHelpers.findAndHookMethod(CLS_MODEL_WRITER, cl, "deleteItemFromDatabase",
+                itemInfo(), String.class, new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        String reason = (String) param.args[1];
+                        if (reason != null && reason.startsWith(COLLISION_DELETE)
+                                && current() != null) {
+                            Hooks.log("landscape grid: kept " + param.args[0]
+                                    + " (the launcher wanted to delete it: " + reason + ")");
+                            param.setResult(null);
+                        }
+                    }
+                });
     }
 
     private void postArrange() {
@@ -236,7 +320,10 @@ final class LandscapeGrid {
         }
     }
 
-    /** Realigns one page's items onto the turned grid: largest first, from the left corner. */
+    /**
+     * Lays one page's items out on the turned grid in portrait reading order, left to right and
+     * top to bottom: widgets first, then apps and folders in the room left.
+     */
     private void arrange(Object cellLayout, Grid grid) {
         ViewGroup container = (ViewGroup) XposedHelpers.callMethod(cellLayout,
                 "getShortcutsAndWidgets");
@@ -254,9 +341,10 @@ final class LandscapeGrid {
         views.sort((a, b) -> {
             int[] x = cells(a.getTag());
             int[] y = cells(b.getTag());
-            int area = Integer.compare(shownArea(y, grid), shownArea(x, grid));
-            if (area != 0) {
-                return area;
+            boolean xSingle = x[2] * x[3] == 1;
+            boolean ySingle = y[2] * y[3] == 1;
+            if (xSingle != ySingle) {
+                return xSingle ? 1 : -1;
             }
             return x[1] != y[1] ? Integer.compare(x[1], y[1]) : Integer.compare(x[0], y[0]);
         });
@@ -315,22 +403,20 @@ final class LandscapeGrid {
         }
     }
 
-    private static int shownArea(int[] c, Grid grid) {
-        return Math.min(c[2], grid.landscapeColumns()) * Math.min(c[3], grid.landscapeRows());
-    }
-
     /**
-     * The first free spot for an item of spans {@code c[2]} x {@code c[3]}, from the left
-     * corner, column by column, marked as taken: cell x, y and the spans it is shown at. If no
-     * spot holds it whole, it is shown smaller.
+     * The first free spot for an item of portrait spans {@code c[2]} x {@code c[3]}, row by
+     * row from the top left, marked as taken: cell x, y and the spans it is shown at. A widget
+     * as wide as the portrait page is as wide as the landscape page. If no spot holds it whole,
+     * it is shown smaller.
      */
     private static int[] place(boolean[][] taken, int[] c, Grid grid) {
         int columns = grid.landscapeColumns();
         int rows = grid.landscapeRows();
+        int wide = c[2] >= grid.columns && c[2] > 1 ? columns : Math.min(c[2], columns);
         for (int spanY = Math.min(c[3], rows); spanY >= 1; spanY--) {
-            for (int spanX = Math.min(c[2], columns); spanX >= 1; spanX--) {
-                for (int x = 0; x + spanX <= columns; x++) {
-                    for (int y = 0; y + spanY <= rows; y++) {
+            for (int spanX = wide; spanX >= 1; spanX--) {
+                for (int y = 0; y + spanY <= rows; y++) {
+                    for (int x = 0; x + spanX <= columns; x++) {
                         if (isVacant(taken, x, y, spanX, spanY)) {
                             mark(taken, x, y, spanX, spanY);
                             return new int[] {x, y, spanX, spanY};

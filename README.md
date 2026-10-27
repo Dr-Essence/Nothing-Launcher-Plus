@@ -253,17 +253,23 @@ Around the home screen:
 
 ### Landscape grid
 
-Arranged the way One UI does it: a portrait page of C columns × R rows turns with the screen
-into **R × C** (a 4×6 page becomes 6×4), so cells keep their shape and icons, folders and
-widgets look as they do in portrait. The items are realigned onto it, the largest first,
-filling from the left corner column by column; items of the same size keep their portrait
-reading order. A widget taller than the landscape page is shown as tall as the page.
+A portrait page of C columns × R rows turns with the screen into **R × C** (a 5×9 page becomes
+9×5), so cells keep about their shape and icons, folders and widgets look as they do in
+portrait. Each page's items are laid out on it in their portrait reading order, left to right
+and top to bottom: widgets first, then apps and folders in the room left. A widget as wide as
+the portrait page (a calendar, say) stretches across the landscape page; one taller than the
+page is shown as tall as the page.
 
 The arrangement is done on each page's own views once the launcher has put its items there,
 never by reading the launcher's model while it loads (which held the model lock on the main
 thread and froze rotation for seconds). Each item is first put in its turned portrait cell,
-which is always on the page, so the launcher never drops one for being off the grid (this is
-what made the music and Calm widgets vanish).
+which is always on the page, so the launcher never drops one for being off the grid.
+
+The launcher deletes any item it binds onto a cell that is already taken ("Collision while
+binding workspace item"). Turned cells can overlap until the page is arranged, so in landscape
+this deleted widgets for good, in portrait too. While a landscape page is bound no cell counts
+as taken, and a collision delete in landscape is refused and logged
+(`NothingLauncher+: landscape grid: kept …`).
 
 - Only the presentation changes: the launcher database keeps the portrait layout, and that
   stays the one you arrange. Moving or resizing an item within its page in landscape leaves its
@@ -369,7 +375,7 @@ code is in `com.nothing.launcher.*`, and R8 has obfuscated most of it.
 | Nothing DeviceProfile | `v6.h` (overrides sizing; base methods made abstract) | Parameter type of the Smart profile's `n(Context, …)` |
 | Home rotation | `RotationHelper.notifyChange` / `mHomeRotationEnabled` | Names kept |
 | Smart drawer profile | `smart.z.n(Context, v6.h)` | Type of `SmartFolderContainer.smartProfile` |
-| Landscape grid | `CellPosMapper`, `Workspace.insertNewWorkspaceScreen`, `DeviceProfile.getCellSize`, `ModelWriter.updateItemInfoProps`, `Launcher.bindInflatedItems`/`finishBindingItems`, `CellLayout.markCellsAsOccupiedForView` | Names kept |
+| Landscape grid | `CellPosMapper`, `Workspace.insertNewWorkspaceScreen`, `DeviceProfile.getCellSize`, `ModelWriter.updateItemInfoProps`, `Launcher.bindInflatedItems`/`finishBindingItems`, `CellLayout.markCellsAsOccupiedForView`/`isOccupied`, `ModelWriter.deleteItemFromDatabase` (reason text "Collision while binding") | Names kept |
 | Controller keys | `Launcher.dispatchKeyEvent` | Name kept |
 | Display style pref | `pref_all_app_display_style` (false = Smart) | — |
 
