@@ -399,60 +399,29 @@ public class MainActivity extends Activity {
                         .setItems(names, (dialog, which) -> {
                             applyFont(which == 0 ? null : fonts.get(which - 1));
                         })
-                        .setNeutralButton("Check", (dialog, which) -> checkFont())
                         .setNegativeButton("Cancel", null)
                         .show();
             });
         }).start();
     }
 
-    /** Shows, file by file, whether each text font is now the chosen one. */
-    private void checkFont() {
-        new Thread(() -> {
-            String report = SystemFont.verify(this);
-            int ok = 0;
-            int all = 0;
-            for (String line : report.split("\n")) {
-                if (line.startsWith("OK ") || line.startsWith("-- ")) {
-                    all++;
-                    ok += line.startsWith("OK ") ? 1 : 0;
-                }
-            }
-            String summary = ok + " of " + all + " font files are the chosen font.\n\n";
-            runOnUiThread(() -> Dialogs.builder(this)
-                    .setTitle("System font check")
-                    .setMessage(summary + report)
-                    .setPositiveButton("Copy", (d, w) -> {
-                        android.content.ClipboardManager clip = getSystemService(
-                                android.content.ClipboardManager.class);
-                        clip.setPrimaryClip(android.content.ClipData.newPlainText("font check",
-                                summary + report));
-                    })
-                    .setNegativeButton("Close", null)
-                    .show());
-        }).start();
-    }
-
     /**
-     * Sets the font at once, no reboot: hooked apps draw in it from their next start, and
-     * System UI and the launcher are restarted now (just those two, a second each). The font
-     * is also set up as a font module, so after any later reboot every app has it.
+     * Sets the font at once, no reboot: the system gives it to every app from its next start
+     * (System Framework in the module's scope), and System UI and the launcher are restarted
+     * now (just those two, a second each) to show it.
      */
     private void applyFont(SystemFont.Choice choice) {
         store.config.systemFont = choice == null ? ""
                 : choice.path != null ? "file:" + choice.path : "res:" + choice.title;
         store.save(this);
-        // The system rebuilds the font map every app is given (with System Framework in scope).
         sendBroadcast(new android.content.Intent(Config.ACTION_FONT).setPackage("android"));
         new Thread(() -> {
-            String error = SystemFont.apply(this, choice, false);
+            SystemFont.removeOldModule();
             boolean restarted = SystemFont.restartSystemUi();
             runOnUiThread(() -> Toast.makeText(this, (choice == null ? "Phone font back"
                     : choice.title + " set")
                     + (restarted ? ": status bar and launcher now use it." : ".")
-                    + " Other apps in the module's LSPosed scope use it when reopened."
-                    + (error != null ? " (Font module: " + error + ")" : ""),
-                    Toast.LENGTH_LONG).show());
+                    + " Other apps use it when they next open.", Toast.LENGTH_LONG).show());
         }).start();
     }
 

@@ -39,8 +39,6 @@ public class LauncherHook implements IXposedHookLoadPackage {
         if (!lpparam.isFirstApplication) {
             return;
         }
-        // The chosen system font, in every app the module is enabled for.
-        Hooks.install("system font", () -> FontSwap.install(new ConfigStore()));
         if (WidgetApps.WIDGETS_PKG.equals(lpparam.packageName)
                 || WidgetApps.CARD_SERVICE_PKG.equals(lpparam.packageName)) {
             Hooks.install("widget app landscape", () -> WidgetApps.install(new ConfigStore()));
