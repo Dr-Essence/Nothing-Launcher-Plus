@@ -4,10 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.Resources;
 import android.graphics.Typeface;
-import android.graphics.fonts.Font;
-import android.graphics.fonts.FontFamily;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -18,8 +15,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -35,7 +30,7 @@ import de.robv.android.xposed.XposedHelpers;
  * map, which it draws with itself, is never touched. When the choice changes the map is
  * written again at once, so every app opened from then on draws in it, without a reboot.
  *
- * <p>The font is read into memory this class owns and checked to be a font before use. And
+ * <p>Only font files of the system's font folders are used, checked to be fonts first. And
  * because a font that breaks system_server breaks the whole phone at every start, a guard
  * file is kept while a font is newly in use: if system_server dies before it is taken away,
  * the next start leaves the font off (until a font is chosen again) instead of crashing again.
@@ -44,7 +39,9 @@ final class SystemFonts {
 
     private static final String CLS_SERVICE =
             "com.android.server.graphics.fonts.FontManagerService";
-    private static final String WIDGETS_PKG = "com.nothing.hearthstone";
+    /** Where fonts every app can read are: the only fonts the map may be given. */
+    private static final String[] FONT_DIRS = {"/system/fonts", "/product/fonts",
+            "/system_ext/fonts"};
     /** Present from a font coming into use until system_server has run with it a while. */
     private static final File GUARD = new File("/data/system/nlplus_font_guard");
     /** The font system_server died with, written by the guard: left off while it is chosen. */
@@ -55,10 +52,9 @@ final class SystemFonts {
     private static Object service;
     private static Context context;
 
-    /** The font in use and everything it is drawn from, kept for as long as it is used. */
+    /** The font in use, and the choice it was loaded for. */
     private static String loadedSpec;
     private static Typeface loaded;
-    private static ByteBuffer loadedBytes;
 
     private SystemFonts() {
     }
@@ -176,61 +172,54 @@ final class SystemFonts {
     }
 
     /**
-     * The font for {@code spec} ("file:path" or "res:name" of the widgets app), read into a
-     * buffer of our own and checked to be a font; null if it is not one.
+     * The font for {@code spec}: only "file:" and a font file in the system's font folders.
+     * Apps are given each font of the map by its file path and open it themselves, so it must
+     * be a real file every app can read; a font held only in memory (or in another app's
+     * resources) reaches them as nothing, and every app drawing text with it crashes.
      */
     private static Typeface load(String spec) {
         if (spec.equals(loadedSpec)) {
             return loaded;
         }
-        try {
-            byte[] bytes = readFont(spec);
-            if (bytes == null || !isFont(bytes)) {
-                Hooks.log("system font " + spec + " is not a font file");
-                return null;
+        loadedSpec = spec;
+        loaded = null;
+        File file = spec.startsWith("file:") ? new File(spec.substring(5)) : null;
+        if (file == null || !inFontFolder(file)) {
+            Hooks.log("system font " + spec + " is not a font file of the system: left off");
+        } else if (!file.canRead() || !isFont(file)) {
+            Hooks.log("system font " + spec + " is not there (yet) or not a font: left off");
+        } else {
+            try {
+                loaded = Typeface.createFromFile(file);
+            } catch (RuntimeException e) {
+                Hooks.log("system font " + spec + " could not be loaded: " + e);
             }
-            ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length)
-                    .order(ByteOrder.nativeOrder());
-            buffer.put(bytes).flip();
-            Font font = new Font.Builder(buffer).build();
-            Typeface typeface = new Typeface.CustomFallbackBuilder(
-                    new FontFamily.Builder(font).build()).build();
-            loadedSpec = spec;
-            loadedBytes = buffer;
-            loaded = typeface;
-            return typeface;
-        } catch (Exception e) {
-            Hooks.log("system font " + spec + " could not be loaded: " + e);
-            return null;
         }
+        return loaded;
     }
 
-    private static byte[] readFont(String spec) throws Exception {
-        if (spec.startsWith("file:")) {
-            try (InputStream in = new FileInputStream(spec.substring(5))) {
-                return in.readAllBytes();
+    private static boolean inFontFolder(File file) {
+        String parent = file.getParent();
+        for (String dir : FONT_DIRS) {
+            if (dir.equals(parent)) {
+                return true;
             }
         }
-        if (spec.startsWith("res:") && context != null) {
-            Resources res = context.createPackageContext(WIDGETS_PKG, 0).getResources();
-            int id = res.getIdentifier(spec.substring(4), "font", WIDGETS_PKG);
-            if (id == 0) {
-                return null;
-            }
-            try (InputStream in = res.openRawResource(id)) {
-                return in.readAllBytes();
-            }
-        }
-        return null;
+        return false;
     }
 
     /** True for a TrueType or OpenType font file (not a collection), by its first bytes. */
-    private static boolean isFont(byte[] bytes) {
-        if (bytes.length < 1024) {
+    private static boolean isFont(File file) {
+        byte[] head = new byte[4];
+        try (InputStream in = new FileInputStream(file)) {
+            if (in.read(head) != 4 || file.length() < 1024) {
+                return false;
+            }
+        } catch (IOException e) {
             return false;
         }
-        int tag = (bytes[0] & 0xFF) << 24 | (bytes[1] & 0xFF) << 16 | (bytes[2] & 0xFF) << 8
-                | (bytes[3] & 0xFF);
+        int tag = (head[0] & 0xFF) << 24 | (head[1] & 0xFF) << 16 | (head[2] & 0xFF) << 8
+                | (head[3] & 0xFF);
         return tag == 0x00010000 || tag == 0x4F54544F /* OTTO */ || tag == 0x74727565 /* true */;
     }
 

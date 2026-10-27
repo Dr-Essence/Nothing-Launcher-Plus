@@ -110,7 +110,8 @@ public class MainActivity extends Activity {
                     config.statusBarDate = checked;
                     store.save(this);
                 });
-        ui.row("System font", "Use one of Nothing's fonts on this phone · no reboot", null, ui.chevron(), v -> chooseSystemFont());
+        ui.row("System font", "Use one of Nothing's fonts on this phone · no reboot", null,
+                ui.chevron(), v -> chooseSystemFont());
         ui.row("Animation test", "Play any emoji's animation on a big dot screen", null,
                 ui.chevron(), v -> startActivity(EmojiPickerActivity.testIntent(this)));
 
@@ -392,7 +393,9 @@ public class MainActivity extends Activity {
                 String[] names = new String[fonts.size() + 1];
                 names[0] = "Phone default";
                 for (int i = 0; i < fonts.size(); i++) {
-                    names[i + 1] = fonts.get(i).title;
+                    SystemFont.Choice font = fonts.get(i);
+                    names[i + 1] = font.title + (font.needsAdding() ? "  · after one restart"
+                            : "");
                 }
                 Dialogs.builder(this)
                         .setTitle("System font")
@@ -411,6 +414,10 @@ public class MainActivity extends Activity {
      * now (just those two, a second each) to show it.
      */
     private void applyFont(SystemFont.Choice choice) {
+        if (choice != null && choice.needsAdding()) {
+            addFont(choice);
+            return;
+        }
         store.config.systemFont = choice == null ? ""
                 : choice.path != null ? "file:" + choice.path : "res:" + choice.title;
         store.save(this);
@@ -422,6 +429,27 @@ public class MainActivity extends Activity {
                     : choice.title + " set")
                     + (restarted ? ": status bar and launcher now use it." : ".")
                     + " Other apps use it when they next open.", Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
+    /**
+     * A font only Nothing's widgets app has: added to the system's fonts as a file (shown after
+     * one restart of the phone), and chosen, so it is the system font from that restart on.
+     */
+    private void addFont(SystemFont.Choice choice) {
+        new Thread(() -> {
+            String error = SystemFont.addToSystem(this, choice);
+            runOnUiThread(() -> {
+                if (error != null) {
+                    Toast.makeText(this, "Could not add " + choice.title + ": " + error,
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                store.config.systemFont = "file:" + SystemFont.addedPath(choice);
+                store.save(this);
+                Toast.makeText(this, choice.title + " added. Restart the phone once: it is the"
+                        + " system font from then on.", Toast.LENGTH_LONG).show();
+            });
         }).start();
     }
 
