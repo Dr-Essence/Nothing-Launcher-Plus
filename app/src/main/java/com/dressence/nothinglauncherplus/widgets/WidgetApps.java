@@ -32,6 +32,8 @@ public final class WidgetApps {
     /** The breathing card: full width at 183:223, which overflows a landscape screen. */
     private static final String BREATH_ACTIVITY = WIDGETS_PKG + ".breath.ui.BreathExerciseActivity";
     private static final String BREATH_CARD_ID = "breath_layout";
+    /** The card's portrait layout size, kept on the view. */
+    private static final String OWN_SIZE = "nlplus.ownSize";
 
     private final ConfigStore store;
 
@@ -53,6 +55,20 @@ public final class WidgetApps {
                         apps.onCreated((Activity) param.thisObject);
                     }
                 });
+        // Cards turn without a restart (CardOrientation), so the breathing card is refitted.
+        XposedHelpers.findAndHookMethod(Activity.class, "onConfigurationChanged",
+                Configuration.class, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Activity activity = (Activity) param.thisObject;
+                        if (isBreathCard(activity)) {
+                            View card = breathCard(activity);
+                            if (card != null) {
+                                fit(card, (Configuration) param.args[0]);
+                            }
+                        }
+                    }
+                });
     }
 
     private void onCreated(Activity activity) {
@@ -61,44 +77,58 @@ public final class WidgetApps {
             return;
         }
         activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-        if (activity.getClass().getName().equals(BREATH_ACTIVITY)) {
+        if (isBreathCard(activity)) {
             fitBreathCard(activity);
         }
     }
 
-    /**
-     * The card is added by a fragment after onCreate. Once it is laid out in landscape, let
-     * ConstraintLayout size it from both sides (0dp = match constraint): with its ratio kept,
-     * that is the largest card that fits the screen.
-     */
-    private static void fitBreathCard(Activity activity) {
+    private static boolean isBreathCard(Activity activity) {
+        return activity.getClass().getName().equals(BREATH_ACTIVITY);
+    }
+
+    private static View breathCard(Activity activity) {
         int id = activity.getResources().getIdentifier(BREATH_CARD_ID, "id", WIDGETS_PKG);
+        return id != 0 ? activity.getWindow().getDecorView().findViewById(id) : null;
+    }
+
+    /** The card is added by a fragment after onCreate: fitted once it is laid out. */
+    private static void fitBreathCard(Activity activity) {
         View decor = activity.getWindow().getDecorView();
-        if (id == 0) {
-            return;
-        }
         decor.getViewTreeObserver().addOnGlobalLayoutListener(
                 new ViewTreeObserver.OnGlobalLayoutListener() {
                     @Override
                     public void onGlobalLayout() {
-                        Hooks.guard("breathing card", () -> fit(this)).run();
-                    }
-
-                    private void fit(ViewTreeObserver.OnGlobalLayoutListener self) {
-                        View card = decor.findViewById(id);
-                        if (card == null) {
-                            return; // Fragment not attached yet.
-                        }
-                        decor.getViewTreeObserver().removeOnGlobalLayoutListener(self);
-                        if (activity.getResources().getConfiguration().orientation
-                                != Configuration.ORIENTATION_LANDSCAPE) {
-                            return;
-                        }
-                        ViewGroup.LayoutParams lp = card.getLayoutParams();
-                        lp.width = 0;
-                        lp.height = 0;
-                        card.setLayoutParams(lp);
+                        Hooks.guard("breathing card", () -> {
+                            View card = breathCard(activity);
+                            if (card == null) {
+                                return; // Fragment not attached yet.
+                            }
+                            decor.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                            fit(card, activity.getResources().getConfiguration());
+                        }).run();
                     }
                 });
+    }
+
+    /**
+     * Portrait: the card's own size, full width at 183:223. Landscape, where that overflows the
+     * screen: ConstraintLayout sizes it from both sides (0dp = match constraint), which with its
+     * ratio kept is the largest card that fits.
+     */
+    private static void fit(View card, Configuration config) {
+        ViewGroup.LayoutParams lp = card.getLayoutParams();
+        int[] own = (int[]) XposedHelpers.getAdditionalInstanceField(card, OWN_SIZE);
+        if (own == null) {
+            own = new int[] {lp.width, lp.height};
+            XposedHelpers.setAdditionalInstanceField(card, OWN_SIZE, own);
+        }
+        boolean landscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE;
+        int width = landscape ? 0 : own[0];
+        int height = landscape ? 0 : own[1];
+        if (lp.width != width || lp.height != height) {
+            lp.width = width;
+            lp.height = height;
+            card.setLayoutParams(lp);
+        }
     }
 }

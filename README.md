@@ -234,8 +234,10 @@ Around the home screen:
 - **Recents** rotates for real. Nothing emptied `RecentsOrientedState.updateHomeRotationSetting`,
   so recents drew its portrait layout turned sideways (thin cards, sideways menus); the module
   restores AOSP's flag and tells SystemUI.
-- **Folders** open centred between the system bars. Nothing places them at a fixed portrait top
-  margin, which pushed them off the bottom of a landscape screen.
+- **Folders** open whole and centred between the system bars: the header is just the name's
+  line and the folder has as many rows as fit under it (more apps go to further pages, as in
+  portrait). Nothing places them 346 px down under a 399 px header, which left room for about
+  one row of apps on a landscape screen and cut the rest off.
 - **The launcher's own screens** (search, home and drawer settings, icon packs, layout,
   wallpaper) are locked to portrait in Nothing's manifest; with rotation on they follow the
   device too.
@@ -244,7 +246,9 @@ Around the home screen:
   screen portrait-only, and Android applies that as a card launches, so cards opened from a
   landscape home screen showed on their side. The lock is lifted in system_server as the card's
   activity is created (System Framework in scope), on that activity's own copy of its info, and
-  again in the apps themselves (tick both apps in the module's LSPosed scope).
+  again in the apps themselves (tick both apps in the module's LSPosed scope). Cards also turn
+  without being restarted, so a breathing session keeps going; the Calm card is refitted to
+  the screen on each turn.
 - **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
 
 ### Landscape grid
@@ -255,12 +259,19 @@ widgets look as they do in portrait. The items are realigned onto it, the larges
 filling from the left corner column by column; items of the same size keep their portrait
 reading order. A widget taller than the landscape page is shown as tall as the page.
 
+The arrangement is done on each page's own views once the launcher has put its items there,
+never by reading the launcher's model while it loads (which held the model lock on the main
+thread and froze rotation for seconds). Each item is first put in its turned portrait cell,
+which is always on the page, so the launcher never drops one for being off the grid (this is
+what made the music and Calm widgets vanish).
+
 - Only the presentation changes: the launcher database keeps the portrait layout, and that
   stays the one you arrange. Moving or resizing an item within its page in landscape leaves its
   portrait place as it is (the landscape page arranges itself).
 - An item added in landscape, or moved onto another page there, goes to a free spot of the
   portrait page: the launcher deletes items that overlap or leave the grid when it next loads,
-  so every landscape write is checked against the portrait page.
+  so every landscape write is checked against the portrait page. The page is then arranged
+  again in place, without reloading the launcher.
 - **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
   many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
   sheet gives the list at least four rows, which squeezed the name off a landscape screen).
@@ -358,7 +369,7 @@ code is in `com.nothing.launcher.*`, and R8 has obfuscated most of it.
 | Nothing DeviceProfile | `v6.h` (overrides sizing; base methods made abstract) | Parameter type of the Smart profile's `n(Context, …)` |
 | Home rotation | `RotationHelper.notifyChange` / `mHomeRotationEnabled` | Names kept |
 | Smart drawer profile | `smart.z.n(Context, v6.h)` | Type of `SmartFolderContainer.smartProfile` |
-| Landscape grid | `CellPosMapper`, `Workspace.insertNewWorkspaceScreen`, `DeviceProfile.getCellSize`, `ModelWriter.updateItemInfoProps` | Names kept |
+| Landscape grid | `CellPosMapper`, `Workspace.insertNewWorkspaceScreen`, `DeviceProfile.getCellSize`, `ModelWriter.updateItemInfoProps`, `Launcher.bindInflatedItems`/`finishBindingItems`, `CellLayout.markCellsAsOccupiedForView` | Names kept |
 | Controller keys | `Launcher.dispatchKeyEvent` | Name kept |
 | Display style pref | `pref_all_app_display_style` (false = Smart) | — |
 

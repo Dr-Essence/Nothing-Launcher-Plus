@@ -14,11 +14,15 @@ import de.robv.android.xposed.XposedHelpers;
  * rotation on). Their screens are declared portrait-only, and Android applies that as a card
  * is launched, before the app runs: over a landscape home screen the Calm card first showed
  * on its side. Here, in system_server, the portrait lock is taken off as the card's activity
- * record is made, on that activity's own copy of its info and nothing else.
+ * record is made, on that activity's own copy of its info and nothing else. The card also
+ * handles turning itself, so a rotation does not restart it.
  */
 public final class CardOrientation {
 
     private static final String CLS_ACTIVITY_RECORD = "com.android.server.wm.ActivityRecord";
+    private static final int ROTATION_CHANGES = ActivityInfo.CONFIG_ORIENTATION
+            | ActivityInfo.CONFIG_SCREEN_SIZE | ActivityInfo.CONFIG_SMALLEST_SCREEN_SIZE
+            | ActivityInfo.CONFIG_SCREEN_LAYOUT;
 
     private CardOrientation() {
     }
@@ -46,6 +50,9 @@ public final class CardOrientation {
         store.reloadIfChanged();
         if (store.get().allowRotation) {
             info.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+            // Turning keeps the card running (a breathing session, a playing photo): the app
+            // relays it out instead of being restarted (see WidgetApps).
+            info.configChanges |= ROTATION_CHANGES;
         }
     }
 
