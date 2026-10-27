@@ -13,6 +13,9 @@ import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -114,6 +117,7 @@ final class Landscape {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
                 if (param.args.length == 4) {
+                    remakeLandscapeProfiles(param.thisObject, (Context) param.args[0]);
                     applyProfileChoice(param.thisObject);
                 }
             }
@@ -175,6 +179,33 @@ final class Landscape {
                         param.setResult(null);
                     }
                 });
+    }
+
+    /**
+     * The launcher makes its profiles one after another, so a landscape one can be made before
+     * the portrait one it takes its cell from (LandscapeGrid): those are made again once all
+     * are there. The launcher copies its own profile from this list, and Nothing sizes its
+     * widgets with the list's profile itself.
+     */
+    private static void remakeLandscapeProfiles(Object idp, Context context) {
+        List<?> all = (List<?>) XposedHelpers.getObjectField(idp,
+                "recentActivitySupportedProfiles");
+        if (all == null) {
+            return;
+        }
+        List<Object> remade = new ArrayList<>(all.size());
+        boolean changed = false;
+        for (Object profile : all) {
+            if (isPhoneLandscape(profile)) {
+                profile = XposedHelpers.callMethod(profile, "copy", context);
+                changed = true;
+            }
+            remade.add(profile);
+        }
+        if (changed) {
+            XposedHelpers.setObjectField(idp, "recentActivitySupportedProfiles",
+                    Collections.unmodifiableList(remade));
+        }
     }
 
     private void applyProfileChoice(Object idp) {

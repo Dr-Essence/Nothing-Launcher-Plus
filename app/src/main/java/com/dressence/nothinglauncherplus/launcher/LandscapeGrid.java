@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -58,11 +59,21 @@ final class LandscapeGrid {
     private static final String CLS_LAYOUT_PARAMS =
             "com.android.launcher3.celllayout.CellLayoutLayoutParams";
     private static final String CLS_DEVICE_PROFILE = "com.android.launcher3.DeviceProfile";
+    private static final String CLS_WIDGET_CONTAINER =
+            "com.android.launcher3.ShortcutAndWidgetContainer";
+    /** Nothing's own widgets (cards), which are not AppWidgetHostViews. */
+    private static final String CLS_CARD_HOST = "com.nothing.cardhost.CardWidgetHostView";
     private static final String CLS_LAUNCHER = "com.android.launcher3.Launcher";
 
     private static final int CONTAINER_DESKTOP = -100;
     private static final int CELL_LAYOUT_WORKSPACE = 0;
     private static final String CLS_WIDGET_SIZES = "com.android.launcher3.widget.util.WidgetSizes";
+    /**
+     * The portrait cell of each display width, as the launcher measured it: landscape profiles
+     * are also made before the portrait one is in the launcher's list (at startup, and the copy
+     * Nothing sizes its widgets with), and they take their cell from here.
+     */
+    private static final Map<Integer, Point> PORTRAIT_CELLS = new ConcurrentHashMap<>();
     /** How much wider than the portrait cell's shape a landscape cell may be. */
     private static final float MAX_WIDEN = 1.3f;
     /** The longest a rotation may hold the launcher's drawing while its pages are rebuilt. */
@@ -129,6 +140,7 @@ final class LandscapeGrid {
             hookPagePadding();
         });
         Hooks.install("landscape grid spans", this::hookSpans);
+        Hooks.install("landscape widget shape", this::hookWidgetShape);
         Hooks.install("landscape grid arrangement", this::hookArrange);
         Hooks.install("landscape grid safety", this::hookModelWriter);
         Hooks.install("clean rotation", this::hookRebindHold);
@@ -331,6 +343,92 @@ final class LandscapeGrid {
         for (int i = 0; i < count; i++) {
             arrange(XposedHelpers.callMethod(screens, "valueAt", i), grid);
         }
+        if (count > 0) {
+            checkIconSize(XposedHelpers.callMethod(screens, "valueAt", 0),
+                    XposedHelpers.callMethod(launcher, "getDeviceProfile"));
+        }
+    }
+
+    /** Logs it if a page's icons are drawn at another size than the launcher's profile says. */
+    private static void checkIconSize(Object cellLayout, Object profile) {
+        ViewGroup container = (ViewGroup) XposedHelpers.callMethod(cellLayout,
+                "getShortcutsAndWidgets");
+        int wanted = XposedHelpers.getIntField(profile, "iconSizePx");
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            Object tag = child.getTag();
+            if (child instanceof android.widget.TextView && tag != null
+                    && XposedHelpers.getIntField(tag, "spanX") == 1) {
+                int size = (Integer) XposedHelpers.callMethod(child, "getIconSize");
+                if (size != wanted) {
+                    Hooks.log("landscape icons drawn at " + size + " px, profile " + wanted);
+                }
+                return;
+            }
+        }
+    }
+
+    /** True for an item as wide as the portrait page (a calendar, say). */
+    private static boolean pageWide(int[] c, Grid grid) {
+        return c[2] > 1 && c[2] >= grid.columns;
+    }
+
+    /**
+     * A widget keeps its portrait proportions on the wider landscape cells (a round widget
+     * stays round), centred on its cells; one as wide as the page fills them instead.
+     */
+    private void hookWidgetShape() {
+        Class<?> appWidget = AppWidgetHostView.class;
+        Class<?> card = XposedHelpers.findClassIfExists(CLS_CARD_HOST, cl);
+        XposedHelpers.findAndHookMethod(CLS_WIDGET_CONTAINER, cl, "measureChild", View.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        View view = (View) param.args[0];
+                        if (!appWidget.isInstance(view) && (card == null || !card.isInstance(view))
+                                || XposedHelpers.getIntField(param.thisObject, "mContainerType")
+                                        != CELL_LAYOUT_WORKSPACE) {
+                            return;
+                        }
+                        Object launcher = createdLauncher();
+                        Object profile = launcher != null
+                                ? XposedHelpers.callMethod(launcher, "getDeviceProfile") : null;
+                        Grid grid = gridFor(profile);
+                        Point portrait = grid != null ? PORTRAIT_CELLS.get(
+                                XposedHelpers.getIntField(profile, "heightPx")) : null;
+                        if (portrait == null || !itemInfo().isInstance(view.getTag())
+                                || pageWide(cells(view.getTag()), grid)) {
+                            return;
+                        }
+                        keepShape(view, cells(view.getTag()), portrait,
+                                (Point) XposedHelpers.getObjectField(profile,
+                                        "cellLayoutBorderSpacePx"));
+                    }
+                });
+    }
+
+    private static void keepShape(View view, int[] c, Point portrait, Point border) {
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
+        float shape = (c[2] * portrait.x + (c[2] - 1) * border.x)
+                / (float) (c[3] * portrait.y + (c[3] - 1) * border.y);
+        int width = lp.width;
+        int height = lp.height;
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        int fitWidth = Math.min(width, Math.round(height * shape));
+        int fitHeight = Math.min(height, Math.round(fitWidth / shape));
+        if (fitWidth == width && fitHeight == height) {
+            return;
+        }
+        lp.width = fitWidth;
+        lp.height = fitHeight;
+        XposedHelpers.setIntField(lp, "x", XposedHelpers.getIntField(lp, "x")
+                + (width - fitWidth) / 2);
+        XposedHelpers.setIntField(lp, "y", XposedHelpers.getIntField(lp, "y")
+                + (height - fitHeight) / 2);
+        view.measure(View.MeasureSpec.makeMeasureSpec(fitWidth, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(fitHeight, View.MeasureSpec.EXACTLY));
     }
 
     // ---------------------------------------------------------------------------------------
@@ -363,6 +461,11 @@ final class LandscapeGrid {
 
     private void holdDrawing(Activity launcher) {
         releaseDrawing();
+        if (!launcher.hasWindowFocus()) {
+            // Not a turn of the home screen in view (an app opening over it turns it): its
+            // own animation must keep drawing.
+            return;
+        }
         View root = launcher.getWindow().getDecorView();
         ViewTreeObserver.OnPreDrawListener hold = () -> false;
         root.getViewTreeObserver().addOnPreDrawListener(hold);
@@ -467,13 +570,16 @@ final class LandscapeGrid {
     /**
      * The first free spot for an item of portrait spans {@code c[2]} x {@code c[3]}, row by
      * row from the top left, marked as taken: cell x, y and the spans it is shown at, its
-     * portrait spans where they fit. If no spot holds it whole, it is shown smaller.
+     * portrait spans where they fit; a widget as wide as the portrait page is as wide as the
+     * landscape page, as it fills the page in portrait. If no spot holds it whole, it is shown
+     * smaller.
      */
     private static int[] place(boolean[][] taken, int[] c, Grid grid) {
         int columns = grid.landscapeColumns();
         int rows = grid.landscapeRows();
         for (int spanY = Math.min(c[3], rows); spanY >= 1; spanY--) {
-            for (int spanX = Math.min(c[2], columns); spanX >= 1; spanX--) {
+            int wide = pageWide(c, grid) ? columns : Math.min(c[2], columns);
+            for (int spanX = wide; spanX >= 1; spanX--) {
                 for (int y = 0; y + spanY <= rows; y++) {
                     for (int x = 0; x + spanX <= columns; x++) {
                         if (isVacant(taken, x, y, spanX, spanY)) {
@@ -515,6 +621,17 @@ final class LandscapeGrid {
                 point.set(cell.x, cell.y);
                 param.setResult(point);
             }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                Object o = param.thisObject;
+                if (param.getResult() instanceof Point
+                        && !XposedHelpers.getBooleanField(o, "isLandscape")
+                        && XposedHelpers.getBooleanField(o, "isPhone")) {
+                    PORTRAIT_CELLS.put(XposedHelpers.getIntField(o, "widthPx"),
+                            new Point((Point) param.getResult()));
+                }
+            }
         });
         // getCellSize() is a one-line forwarder ART may inline into its callers.
         Hooks.deoptimizeAll(dp, "getCellSize");
@@ -525,7 +642,10 @@ final class LandscapeGrid {
      * turned page if it has to be; null if there is no portrait profile to take it from.
      */
     private static Point landscapeCell(Object o, Grid grid) {
-        Point portrait = portraitCell(o);
+        Point portrait = PORTRAIT_CELLS.get(XposedHelpers.getIntField(o, "heightPx"));
+        if (portrait == null) {
+            portrait = portraitCell(o);
+        }
         if (portrait == null || portrait.x <= 0 || portrait.y <= 0) {
             return null;
         }
