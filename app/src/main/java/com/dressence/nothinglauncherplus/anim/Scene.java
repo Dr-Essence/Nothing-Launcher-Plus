@@ -331,14 +331,6 @@ final class Scene {
             partScaleY[partCount - 1] = scaleY;
         }
     }
-
-    /** Turns the last part about the vertical line through its pivot, as seen from the front. */
-    void turnLastPart(float scaleX) {
-        if (partCount > 0) {
-            partScaleX[partCount - 1] = scaleX;
-        }
-    }
-
     /**
      * Keeps whatever of hue {@code hue} (degrees) lies over the last part where it is while the
      * part turns underneath; what it covered is filled in from the part turned by 1/{@code fold}.

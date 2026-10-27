@@ -12,6 +12,8 @@ import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.view.View;
 
+import com.dressence.nothinglauncherplus.Palette;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -44,8 +46,8 @@ final class FontPreview extends View {
     private static final long HD_STEP_MS = 30;
     private static final long PAUSE_MS = 1800;
 
-    private static final int GREEN = 0xFF4CFF7A;
-    private static final int GLOW = 0xAA2BE86A;
+    private static final int GREEN = Palette.LED_GREEN;
+    private static final int GLOW = Palette.LED_GLOW;
     private static final int UNLIT = 0xFF161A17;
     private static final int GLASS = 0xFF050605;
 

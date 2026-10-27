@@ -62,7 +62,6 @@ final class SmartDrawer {
     private static final String CATEGORY_HIDDEN = "hidden icons";
 
     /** BaseAllAppsAdapter view types used by the Smart drawer. */
-    private static final int VIEW_TYPE_ICON = 2;
     private static final int VIEW_TYPE_SPACER = 256;
     private static final int VIEW_TYPE_HIDDEN_TILE = 65536;
     private static final int VIEW_TYPE_FOLDER_TILE = 131072;

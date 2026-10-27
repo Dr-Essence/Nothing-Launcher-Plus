@@ -11,6 +11,8 @@ import android.graphics.Typeface;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.dressence.nothinglauncherplus.Palette;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -25,10 +27,8 @@ import de.robv.android.xposed.XposedHelpers;
  */
 final class Led {
 
-    /** The green of the folder name panels. */
-    static final int GREEN = 0xFF4CFF7A;
-    /** The glow round lit green: the same green, deeper and soft. */
-    private static final int GREEN_GLOW = 0xAA2BE86A;
+    static final int GREEN = Palette.LED_GREEN;
+    private static final int GREEN_GLOW = Palette.LED_GLOW;
     /** A text's glow reach, in its text size. */
     private static final float TEXT_GLOW = 0.28f;
 

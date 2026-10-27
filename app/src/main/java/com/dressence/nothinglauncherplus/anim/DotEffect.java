@@ -2218,8 +2218,6 @@ public enum DotEffect {
     // Shared pieces
     // -------------------------------------------------------------------------------------
 
-    private static final String[] HEART = {"x.x", "xxx", ".x."};
-
     /** Position in a repeating life cycle of {@code period} seconds, 0..1. */
     static float cycle(Scene s, float period, float offset) {
         float v = ((s.t + offset + (s.seed & 0xFF) * 0.013f) % period) / period;
@@ -2229,16 +2227,6 @@ public enum DotEffect {
     /** Fades in quickly, out slowly: for particles. */
     static float fade(float life) {
         return life < 0.15f ? life / 0.15f : 1 - (life - 0.15f) / 0.85f;
-    }
-
-    static void sprite(Scene s, String[] rows, float x, float y, int color) {
-        for (int j = 0; j < rows.length; j++) {
-            for (int i = 0; i < rows[j].length(); i++) {
-                if (rows[j].charAt(i) == 'x') {
-                    s.plotRest(x + i - 1, y + j - 1, color);
-                }
-            }
-        }
     }
 
     /** Overwrites the output dot at resting position (x, y), even over brighter ink. */

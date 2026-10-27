@@ -62,17 +62,17 @@ plus your folders.
   into the glass (the frame stretched with smooth filtering, plus a half-resolution copy for
   the wider falloff), redone every frame so the glow moves with the animation.
 - **Dot-matrix app icons** (option): every app icon the launcher draws, on the home screen, in
-  the drawer, in folders and in search, is redrawn as a 22 x 22 panel of round dots in the
-  icon's own colours on dark glass in the icon's own shape, each dot casting a dim halo of
-  its own colour on the glass round it; now and then, each icon on its own timing, a faint
-  green scan line rolls down its dots. The emoji folder
-  screens have the quirks of an old dot screen, each on its own timing: now and then a faint
-  green scan line rolls down, the panel flickers dim for a moment or a band of rows jumps a
-  dot sideways. One hook on the launcher's icon drawable
-  covers every surface; each icon is converted once and cached. When icons come into view
-  (the drawer opening, going home, a folder opening) each powers on like a little screen: dots
-  light from the centre outwards on a spring with a brief white LED flash, the glow fading up
-  under them, icons a few milliseconds apart.
+  the drawer, in folders and in search, is a little dot-matrix screen of its own: a bezel
+  round a pane of glass with a hairline rim, and on it a 22 x 22 grid of round dots lit in the
+  icon's own colours, each casting a dim halo on the glass. An icon in the launcher's circle
+  is a round screen of dark glass; an icon with a shape of its own keeps it, its glass lit
+  green from behind and the bezel following its outline. Nothing is cut to a circle, and an
+  old icon the launcher put on a white plate is shown off the plate, in its own shape. Now and
+  then, each icon on its own timing, a faint green scan line rolls down its dots. When icons
+  come into view each powers on like a little screen: dots light from the centre outwards on
+  a spring with a brief white LED flash, icons a few milliseconds apart. App names too long
+  for their icon scroll like the folder names, a dot at a time. One hook on the launcher's
+  icon drawable covers every surface; each icon is made into a screen once and cached.
 - **Folders open and shut**: 📁's front panel tips open on its bottom hinge, showing the
   shadowed inside and the papers in it, then closes again (📂 closes up and reopens). It is
   drawn from the emoji's own dots, so it never changes size; tap it and it opens at once.
@@ -109,21 +109,23 @@ plus your folders.
   glance about within their whites; 💔 cracks apart and mends; 🤖's antenna lamp blinks; 🤹
   juggles, the balls passing behind the head; only round open eyes blink, never ^ ^ or
   brows; angry faces flush from the chin up.
-- **Dot-matrix status and quick settings icons** (options): every status bar icon (network
-  type, signal, Wi-Fi, airplane mode, headphones, alarm, notifications...) is drawn as round
-  NDot dots in the glowing green of the clock, and the quick settings tile icons as dots in
-  their own on/off colours. Each icon is redrawn as dots every frame, so state changes and
-  the tiles' animations still play.
-- **Ndot status bar** (option): System UI is in the module's scope; the status bar clock and
-  battery are drawn in Nothing's NDot, lit the green of the folder name panels with a soft
-  glow, on any wallpaper. Another option puts the date before the time. Restart System UI
-  (or the phone) after switching either.
+- **Ndot status bar** (option): System UI is in the module's scope; the status bar is lit
+  like the drawer's folder screens on any wallpaper: the clock and date in Nothing's NDot in
+  the green of the folder name panels with a soft glow, and every icon (network type,
+  signal, Wi-Fi, airplane mode, headphones, alarm...), the battery and the network speed in
+  the same green, their own shapes untouched. Another option puts the date before the time.
+- **Green quick settings** (option): the tiles' icons and labels glow green, and a tile that
+  is on lights deep retro-display green where it was white, or, with **Amber dashboard
+  tiles**, the warm amber of a retro car dashboard. The icons' own animations still play.
 - **System font**: choose any of Nothing's fonts already on the phone (NDot, NType, and the
-  ones inside Nothing's widgets app). It is applied the way Android applies its own fonts:
-  with System Framework in the module's LSPosed scope (one reboot to load it into the
-  system, once), the system's font map that every app receives is rebuilt with the chosen
-  font as soon as you pick it, so every app opened from then on uses it, no reboot; System
-  UI and the launcher are restarted at once. Phone default undoes it.
+  ones inside Nothing's widgets app), each previewed in the chooser on a dot-matrix screen
+  made for it, in its own letters. It is applied the way Android applies its own fonts: with
+  System Framework in the module's LSPosed scope, the font map system_server gives every app
+  is rewritten with the chosen font as soon as you pick it, so every app opened from then on
+  uses it, no reboot; System UI and the launcher are restarted at once. A font only the
+  widgets app has is first added to the system's fonts as a file (one restart). If the system
+  ever crashes while a new font is in use, the next start leaves it off. Phone default
+  undoes it.
 - **Animation test**: in the module's settings, play any emoji's animation on a big dot
   screen without making a folder for it: step through emoji one by one, replay its reaction,
   slow it to half or a quarter speed, and compare the dots with the plain emoji.
@@ -309,6 +311,25 @@ with a private key instead.
 
 Builds from before v0.5.0 were signed with throwaway keys: switch once with **Export**,
 uninstall, install, **Import**.
+
+## Code layout
+
+The module's code is grouped by where it runs:
+
+| Package | What it is |
+| --- | --- |
+| `xposed` | The entry point (`ModuleEntry`, named in `assets/xposed_init`), hook helpers (`Hooks`: installing a feature so its failure is its own, guarding code the apps call back into), the settings as hooked apps read them (`ConfigStore`) and Nothing's NDot font (`NdotFont`). |
+| `launcher` | Everything in Nothing Launcher: the Smart drawer's folders and covers, the folder menu, landscape, controllers, sounds, dot-matrix icons (`DotIcons`, `IconScreen`) and scrolling names. |
+| `systemui` | The status bar and quick settings: `Clock`, `Battery`, `GreenIcons`, `GreenTexts`, `QuickSettings`, `NetworkSpeed`, all in the lit look of `Led`. |
+| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`). |
+| `widgets` | Nothing's widget apps in landscape. |
+| `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
+| `ui` | The module's settings app. |
+
+Code the module hands to an app (a posted runnable, a listener, a view or drawable it draws)
+runs as that app's own, so it is guarded: a fault costs that one feature, never the app. A
+font for the system font map must be a real font file every app can open, or every app
+drawing text with it would crash.
 
 ## How it works (reverse-engineering notes, v4.0.20)
 

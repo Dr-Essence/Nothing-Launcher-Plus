@@ -234,22 +234,26 @@ final class Gamepad {
         float lift = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, LIFT_DP,
                 launcher.getResources().getDisplayMetrics());
         ViewTreeObserver observer = root.getViewTreeObserver();
-        observer.addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
-            settle(oldFocus);
-            if (newFocus != null && store.get().controllerNav && !newFocus.isInTouchMode()
-                    && liftable(newFocus)) {
-                newFocus.animate().scaleX(LIFT_SCALE).scaleY(LIFT_SCALE).translationZ(lift)
-                        .setInterpolator(LIFT).setDuration(420).start();
-                lifted = new WeakReference<>(newFocus);
-                LauncherSounds.effect(Sfx.MOVE);
-            }
-        });
+        observer.addOnGlobalFocusChangeListener((oldFocus, newFocus) ->
+                Hooks.guard("controller focus", () -> lift(oldFocus, newFocus, lift)).run());
         // Touching the screen ends controller mode: drop the lift straight away.
         observer.addOnTouchModeChangeListener(inTouchMode -> {
             if (inTouchMode) {
-                settle(lifted.get());
+                Hooks.guard("controller focus", () -> settle(lifted.get())).run();
             }
         });
+    }
+
+    /** Lifts the newly focused icon or tile towards the eye; the one before settles back. */
+    private void lift(View oldFocus, View newFocus, float lift) {
+        settle(oldFocus);
+        if (newFocus != null && store.get().controllerNav && !newFocus.isInTouchMode()
+                && liftable(newFocus)) {
+            newFocus.animate().scaleX(LIFT_SCALE).scaleY(LIFT_SCALE).translationZ(lift)
+                    .setInterpolator(LIFT).setDuration(420).start();
+            lifted = new WeakReference<>(newFocus);
+            LauncherSounds.effect(Sfx.MOVE);
+        }
     }
 
     private void settle(View view) {

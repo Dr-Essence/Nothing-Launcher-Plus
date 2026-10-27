@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
+import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
@@ -85,11 +86,15 @@ public final class WidgetApps {
                 new ViewTreeObserver.OnGlobalLayoutListener() {
                     @Override
                     public void onGlobalLayout() {
+                        Hooks.guard("breathing card", () -> fit(this)).run();
+                    }
+
+                    private void fit(ViewTreeObserver.OnGlobalLayoutListener self) {
                         View card = decor.findViewById(id);
                         if (card == null) {
                             return; // Fragment not attached yet.
                         }
-                        decor.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                        decor.getViewTreeObserver().removeOnGlobalLayoutListener(self);
                         if (activity.getResources().getConfiguration().orientation
                                 != Configuration.ORIENTATION_LANDSCAPE) {
                             return;

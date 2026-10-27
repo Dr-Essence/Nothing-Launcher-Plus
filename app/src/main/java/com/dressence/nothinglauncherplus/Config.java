@@ -140,24 +140,22 @@ public final class Config {
 
     public static Config read(SharedPreferences prefs) {
         Config config = new Config();
-        config.customFirst = prefs.getBoolean(KEY_CUSTOM_FIRST, true);
-        config.hideBuiltin = prefs.getBoolean(KEY_HIDE_BUILTIN, false);
-        config.looseApps = prefs.getBoolean(KEY_LOOSE_APPS, false);
-        config.drawerOpacity = Math.max(0, Math.min(100, prefs.getInt(KEY_DRAWER_OPACITY, 100)));
-        config.animateCovers = prefs.getBoolean(KEY_ANIMATE_COVERS, true);
-        config.dotMatrix = prefs.getBoolean(KEY_DOT_MATRIX, true);
-        config.dotIcons = prefs.getBoolean(KEY_DOT_ICONS, false);
-        config.ndotStatusBar = prefs.getBoolean(KEY_NDOT_STATUS, false);
-        config.statusBarDate = prefs.getBoolean(KEY_STATUS_DATE, false);
-        config.systemFont = prefs.getString(KEY_SYSTEM_FONT, "");
-        config.ndotQuickSettings = prefs.getBoolean(KEY_NDOT_QS, false);
-        config.qsAmber = prefs.getBoolean(KEY_QS_AMBER, false);
-        config.uiSounds = prefs.getBoolean(KEY_UI_SOUNDS, false);
-        config.music = prefs.getBoolean(KEY_MUSIC, false);
-        config.musicStyle = prefs.getString(KEY_MUSIC_STYLE, "HOME_MENU");
-        config.musicVolume = Math.max(0, Math.min(100, prefs.getInt(KEY_MUSIC_VOLUME, 45)));
-        config.allowRotation = prefs.getBoolean(KEY_ALLOW_ROTATION, false);
-        config.controllerNav = prefs.getBoolean(KEY_CONTROLLER_NAV, true);
+        config.readSettings(new Source() {
+            @Override
+            public boolean bool(String key, boolean otherwise) {
+                return prefs.getBoolean(key, otherwise);
+            }
+
+            @Override
+            public int number(String key, int otherwise) {
+                return prefs.getInt(key, otherwise);
+            }
+
+            @Override
+            public String text(String key, String otherwise) {
+                return prefs.getString(key, otherwise);
+            }
+        });
         try {
             config.readFolders(new JSONArray(prefs.getString(KEY_FOLDERS, "[]")));
         } catch (JSONException ignored) {
@@ -168,75 +166,139 @@ public final class Config {
     }
 
     public void write(SharedPreferences.Editor editor) {
-        editor.putString(KEY_FOLDERS, foldersJson().toString())
-                .putBoolean(KEY_CUSTOM_FIRST, customFirst)
-                .putBoolean(KEY_HIDE_BUILTIN, hideBuiltin)
-                .putBoolean(KEY_LOOSE_APPS, looseApps)
-                .putInt(KEY_DRAWER_OPACITY, drawerOpacity)
-                .putBoolean(KEY_ANIMATE_COVERS, animateCovers)
-                .putBoolean(KEY_DOT_MATRIX, dotMatrix)
-                .putBoolean(KEY_DOT_ICONS, dotIcons)
-                .putBoolean(KEY_NDOT_STATUS, ndotStatusBar)
-                .putBoolean(KEY_STATUS_DATE, statusBarDate)
-                .putString(KEY_SYSTEM_FONT, systemFont)
-                .putBoolean(KEY_NDOT_QS, ndotQuickSettings)
-                .putBoolean(KEY_QS_AMBER, qsAmber)
-                .putBoolean(KEY_UI_SOUNDS, uiSounds)
-                .putBoolean(KEY_MUSIC, music)
-                .putString(KEY_MUSIC_STYLE, musicStyle)
-                .putInt(KEY_MUSIC_VOLUME, musicVolume)
-                .putBoolean(KEY_ALLOW_ROTATION, allowRotation)
-                .putBoolean(KEY_CONTROLLER_NAV, controllerNav);
+        editor.putString(KEY_FOLDERS, foldersJson().toString());
+        writeSettings(new Sink() {
+            @Override
+            public void bool(String key, boolean value) {
+                editor.putBoolean(key, value);
+            }
+
+            @Override
+            public void number(String key, int value) {
+                editor.putInt(key, value);
+            }
+
+            @Override
+            public void text(String key, String value) {
+                editor.putString(key, value);
+            }
+        });
         reindex();
     }
 
     /** Everything as one JSON object, for backups. */
     public JSONObject toJson() throws JSONException {
-        return new JSONObject()
-                .put(KEY_FOLDERS, foldersJson())
-                .put(KEY_CUSTOM_FIRST, customFirst)
-                .put(KEY_HIDE_BUILTIN, hideBuiltin)
-                .put(KEY_LOOSE_APPS, looseApps)
-                .put(KEY_DRAWER_OPACITY, drawerOpacity)
-                .put(KEY_ANIMATE_COVERS, animateCovers)
-                .put(KEY_DOT_MATRIX, dotMatrix)
-                .put(KEY_DOT_ICONS, dotIcons)
-                .put(KEY_NDOT_STATUS, ndotStatusBar)
-                .put(KEY_STATUS_DATE, statusBarDate)
-                .put(KEY_SYSTEM_FONT, systemFont)
-                .put(KEY_NDOT_QS, ndotQuickSettings)
-                .put(KEY_QS_AMBER, qsAmber)
-                .put(KEY_UI_SOUNDS, uiSounds)
-                .put(KEY_MUSIC, music)
-                .put(KEY_MUSIC_STYLE, musicStyle)
-                .put(KEY_MUSIC_VOLUME, musicVolume)
-                .put(KEY_ALLOW_ROTATION, allowRotation)
-                .put(KEY_CONTROLLER_NAV, controllerNav);
+        JSONObject json = new JSONObject().put(KEY_FOLDERS, foldersJson());
+        writeSettings(new Sink() {
+            @Override
+            public void bool(String key, boolean value) {
+                put(key, value);
+            }
+
+            @Override
+            public void number(String key, int value) {
+                put(key, value);
+            }
+
+            @Override
+            public void text(String key, String value) {
+                put(key, value);
+            }
+
+            private void put(String key, Object value) {
+                try {
+                    json.put(key, value);
+                } catch (JSONException e) {
+                    // Only for a null key or a NaN: neither is ever written here.
+                    throw new IllegalArgumentException(key, e);
+                }
+            }
+        });
+        return json;
     }
 
     public static Config fromJson(JSONObject json) throws JSONException {
         Config config = new Config();
-        config.customFirst = json.optBoolean(KEY_CUSTOM_FIRST, true);
-        config.hideBuiltin = json.optBoolean(KEY_HIDE_BUILTIN, false);
-        config.looseApps = json.optBoolean(KEY_LOOSE_APPS, false);
-        config.drawerOpacity = Math.max(0, Math.min(100, json.optInt(KEY_DRAWER_OPACITY, 100)));
-        config.animateCovers = json.optBoolean(KEY_ANIMATE_COVERS, true);
-        config.dotMatrix = json.optBoolean(KEY_DOT_MATRIX, true);
-        config.dotIcons = json.optBoolean(KEY_DOT_ICONS, false);
-        config.ndotStatusBar = json.optBoolean(KEY_NDOT_STATUS, false);
-        config.statusBarDate = json.optBoolean(KEY_STATUS_DATE, false);
-        config.systemFont = json.optString(KEY_SYSTEM_FONT, "");
-        config.ndotQuickSettings = json.optBoolean(KEY_NDOT_QS, false);
-        config.qsAmber = json.optBoolean(KEY_QS_AMBER, false);
-        config.uiSounds = json.optBoolean(KEY_UI_SOUNDS, false);
-        config.music = json.optBoolean(KEY_MUSIC, false);
-        config.musicStyle = json.optString(KEY_MUSIC_STYLE, "HOME_MENU");
-        config.musicVolume = Math.max(0, Math.min(100, json.optInt(KEY_MUSIC_VOLUME, 45)));
-        config.allowRotation = json.optBoolean(KEY_ALLOW_ROTATION, false);
-        config.controllerNav = json.optBoolean(KEY_CONTROLLER_NAV, true);
+        config.readSettings(new Source() {
+            @Override
+            public boolean bool(String key, boolean otherwise) {
+                return json.optBoolean(key, otherwise);
+            }
+
+            @Override
+            public int number(String key, int otherwise) {
+                return json.optInt(key, otherwise);
+            }
+
+            @Override
+            public String text(String key, String otherwise) {
+                return json.optString(key, otherwise);
+            }
+        });
         config.readFolders(json.getJSONArray(KEY_FOLDERS));
         config.reindex();
         return config;
+    }
+
+    /** Where settings are read from: the saved preferences, or a backup. */
+    private interface Source {
+        boolean bool(String key, boolean otherwise);
+
+        int number(String key, int otherwise);
+
+        String text(String key, String otherwise);
+    }
+
+    /** Where settings are written to. */
+    private interface Sink {
+        void bool(String key, boolean value);
+
+        void number(String key, int value);
+
+        void text(String key, String value);
+    }
+
+    /** Every setting but the folders, with its default: the one list of them. */
+    private void readSettings(Source in) {
+        customFirst = in.bool(KEY_CUSTOM_FIRST, true);
+        hideBuiltin = in.bool(KEY_HIDE_BUILTIN, false);
+        looseApps = in.bool(KEY_LOOSE_APPS, false);
+        drawerOpacity = Math.max(0, Math.min(100, in.number(KEY_DRAWER_OPACITY, 100)));
+        animateCovers = in.bool(KEY_ANIMATE_COVERS, true);
+        dotMatrix = in.bool(KEY_DOT_MATRIX, true);
+        dotIcons = in.bool(KEY_DOT_ICONS, false);
+        ndotStatusBar = in.bool(KEY_NDOT_STATUS, false);
+        statusBarDate = in.bool(KEY_STATUS_DATE, false);
+        systemFont = in.text(KEY_SYSTEM_FONT, "");
+        ndotQuickSettings = in.bool(KEY_NDOT_QS, false);
+        qsAmber = in.bool(KEY_QS_AMBER, false);
+        uiSounds = in.bool(KEY_UI_SOUNDS, false);
+        music = in.bool(KEY_MUSIC, false);
+        musicStyle = in.text(KEY_MUSIC_STYLE, "HOME_MENU");
+        musicVolume = Math.max(0, Math.min(100, in.number(KEY_MUSIC_VOLUME, 45)));
+        allowRotation = in.bool(KEY_ALLOW_ROTATION, false);
+        controllerNav = in.bool(KEY_CONTROLLER_NAV, true);
+    }
+
+    private void writeSettings(Sink out) {
+        out.bool(KEY_CUSTOM_FIRST, customFirst);
+        out.bool(KEY_HIDE_BUILTIN, hideBuiltin);
+        out.bool(KEY_LOOSE_APPS, looseApps);
+        out.number(KEY_DRAWER_OPACITY, drawerOpacity);
+        out.bool(KEY_ANIMATE_COVERS, animateCovers);
+        out.bool(KEY_DOT_MATRIX, dotMatrix);
+        out.bool(KEY_DOT_ICONS, dotIcons);
+        out.bool(KEY_NDOT_STATUS, ndotStatusBar);
+        out.bool(KEY_STATUS_DATE, statusBarDate);
+        out.text(KEY_SYSTEM_FONT, systemFont);
+        out.bool(KEY_NDOT_QS, ndotQuickSettings);
+        out.bool(KEY_QS_AMBER, qsAmber);
+        out.bool(KEY_UI_SOUNDS, uiSounds);
+        out.bool(KEY_MUSIC, music);
+        out.text(KEY_MUSIC_STYLE, musicStyle);
+        out.number(KEY_MUSIC_VOLUME, musicVolume);
+        out.bool(KEY_ALLOW_ROTATION, allowRotation);
+        out.bool(KEY_CONTROLLER_NAV, controllerNav);
     }
 
     private void readFolders(JSONArray array) throws JSONException {
