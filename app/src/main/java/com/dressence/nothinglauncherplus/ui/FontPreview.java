@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapShader;
 import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -16,14 +15,15 @@ import android.view.View;
 import java.nio.ByteBuffer;
 
 /**
- * A font shown on a dot-matrix screen, like the drawer's folder panels: a sample text set in
- * the font, lit in the clock's glowing green over unlit dots. Text wider than the screen
+ * A font shown as it will look, on a dot-matrix screen like the drawer's folder panels: a
+ * sample text set in the font itself (its own letters, exactly as the phone will draw them),
+ * lit in the clock's glowing green over the screen's unlit dots. Text wider than the screen
  * scrolls through it a dot at a time, pausing at the start.
  *
- * <p>The screen is made for the font. A dot font (NDot) gets a screen of its own dots: its dot
- * spacing, its dot size, its number of rows, every dot of a letter on one dot of the screen,
- * so each NDot looks as it is drawn. Any other font gets a fine high-definition screen, its
- * dots small enough for the letters' own shapes to show.
+ * <p>The screen is made for the font. A dot font (NDot) gets a screen of its own dots, its dot
+ * spacing and dot size, with the text placed so each of its dots sits on one of the screen's:
+ * lit and unlit dots are one display. Any other font is shown over a fine high-definition
+ * dot screen.
  */
 final class FontPreview extends View {
 
@@ -34,11 +34,6 @@ final class FontPreview extends View {
     private static final int MARGIN_ROWS = 2;
     /** The rows of the high-definition screen for other fonts. */
     private static final int HD_ROWS = 34;
-    /** Supersampling of the text when it is turned into dots. */
-    private static final int SS = 6;
-    /** How much of a dot's cell a letter must cover for it to light: a solid font, a dot font. */
-    private static final float COVER_SOLID = 0.45f;
-    private static final float COVER_DOTS = 0.25f;
     /** Blank dots between the end of scrolling text and its next start. */
     private static final int LOOP_GAP = 8;
     private static final long STEP_MS = 90;
@@ -61,7 +56,7 @@ final class FontPreview extends View {
     private int rows = HD_ROWS;
     private float pitch;
     private float radius;
-    /** Columns of the text, and the text's lit dots with their glow, drawn once. */
+    /** Dots across the text, and the text lit with its glow, drawn once. */
     private int textColumns;
     private Bitmap lit;
     private int litPad;
@@ -87,20 +82,32 @@ final class FontPreview extends View {
     /** Shows {@link #SAMPLE} in {@code typeface}, on a screen made for it. */
     void setTypeface(Typeface typeface) {
         DotGrid grid = DotGrid.of(typeface);
+        Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
+        text.setTypeface(typeface);
+        float x0;
+        float baseline;
         if (grid != null) {
+            // The font's dots on the screen's: its spacing is the screen's dot spacing.
             rows = grid.rows + 2 * MARGIN_ROWS;
             pitch = wholePixels(height / rows);
             radius = pitch * Math.min(0.5f, grid.dotSize / 2);
+            float scale = pitch / grid.pitch;
+            text.setTextSize(DotGrid.REF * scale);
+            x0 = pitch / 2 - grid.x * scale;
+            baseline = pitch * (MARGIN_ROWS + 0.5f) - grid.y * scale;
             stepMs = STEP_MS;
         } else {
             rows = HD_ROWS;
             pitch = wholePixels(height / rows);
             radius = pitch * 0.45f;
+            text.setTextSize(rows * pitch * 0.62f);
+            x0 = pitch;
+            baseline = rows * pitch * 0.74f;
             stepMs = HD_STEP_MS;
         }
-        boolean[][] dots = dots(typeface, grid, rows);
-        textColumns = dots.length;
-        lit = drawLit(dots);
+        // Whole dots wide, with a dot of room after the text.
+        textColumns = (int) Math.ceil((x0 + text.measureText(SAMPLE)) / pitch) + 1;
+        lit = drawLit(text, x0, baseline);
         unlit.setShader(unlitGrid());
         offset = 0;
         scrolling = false;
@@ -109,88 +116,19 @@ final class FontPreview extends View {
         invalidate();
     }
 
-    /** Dot spacing on whole pixels, so the repeated unlit dots stay on the lit ones' grid. */
+    /** Dot spacing on whole pixels, so the repeated unlit dots stay on one grid. */
     private static float wholePixels(float spacing) {
         return Math.max(2, (int) spacing);
     }
 
-    /**
-     * The sample in {@code typeface} as lit dots, column by column: drawn finely, then a dot
-     * per cell. A dot font is sized so its dot spacing is the screen's, its dots centred on the
-     * screen's, each letter starting on a whole dot.
-     */
-    private static boolean[][] dots(Typeface typeface, DotGrid grid, int rows) {
-        Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
-        text.setTypeface(typeface);
-        text.setColor(Color.WHITE);
-        int h = rows * SS;
-        float x0;
-        float baseline;
-        if (grid != null) {
-            float scale = SS / grid.pitch;
-            text.setTextSize(DotGrid.REF * scale);
-            x0 = SS * 1.5f - grid.x * scale;
-            baseline = SS * (MARGIN_ROWS + 0.5f) - grid.y * scale;
-        } else {
-            text.setTextSize(h * 0.66f);
-            x0 = SS;
-            baseline = h * 0.76f;
-        }
-        int[] at = new int[SAMPLE.length()];
-        int columns = 0;
-        for (int i = 0; i < SAMPLE.length(); i++) {
-            at[i] = columns;
-            float advance = text.measureText(SAMPLE, i, i + 1) / SS;
-            columns += grid != null ? Math.max(1, Math.round(advance)) : 0;
-        }
-        columns = (grid != null ? columns : (int) Math.ceil(text.measureText(SAMPLE) / SS)) + 3;
-        Bitmap fine = Bitmap.createBitmap(columns * SS, h, Bitmap.Config.ALPHA_8);
-        Canvas canvas = new Canvas(fine);
-        if (grid != null) {
-            for (int i = 0; i < SAMPLE.length(); i++) {
-                canvas.drawText(SAMPLE, i, i + 1, x0 + at[i] * SS, baseline, text);
-            }
-        } else {
-            canvas.drawText(SAMPLE, x0, baseline, text);
-        }
-        int stride = fine.getRowBytes();
-        byte[] alpha = new byte[stride * h];
-        fine.copyPixelsToBuffer(ByteBuffer.wrap(alpha));
-        fine.recycle();
-        float cover = (grid != null ? COVER_DOTS : COVER_SOLID) * 255 * SS * SS;
-        boolean[][] out = new boolean[columns][rows];
-        for (int x = 0; x < columns; x++) {
-            for (int y = 0; y < rows; y++) {
-                int sum = 0;
-                for (int sy = 0; sy < SS; sy++) {
-                    int row = (y * SS + sy) * stride + x * SS;
-                    for (int sx = 0; sx < SS; sx++) {
-                        sum += alpha[row + sx] & 0xFF;
-                    }
-                }
-                out[x][y] = sum >= cover;
-            }
-        }
-        return out;
-    }
-
-    /** The text's lit dots with their soft glow, drawn once into an image. */
-    private Bitmap drawLit(boolean[][] dots) {
+    /** The sample set in the font, lit green with its soft glow, drawn once into an image. */
+    private Bitmap drawLit(Paint text, float x0, float baseline) {
         float blur = Math.max(pitch * 1.3f, radius * 1.6f);
         litPad = (int) Math.ceil(blur * 2);
-        int w = Math.round(dots.length * pitch) + 2 * litPad;
+        int w = Math.round(textColumns * pitch) + 2 * litPad;
         int h = Math.round(rows * pitch) + 2 * litPad;
         Bitmap shape = Bitmap.createBitmap(w, h, Bitmap.Config.ALPHA_8);
-        Canvas c = new Canvas(shape);
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        for (int x = 0; x < dots.length; x++) {
-            for (int y = 0; y < rows; y++) {
-                if (dots[x][y]) {
-                    c.drawCircle(litPad + (x + 0.5f) * pitch, litPad + (y + 0.5f) * pitch,
-                            radius, p);
-                }
-            }
-        }
+        new Canvas(shape).drawText(SAMPLE, litPad + x0, litPad + baseline, text);
         Paint soft = new Paint();
         soft.setMaskFilter(new BlurMaskFilter(blur, BlurMaskFilter.Blur.NORMAL));
         int[] at = new int[2];
