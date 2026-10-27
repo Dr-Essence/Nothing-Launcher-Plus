@@ -1,11 +1,18 @@
 package com.dressence.nothinglauncherplus.ui;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Display;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -385,27 +392,66 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    /** Lists Nothing's fonts on the phone and installs the chosen one as the system font. */
+    /**
+     * Lists Nothing's fonts on the phone, each previewed on a dot-matrix screen in glowing
+     * green, and sets the chosen one as the system font.
+     */
     private void chooseSystemFont() {
         new Thread(() -> {
-            java.util.List<SystemFont.Choice> fonts = SystemFont.find(this);
-            runOnUiThread(() -> {
-                String[] names = new String[fonts.size() + 1];
-                names[0] = "Phone default";
-                for (int i = 0; i < fonts.size(); i++) {
-                    SystemFont.Choice font = fonts.get(i);
-                    names[i + 1] = font.title + (font.needsAdding() ? "  · after one restart"
-                            : "");
-                }
-                Dialogs.builder(this)
-                        .setTitle("System font")
-                        .setItems(names, (dialog, which) -> {
-                            applyFont(which == 0 ? null : fonts.get(which - 1));
-                        })
-                        .setNegativeButton("Cancel", null)
-                        .show();
-            });
+            List<SystemFont.Choice> fonts = new ArrayList<>();
+            fonts.add(null); // The phone's own font.
+            fonts.addAll(SystemFont.find(this));
+            List<Typeface> faces = new ArrayList<>();
+            for (SystemFont.Choice font : fonts) {
+                faces.add(SystemFont.typeface(this, font));
+            }
+            runOnUiThread(() -> showFontChooser(fonts, faces));
         }).start();
+    }
+
+    private void showFontChooser(List<SystemFont.Choice> fonts, List<Typeface> faces) {
+        if (isFinishing()) {
+            return;
+        }
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        int pad = Ui.dp(this, 20);
+        list.setPadding(pad, Ui.dp(this, 8), pad, Ui.dp(this, 8));
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(list);
+        AlertDialog dialog = Dialogs.builder(this)
+                .setTitle("System font")
+                .setView(scroll)
+                .setNegativeButton("Cancel", null)
+                .create();
+        for (int i = 0; i < fonts.size(); i++) {
+            SystemFont.Choice font = fonts.get(i);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10));
+            row.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22FFFFFF), null,
+                    new ColorDrawable(Color.WHITE)));
+            TextView title = new TextView(this);
+            title.setText(font == null ? "Phone default" : font.title
+                    + (font.needsAdding() ? "  · after one restart" : ""));
+            title.setTextColor(Ui.TEXT);
+            title.setTextSize(15);
+            title.setPadding(0, 0, 0, Ui.dp(this, 6));
+            row.addView(title);
+            if (faces.get(i) != null) {
+                FontPreview preview = new FontPreview(this);
+                preview.setTypeface(faces.get(i));
+                row.addView(preview, new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT));
+            }
+            row.setOnClickListener(v -> {
+                dialog.dismiss();
+                applyFont(font);
+            });
+            list.addView(row);
+        }
+        dialog.show();
     }
 
     /**

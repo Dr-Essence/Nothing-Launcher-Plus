@@ -2,10 +2,15 @@ package com.dressence.nothinglauncherplus.ui;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.graphics.Typeface;
+import android.graphics.fonts.Font;
+import android.graphics.fonts.FontFamily;
 
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -114,6 +119,34 @@ final class SystemFont {
             }
         }
         return false;
+    }
+
+    /**
+     * {@code choice} as a typeface to preview it in this app (null: the phone's own font);
+     * null if it cannot be read. A widgets-app font is read into a buffer of this app's own.
+     */
+    static Typeface typeface(Context context, Choice choice) {
+        try {
+            if (choice == null) {
+                File roboto = new File("/system/fonts/Roboto-Regular.ttf");
+                return roboto.canRead() ? Typeface.createFromFile(roboto) : Typeface.DEFAULT;
+            }
+            if (choice.path != null) {
+                return Typeface.createFromFile(choice.path);
+            }
+            byte[] bytes;
+            try (InputStream in = context.createPackageContext(WIDGETS_PKG, 0).getResources()
+                    .openRawResource(choice.resource)) {
+                bytes = in.readAllBytes();
+            }
+            ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length)
+                    .order(ByteOrder.nativeOrder());
+            buffer.put(bytes).flip();
+            return new Typeface.CustomFallbackBuilder(new FontFamily.Builder(
+                    new Font.Builder(buffer).build()).build()).build();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** Where {@code choice}, a widgets-app font, is once added to the system's fonts. */
