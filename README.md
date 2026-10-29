@@ -247,8 +247,14 @@ Around the home screen:
   landscape home screen showed on their side. The lock is lifted in system_server as the card's
   activity is created (System Framework in scope), on that activity's own copy of its info, and
   again in the apps themselves (tick both apps in the module's LSPosed scope). Cards also turn
-  without being restarted, so a breathing session keeps going; the Calm card is refitted to
-  the screen on each turn.
+  without being restarted, so a breathing session keeps going. Nothing lays its cards out for a
+  portrait screen only (it ships no landscape layout for any of them), so in landscape each
+  card (any translucent, portrait-only screen of those apps, Calm and Relax included, and any
+  Nothing adds later) gets a canvas of the portrait screen's width and of the height its
+  content takes there: centred, and scaled down evenly only if the landscape screen is lower.
+  The card's layout and code see a portrait screen, so it looks and works as in portrait on
+  any screen size, aspect ratio or density (the breathing card used to fill the whole height
+  and push its close button off screen).
 - **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
 
 ### Landscape grid

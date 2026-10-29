@@ -2,11 +2,14 @@ package com.dressence.nothinglauncherplus.widgets;
 
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
-import android.content.res.Configuration;
+import android.content.pm.PackageManager;
+import android.content.res.TypedArray;
+import android.graphics.Rect;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
+import android.widget.FrameLayout;
 
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 import com.dressence.nothinglauncherplus.xposed.Hooks;
@@ -18,22 +21,26 @@ import de.robv.android.xposed.XposedHelpers;
  * Nothing's widget apps in landscape.
  *
  * <p>Nothing Widgets ({@code com.nothing.hearthstone}) and NothingCardService lock every screen
- * to portrait, including the cards a widget opens over the home screen (the Calm / breathing
- * card, battery and photo views). Over a landscape home screen those were drawn on their side.
- * With "Home screen rotation" on, their portrait locks are lifted (as they launch, by
- * CardOrientation in the system, and here for any screen they set it on themselves):
- * translucent cards then follow the home screen behind them, full screens follow the device.
+ * to portrait, including the cards a widget opens over the home screen (the Calm and Relax
+ * breathing card, battery and photo views). Over a landscape home screen those were drawn on
+ * their side. With "Home screen rotation" on, their portrait locks are lifted (as they launch,
+ * by CardOrientation in the system, and here for any screen they set it on themselves).
+ *
+ * <p>Full screens (settings) then follow the device like any app. A card is laid out only for
+ * a portrait screen (Nothing ships no landscape layout for any of them): stretched across a
+ * landscape one it overflowed it (the breathing card took the whole height and pushed its close
+ * button off screen). In landscape each card is given what it was made for, a canvas of the
+ * portrait screen's width and of the height its content takes there, shown whole: centred,
+ * and scaled down evenly only if the landscape screen is lower than that. Its layout, its sizes
+ * and its own code see a portrait screen, so it looks and works as in portrait, whatever the
+ * screen size, aspect ratio or density, and so does any card Nothing adds later.
  */
 public final class WidgetApps {
 
     private static final String WIDGETS_PKG = "com.nothing.hearthstone";
     private static final String CARD_SERVICE_PKG = "com.nothing.cardservice";
-
-    /** The breathing card: full width at 183:223, which overflows a landscape screen. */
-    private static final String BREATH_ACTIVITY = WIDGETS_PKG + ".breath.ui.BreathExerciseActivity";
-    private static final String BREATH_CARD_ID = "breath_layout";
-    /** The card's portrait layout size, kept on the view. */
-    private static final String OWN_SIZE = "nlplus.ownSize";
+    /** The card root's own layout, kept on it while it is on a landscape canvas. */
+    private static final String OWN_LAYOUT = "nlplus.ownLayout";
 
     private final ConfigStore store;
 
@@ -55,80 +62,103 @@ public final class WidgetApps {
                         apps.onCreated((Activity) param.thisObject);
                     }
                 });
-        // Cards turn without a restart (CardOrientation), so the breathing card is refitted.
-        XposedHelpers.findAndHookMethod(Activity.class, "onConfigurationChanged",
-                Configuration.class, new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) {
-                        Activity activity = (Activity) param.thisObject;
-                        if (isBreathCard(activity)) {
-                            View card = breathCard(activity);
-                            if (card != null) {
-                                fit(card, (Configuration) param.args[0]);
-                            }
-                        }
-                    }
-                });
     }
 
     private void onCreated(Activity activity) {
         store.reloadIfChanged(); // This process has no reload receiver; check on each screen.
-        if (!store.get().allowRotation || !CardOrientation.isPortraitLock(activity.getRequestedOrientation())) {
+        if (!store.get().allowRotation) {
             return;
         }
-        activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-        if (isBreathCard(activity)) {
-            fitBreathCard(activity);
+        if (CardOrientation.isPortraitLock(activity.getRequestedOrientation())) {
+            activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        }
+        if (isPortraitCard(activity)) {
+            ViewGroup content = activity.findViewById(android.R.id.content);
+            if (content != null) {
+                // Cards turn without a restart (CardOrientation) and fill in their content
+                // after onCreate (fragments): fitted on every layout, cheaply when unchanged.
+                content.getViewTreeObserver().addOnGlobalLayoutListener(
+                        Hooks.guard("portrait card", () -> fit(activity, content))::run);
+            }
         }
     }
 
-    private static boolean isBreathCard(Activity activity) {
-        return activity.getClass().getName().equals(BREATH_ACTIVITY);
-    }
-
-    private static View breathCard(Activity activity) {
-        int id = activity.getResources().getIdentifier(BREATH_CARD_ID, "id", WIDGETS_PKG);
-        return id != 0 ? activity.getWindow().getDecorView().findViewById(id) : null;
-    }
-
-    /** The card is added by a fragment after onCreate: fitted once it is laid out. */
-    private static void fitBreathCard(Activity activity) {
-        View decor = activity.getWindow().getDecorView();
-        decor.getViewTreeObserver().addOnGlobalLayoutListener(
-                new ViewTreeObserver.OnGlobalLayoutListener() {
-                    @Override
-                    public void onGlobalLayout() {
-                        Hooks.guard("breathing card", () -> {
-                            View card = breathCard(activity);
-                            if (card == null) {
-                                return; // Fragment not attached yet.
-                            }
-                            decor.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                            fit(card, activity.getResources().getConfiguration());
-                        }).run();
-                    }
-                });
+    /** A card: a translucent screen over the home screen, declared portrait-only. */
+    private static boolean isPortraitCard(Activity activity) {
+        try {
+            ActivityInfo info = activity.getPackageManager().getActivityInfo(
+                    activity.getComponentName(), 0);
+            if (!CardOrientation.isPortraitLock(info.screenOrientation)) {
+                return false;
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+        TypedArray a = activity.getTheme().obtainStyledAttributes(
+                new int[] {android.R.attr.windowIsTranslucent});
+        try {
+            return a.getBoolean(0, false);
+        } finally {
+            a.recycle();
+        }
     }
 
     /**
-     * Portrait: the card's own size, full width at 183:223. Landscape, where that overflows the
-     * screen: ConstraintLayout sizes it from both sides (0dp = match constraint), which with its
-     * ratio kept is the largest card that fits.
+     * Puts the card's root on a portrait canvas while the screen is wider than a portrait one,
+     * and gives it back its own layout otherwise.
      */
-    private static void fit(View card, Configuration config) {
-        ViewGroup.LayoutParams lp = card.getLayoutParams();
-        int[] own = (int[]) XposedHelpers.getAdditionalInstanceField(card, OWN_SIZE);
-        if (own == null) {
-            own = new int[] {lp.width, lp.height};
-            XposedHelpers.setAdditionalInstanceField(card, OWN_SIZE, own);
+    private static void fit(Activity activity, ViewGroup content) {
+        if (content.getChildCount() != 1
+                || !(content.getChildAt(0).getLayoutParams() instanceof FrameLayout.LayoutParams)) {
+            return;
         }
-        boolean landscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE;
-        int width = landscape ? 0 : own[0];
-        int height = landscape ? 0 : own[1];
-        if (lp.width != width || lp.height != height) {
+        View root = content.getChildAt(0);
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) root.getLayoutParams();
+        int[] own = (int[]) XposedHelpers.getAdditionalInstanceField(root, OWN_LAYOUT);
+        Rect screen = activity.getWindowManager().getMaximumWindowMetrics().getBounds();
+        int portraitWidth = Math.min(screen.width(), screen.height());
+        int width = content.getWidth();
+        int height = content.getHeight();
+        if (width <= portraitWidth || height <= 0) {
+            if (own != null) {
+                XposedHelpers.removeAdditionalInstanceField(root, OWN_LAYOUT);
+                apply(root, lp, own[0], own[1], own[2], 1f);
+            }
+            return;
+        }
+        if (own == null) {
+            own = new int[] {lp.width, lp.height, lp.gravity};
+            XposedHelpers.setAdditionalInstanceField(root, OWN_LAYOUT, own);
+        }
+        // The height the card takes on a portrait screen; a card that only fills what it is
+        // given (no height of its own) gets the landscape height.
+        root.measure(View.MeasureSpec.makeMeasureSpec(portraitWidth, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int natural = root.getMeasuredHeight();
+        if (root.getWidth() > 0 && root.getHeight() > 0) {
+            // Back to the size it is laid out at, for anything that reads it before the next
+            // layout pass.
+            root.measure(
+                    View.MeasureSpec.makeMeasureSpec(root.getWidth(), View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(root.getHeight(), View.MeasureSpec.EXACTLY));
+        }
+        int canvasHeight = natural > 0 ? natural : height;
+        float scale = Math.min(1f, Math.min(height / (float) canvasHeight,
+                width / (float) portraitWidth));
+        apply(root, lp, portraitWidth, canvasHeight, Gravity.CENTER, scale);
+    }
+
+    private static void apply(View root, FrameLayout.LayoutParams lp, int width, int height,
+            int gravity, float scale) {
+        if (lp.width != width || lp.height != height || lp.gravity != gravity) {
             lp.width = width;
             lp.height = height;
-            card.setLayoutParams(lp);
+            lp.gravity = gravity;
+            root.setLayoutParams(lp);
+        }
+        if (root.getScaleX() != scale || root.getScaleY() != scale) {
+            root.setScaleX(scale);
+            root.setScaleY(scale);
         }
     }
 }
