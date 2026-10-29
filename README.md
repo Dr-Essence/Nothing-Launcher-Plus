@@ -266,6 +266,18 @@ Around the home screen:
   was taller than the screen: opened in landscape it showed as a full-screen gradient with no
   corners or close button, and after a turn it filled the height with its close button cut
   off.)
+- **The lock screen** turns with the device too. SystemUI's notification shade window, which
+  holds it, asks for a fixed orientation while the lock screen shows unless its keyguard
+  screen rotation switch is on (`mKeyguardScreenRotation`; off on phones); that one switch is
+  turned on while home rotation is on, so the lock screen follows auto-rotate in its own
+  landscape layout (System UI in the module's LSPosed scope; restart System UI once).
+- **Nothing's Customisation page** (`com.nothing.wallpaper`'s CustomizationPickerActivity,
+  opened from the home screen) is declared portrait-only; its lock is lifted in system_server
+  as it opens, as for the widget cards, so it follows the home screen.
+- A **live wallpaper** that turns with the home screen draws its first frames after a turn
+  itself: one that rebuilds its renderer for the new size (Living Worlds does) shows black,
+  or a white frame, until it has drawn, most visibly when going home in portrait after the
+  home screen was last in landscape. That is the wallpaper's own redraw.
 - **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
 
 ### Landscape grid

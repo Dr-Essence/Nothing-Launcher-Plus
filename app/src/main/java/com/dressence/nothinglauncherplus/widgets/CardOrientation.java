@@ -20,6 +20,9 @@ import de.robv.android.xposed.XposedHelpers;
 public final class CardOrientation {
 
     private static final String CLS_ACTIVITY_RECORD = "com.android.server.wm.ActivityRecord";
+    private static final String CUSTOMIZATION_PKG = "com.nothing.wallpaper";
+    private static final String CUSTOMIZATION_ACTIVITY =
+            "com.android.customization.picker.CustomizationPickerActivity";
     private static final int ROTATION_CHANGES = ActivityInfo.CONFIG_ORIENTATION
             | ActivityInfo.CONFIG_SCREEN_SIZE | ActivityInfo.CONFIG_SMALLEST_SCREEN_SIZE
             | ActivityInfo.CONFIG_SCREEN_LAYOUT;
@@ -44,7 +47,20 @@ public final class CardOrientation {
     }
 
     private static void unlock(ActivityInfo info, ConfigStore store) {
-        if (!WidgetApps.handles(info.packageName) || !isPortraitLock(info.screenOrientation)) {
+        if (!isPortraitLock(info.screenOrientation)) {
+            return;
+        }
+        if (CUSTOMIZATION_PKG.equals(info.packageName)
+                && CUSTOMIZATION_ACTIVITY.equals(info.name)) {
+            // Nothing's Customisation page (wallpaper, style, home screen), opened from the
+            // home screen: it follows it, and is made again for a turn as apps are.
+            store.reloadIfChanged();
+            if (store.get().allowRotation) {
+                info.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+            }
+            return;
+        }
+        if (!WidgetApps.handles(info.packageName)) {
             return;
         }
         store.reloadIfChanged();
