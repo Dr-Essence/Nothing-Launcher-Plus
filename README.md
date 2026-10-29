@@ -253,15 +253,18 @@ Around the home screen:
 
 ### Landscape grid
 
-The landscape page is the portrait page turned: a C×R portrait grid becomes R×C (5×9 → 9×5,
-4×8 → 8×4), the same number of cells, so every page fits on any grid, screen size or density.
+The landscape page is the portrait page turned: a C×R portrait grid becomes R columns by as
+many of the C rows as the landscape page holds at the portrait cell size (5×9 → 9×4 on a
+1080 px tall phone, the portrait cells exactly), so every page fits on any grid, screen size or
+density.
 Each item sits at its portrait place turned (its portrait row is its landscape column, its
 portrait column its landscape row) with its own spans: icons, folders and square widgets turned
 that way never meet; a widget of another shape whose spot is taken goes to the nearest free
-spot that holds it whole. The cells are the portrait cells turned (a portrait row's height is
-a landscape column's width, a portrait column's width a landscape row's height), scaled the
-same both ways as far as the page needs, so the page keeps Nothing's proportions and spacing;
-the grid is centred on the page. Icons, folders and widget contents keep their portrait shape
+spot that holds it whole; items of a portrait column that does not fit on the landscape page
+go to the nearest free spot. The cells are the portrait cells turned (a portrait row's height
+is a landscape column's width, a portrait column's width a landscape row's height), at their
+portrait size unless the portrait rows do not fit across (then scaled the same both ways), so
+the page keeps Nothing's sizes and spacing; the grid is centred on the page. Icons, folders and widget contents keep their portrait shape
 and are as large as their landscape cells hold them, never larger than in portrait: a widget
 keeps the least margin Nothing gives it in portrait, and where a landscape row is too low for
 an icon and its name at near portrait size (5-column grids) icons and folders show at their
@@ -274,7 +277,10 @@ allows; it is placed after the other items, in the room they leave. The grid in 
 landscape home screen like in portrait. Each keeps that landscape place and size (remembered
 per item and per grid, in the launcher's own data), while the launcher's database, and so the
 portrait home screen, keeps its portrait place and size. Items never arranged in landscape
-are placed by turning the portrait page, around the ones that were.
+are placed by turning the portrait page, around the ones that were. Only a move or resize of
+an item already shown counts: the launcher builds new views whenever it binds its pages again
+(a rotation, a grid or label change), and their first places are not edits (they were
+remembered as edits before, which left items out of their turned places).
 
 Portrait is guarded at the database itself: every item write ends in one call
 (`ModelDbController.update`), whichever launcher method made it (the small methods that set an

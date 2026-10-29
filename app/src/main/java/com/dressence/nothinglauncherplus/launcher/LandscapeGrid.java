@@ -29,13 +29,15 @@ import de.robv.android.xposed.XposedHelpers;
 /**
  * The landscape home screen grid.
  *
- * <p>The landscape page is the portrait page turned: a C x R portrait grid becomes R x C, the
- * same cells, so every page fits whatever the grid, screen or density. Each item sits at its
+ * <p>The landscape page is the portrait page turned: a C x R portrait grid becomes R columns
+ * by as many of the C rows as the page holds at the portrait cell size (all of them where they
+ * fit), so every page fits whatever the grid, screen or density. Each item sits at its
  * portrait place turned (its portrait row is its column, its portrait column its row) with
  * its own spans, so icons, folders and square widgets never meet; a widget of another shape
- * whose spot is taken goes to the nearest free spot that holds it whole. The cells are the
- * portrait cells turned and scaled the same both ways, so the page keeps Nothing's spacing,
- * and the grid is centred on the page. Icons, folders and widget contents keep their portrait
+ * whose spot is taken or off the page goes to the nearest free spot that holds it whole. The
+ * cells are the portrait cells turned, at their portrait size where the page allows (scaled the
+ * same both ways otherwise), so the page keeps Nothing's sizes and spacing, and the grid is
+ * centred on the page. Icons, folders and widget contents keep their portrait
  * shape, as large as their landscape cells hold them (widgets through Nothing's own widget
  * padding). A widget as wide as the portrait page (a calendar) fills the landscape page's
  * width.
@@ -77,6 +79,8 @@ final class LandscapeGrid {
 
     private static final int CONTAINER_DESKTOP = -100;
     private static final int CELL_LAYOUT_WORKSPACE = 0;
+    /** Fewest rows a landscape page has, however low the screen. */
+    private static final int MIN_ROWS = 2;
     /** The longest a rotation may hold the launcher's drawing while its pages are rebuilt. */
     private static final long HOLD_DRAW_MS = 1000;
     /** How Launcher.bindInflatedItems words the delete of an item bound onto a taken cell. */
@@ -97,11 +101,14 @@ final class LandscapeGrid {
         final PortraitGeometry portrait;
         /** The width the landscape grid is laid out in; for the log. */
         final int width;
+        /** Rows of the landscape page: the portrait columns, as many as fit (see gridFor). */
+        private final int down;
 
-        Grid(int columns, int rows, Point cell, Point border, float scale,
+        Grid(int columns, int rows, int down, Point cell, Point border, float scale,
                 PortraitGeometry portrait, int width) {
             this.columns = columns;
             this.rows = rows;
+            this.down = down;
             this.cell = cell;
             this.border = border;
             this.scale = scale;
@@ -114,7 +121,7 @@ final class LandscapeGrid {
         }
 
         int landscapeRows() {
-            return columns;
+            return down;
         }
     }
 
@@ -132,11 +139,12 @@ final class LandscapeGrid {
      */
     private final Map<Integer, int[]> portraitPlaces = new java.util.concurrent.ConcurrentHashMap<>();
     /**
-     * Where the arrangement last put each item on its page, by item id; main thread. An item
-     * found elsewhere was moved or resized there since (or pushed by such a move): a landscape
-     * edit, remembered. Cleared whenever the pages are built again.
+     * Where the arrangement last put each item view; main thread. A view found elsewhere was
+     * moved or resized there since (or pushed by such a move): a landscape edit, remembered.
+     * By view, as the launcher builds new views whenever it binds its pages again (a rotation,
+     * a grid or label change), and a new view's first place is not an edit.
      */
-    private final Map<Integer, int[]> placed = new java.util.HashMap<>();
+    private final Map<View, int[]> placed = new java.util.WeakHashMap<>();
     /** Landscape places of items moved or resized in landscape; made with the launcher. */
     private LandscapeMemory memory;
     /** The landscape grid last logged; main thread. */
@@ -199,7 +207,7 @@ final class LandscapeGrid {
         }
         PortraitGeometry portrait = PortraitGeometry.of(deviceProfile);
         if (portrait == null) {
-            return new Grid(columns, rows, null, null, 1f, null, 0);
+            return new Grid(columns, rows, columns, null, null, 1f, null, 0);
         }
         Rect pad = (Rect) XposedHelpers.getObjectField(deviceProfile, "cellLayoutPaddingPx");
         // Nothing's side padding only centres the portrait grid; the landscape grid is centred
@@ -208,19 +216,23 @@ final class LandscapeGrid {
         int height = (Integer) XposedHelpers.callMethod(deviceProfile, "getCellLayoutHeight")
                 - pad.top - pad.bottom;
         int across = rows;
-        int down = columns;
         Point p = portrait.cell;
         Point pb = portrait.border;
         // The portrait page turned: a portrait row's height is a landscape column's width and a
-        // portrait column's width a landscape row's height, scaled the same both ways so the
-        // page keeps Nothing's proportions (and so its spacing), as large as the landscape page
-        // holds; centred in what is left (hookPagePadding).
-        float fit = Math.min(width / (float) (across * (p.y + pb.y) - pb.y),
-                height / (float) (down * (p.x + pb.x) - pb.x));
-        Point border = new Point((int) (pb.y * fit), (int) (pb.x * fit));
-        Point cell = new Point(Math.max(1, (int) (p.y * fit)), Math.max(1, (int) (p.x * fit)));
-        float scale = fit;
-        return new Grid(columns, rows, cell, border, scale, portrait, width);
+        // portrait column's width a landscape row's height, so cells keep Nothing's proportions
+        // (and so its spacing). They are the portrait size, smaller only if the portrait rows
+        // do not fit across; the page has as many rows as it holds at that size, up to the
+        // portrait columns, and items of a portrait column that does not fit are put in the
+        // nearest free room (place). Centred in what is left (hookPagePadding).
+        float scale = Math.min(1f, width / (float) (across * (p.y + pb.y) - pb.y));
+        int down = Math.min(columns, (int) ((height + pb.x * scale) / ((p.x + pb.x) * scale)));
+        if (down < MIN_ROWS) {
+            down = Math.min(columns, MIN_ROWS);
+            scale = Math.min(scale, height / (float) (down * (p.x + pb.x) - pb.x));
+        }
+        Point border = new Point((int) (pb.y * scale), (int) (pb.x * scale));
+        Point cell = new Point(Math.max(1, (int) (p.y * scale)), Math.max(1, (int) (p.x * scale)));
+        return new Grid(columns, rows, down, cell, border, scale, portrait, width);
     }
 
     /** The landscape cell for {@code profile}, or null when not known. */
@@ -669,7 +681,7 @@ final class LandscapeGrid {
         for (View view : views) {
             Object tag = view.getTag();
             int id = XposedHelpers.getIntField(tag, "id");
-            int[] last = placed.get(id);
+            int[] last = placed.get(view);
             int[] now = shownCells(view);
             if (last != null && memory != null && !java.util.Arrays.equals(last, now)) {
                 memory.put(gridKey(grid), id, XposedHelpers.getIntField(tag, "screenId"),
@@ -692,7 +704,7 @@ final class LandscapeGrid {
             if (places[i] == null) {
                 places[i] = place(taken, portraitCells(views.get(i).getTag()), grid);
             }
-            placed.put(XposedHelpers.getIntField(views.get(i).getTag(), "id"), places[i]);
+            placed.put(views.get(i), places[i]);
             Object lp = views.get(i).getLayoutParams();
             changed |= (Integer) XposedHelpers.callMethod(lp, "getCellX") != places[i][0]
                     || (Integer) XposedHelpers.callMethod(lp, "getCellY") != places[i][1]
