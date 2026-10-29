@@ -334,7 +334,11 @@ second), and the loader waits for idle at most three seconds per step.
 Nothing also blocks landscape outright: `NTLauncher.handleConfigurationChanged` ignores every
 change to landscape ("Skip to handle the config change for the landscape orientation"), and the
 landscape profiles are filtered out of the list the launcher picks from. With rotation on, the
-module handles the change the way AOSP does and lets the launcher pick from the full list.
+module handles the change the way AOSP does and lets the home screen activity, and only it,
+pick from the full list. Nothing's list is left as it is: the taskbar, which draws the gesture
+handle and hides it when "Hide navigation bar" is on, and the settings previews keep the
+profiles Nothing made them for (given landscape ones, the hidden handle came back in
+landscape).
 
 Each landscape profile is logged (`NothingLauncher+: landscape profile …`) with its geometry, so
 LSPosed logs show exactly what was laid out. Portrait is untouched.
