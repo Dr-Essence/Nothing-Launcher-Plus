@@ -6,5 +6,6 @@
         <item>android</item>
         <item>com.nothing.hearthstone</item>
         <item>com.nothing.cardservice</item>
+        <item>com.nothing.wallpaper</item>
     </string-array>
 </resources>

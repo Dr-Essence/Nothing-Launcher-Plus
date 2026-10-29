@@ -271,9 +271,19 @@ Around the home screen:
   screen rotation switch is on (`mKeyguardScreenRotation`; off on phones); that one switch is
   turned on while home rotation is on, so the lock screen follows auto-rotate in its own
   landscape layout (System UI in the module's LSPosed scope; restart System UI once).
-- **Nothing's Customisation page** (`com.nothing.wallpaper`'s CustomizationPickerActivity,
-  opened from the home screen) is declared portrait-only; its lock is lifted in system_server
-  as it opens, as for the widget cards, so it follows the home screen.
+- **Nothing's Customisation page** (Nothing Wallpaper's
+  `com.android.wallpaper.picker.CustomizationPickerActivity`, opened from the home screen
+  through the `com.android.customization.picker` alias) is declared portrait-only, and as it
+  starts it asks for portrait again unless it is on a large unfolded foldable, where it asks
+  to follow the device. While home rotation is on, the declared lock is lifted in
+  system_server as it opens, and its portrait request is made the foldable's one (Nothing
+  Wallpaper in the module's LSPosed scope), so it follows the home screen. Its other screens
+  keep their portrait locks.
+- **Hidden navigation bar.** With Nothing's "hide navigation bar" on, the taskbar window
+  (which draws the gesture pill on phones) is made 0 px tall when it is created; when the
+  home screen turned, the taskbar's `onRotationChanged` sized it again to the pill's height
+  without that check, so the pill came back in landscape. That one resize is skipped while
+  the bar is hidden.
 - A **live wallpaper** that turns with the home screen draws its first frames after a turn
   itself: one that rebuilds its renderer for the new size (Living Worlds does) shows black,
   or a white frame, until it has drawn, most visibly when going home in portrait after the
@@ -439,7 +449,8 @@ the screen is touched.
 1. Build the APK (`./gradlew assembleRelease`) or download it from the *Build module* GitHub
    Actions run.
 2. Install it, enable it in LSPosed and select **Nothing Launcher** as the scope (plus
-   **Nothing Widgets** and **NothingCardService** for widget cards in landscape).
+   **Nothing Widgets** and **NothingCardService** for widget cards in landscape, **Nothing
+   Wallpaper** for the Customisation page in landscape).
    The module installs on internal storage only: LSPosed reads it at boot, before a memory
    card used as internal storage (adopted storage, `/mnt/expand/…`) is mounted, and a module
    there was not loaded after a reboot ("Failed to open APK … No such file"). A copy already

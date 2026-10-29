@@ -47,6 +47,7 @@ final class LandscapeSurfaces {
     void install() {
         Hooks.install("landscape recents", this::hookRecents);
         Hooks.install("landscape folders", this::hookFolders);
+        Hooks.install("hidden navigation bar on turn", this::hookHiddenNavBarTurn);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -178,5 +179,51 @@ final class LandscapeSurfaces {
         if (fit != rows) {
             XposedHelpers.setIntField(dp, "numFolderRows", fit);
         }
+    }
+
+    /**
+     * With Nothing's "hide navigation bar" on, the taskbar window (which draws the gesture pill
+     * on phones) is made 0 px tall when it is created. When the home screen turns, the
+     * taskbar's onRotationChanged sizes the window again to the pill's height, without that
+     * check, so the pill came back after a turn (stock Nothing never turns its home screen on
+     * a phone, so never got there). That one resize is switched off while the bar is hidden;
+     * the rest of the turn is Nothing's.
+     */
+    private void hookHiddenNavBarTurn() {
+        Class<?> viewController = XposedHelpers.findClass(
+                "com.android.launcher3.taskbar.TaskbarViewController", cl);
+        Class<?> taskbar = XposedHelpers.findClass(
+                "com.android.launcher3.taskbar.TaskbarActivityContext", cl);
+        ThreadLocal<Boolean> turning = new ThreadLocal<>();
+        XposedBridge.hookAllMethods(viewController, "onRotationChanged", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                turning.set(Boolean.TRUE);
+            }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                turning.remove();
+            }
+        });
+        XposedBridge.hookAllMethods(taskbar, "setTaskbarWindowSize", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                if (turning.get() == null) {
+                    return;
+                }
+                Object context = param.thisObject;
+                if ((Boolean) XposedHelpers.callMethod(context, "isPhoneGestureNavMode")
+                        && navBarHidden((Context) context)) {
+                    param.setResult(null);
+                }
+            }
+        });
+    }
+
+    /** Nothing's "hide navigation bar" setting. */
+    private static boolean navBarHidden(Context context) {
+        return android.provider.Settings.Secure.getInt(context.getContentResolver(),
+                "hide_navigation_bar", 0) == 1;
     }
 }
