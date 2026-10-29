@@ -51,6 +51,8 @@ final class Landscape {
     private static final float SMART_TILE_TO_HEIGHT = 0.36f;
     /** Largest landscape icon relative to its cell, leaving room for folder rings and dots. */
     private static final float ICON_TO_CELL = 0.9f;
+    /** Below this scale against portrait, landscape icons drop their names instead. */
+    private static final float NAMED_ICON_SCALE = 0.9f;
 
     private final ClassLoader cl;
     private final ConfigStore store;
@@ -452,9 +454,10 @@ final class Landscape {
     /**
      * Nothing's grid keeps its 6-8 rows in landscape, so a row is only ~90-140 px tall while the
      * grid asks for 150+ px icons; they were drawn cut in half. After every icon sizing pass,
-     * icons take the portrait profile's geometry, scaled as the landscape cells allow (see
-     * LandscapeGrid); before that is known, the icon is set to what a cell holds and the label
-     * dropped. Raised as well as lowered: the launcher's profiles made from other
+     * icons take the portrait profile's geometry, as large as the landscape cells allow (see
+     * LandscapeGrid); where a row is too low for names at near portrait size, or before the
+     * portrait profile is known, the icon is set to what a cell holds and the name dropped,
+     * as in Nothing's own landscape profile. Raised as well as lowered: the launcher's profiles made from other
      * contexts came out with smaller icons, and icons set up from those were drawn that size.
      */
     private void hookIconFit() {
@@ -478,10 +481,17 @@ final class Landscape {
 
     private void fitIcons(Object o) throws Exception {
         PortraitGeometry portrait = PortraitGeometry.of(o);
-        float scale = LandscapeGrid.contentScale(o);
-        if (portrait != null && scale > 0) {
-            // Icons, names and folders as in portrait, scaled as the landscape cells allow and
-            // centred in them (see LandscapeGrid).
+        Point landscapeCell = LandscapeGrid.cell(o);
+        float scale = 0;
+        if (portrait != null && landscapeCell != null) {
+            // Room an icon takes in portrait: its icon and name, and half the space around them.
+            float needX = portrait.cellWidth + (portrait.cell.x - portrait.cellWidth) / 2f;
+            float needY = portrait.cellHeight + (portrait.cell.y - portrait.cellHeight) / 2f;
+            scale = Math.min(1f, Math.min(landscapeCell.x / needX, landscapeCell.y / needY));
+        }
+        if (scale >= NAMED_ICON_SCALE) {
+            // Icons, names and folders as in portrait, as large as the landscape cells hold
+            // them, centred in them.
             int icon = Math.round(portrait.iconSize * scale);
             XposedHelpers.setIntField(o, "iconSizePx", icon);
             XposedHelpers.setIntField(o, "iconTextSizePx",
@@ -492,18 +502,22 @@ final class Landscape {
             XposedHelpers.setIntField(o, "cellHeightPx",
                     Math.round(portrait.cellHeight * scale));
             XposedHelpers.setIntField(o, "cellYPaddingPx", Math.max(0,
-                    Math.round(portrait.cellYPadding * scale) + (LandscapeGrid.cellHeight(o)
-                            - Math.round(portrait.cell.y * scale)) / 2));
+                    Math.round(portrait.cellYPadding * scale)
+                            + (landscapeCell.y - Math.round(portrait.cell.y * scale)) / 2));
             XposedHelpers.callMethod(o, "updateHotseatSizes", icon);
             XposedHelpers.callMethod(o, "updateFolderIconSize");
             XposedHelpers.setIntField(o, "folderIconOffsetYPx",
                     Math.round(portrait.folderIconOffsetY * scale));
             return;
         }
+        // Too low a row for names at near portrait size: as Nothing's own landscape profile
+        // does, icons and folders without names, at their portrait size where the cell holds it.
         Point cell = (Point) XposedHelpers.callMethod(o, "getCellSize");
         int fit = (int) (Math.min(cell.x, cell.y) * ICON_TO_CELL);
-        int icon = XposedHelpers.getIntField(o, "iconSizePx");
-        if (fit <= 0 || icon == fit) {
+        if (portrait != null) {
+            fit = Math.min(fit, portrait.iconSize);
+        }
+        if (fit <= 0) {
             return;
         }
         int height = overlap(o, fit);

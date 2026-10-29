@@ -33,11 +33,12 @@ import de.robv.android.xposed.XposedHelpers;
  * same cells, so every page fits whatever the grid, screen or density. Each item sits at its
  * portrait place turned (its portrait row is its column, its portrait column its row) with
  * its own spans, so icons, folders and square widgets never meet; a widget of another shape
- * whose spot is taken goes to the nearest free spot that holds it whole. The cells fill the
- * page; icons, folders and widget contents are the portrait ones scaled as far as the cells
- * allow, the same both ways, and centred in their cells (widgets through Nothing's own widget
- * padding), so they keep their portrait shape. A widget as wide as the portrait page (a
- * calendar) fills the landscape page's width.
+ * whose spot is taken goes to the nearest free spot that holds it whole. The cells are the
+ * portrait cells turned and scaled the same both ways, so the page keeps Nothing's spacing,
+ * and the grid is centred on the page. Icons, folders and widget contents keep their portrait
+ * shape, as large as their landscape cells hold them (widgets through Nothing's own widget
+ * padding). A widget as wide as the portrait page (a calendar) fills the landscape page's
+ * width.
  *
  * <p>Moving or resizing an item within its page in landscape is remembered for landscape
  * (LandscapeMemory); the launcher database keeps the portrait layout, so portrait is not
@@ -62,6 +63,7 @@ final class LandscapeGrid {
             java.util.regex.Pattern.compile("_id=(\\d+)");
     private static final String CLS_WORKSPACE = "com.android.launcher3.Workspace";
     private static final String CLS_CELL_LAYOUT = "com.android.launcher3.CellLayout";
+    private static final String CLS_RESIZE_FRAME = "com.android.launcher3.AppWidgetResizeFrame";
     private static final String CLS_LAYOUT_PARAMS =
             "com.android.launcher3.celllayout.CellLayoutLayoutParams";
     private static final String CLS_DEVICE_PROFILE = "com.android.launcher3.DeviceProfile";
@@ -82,9 +84,8 @@ final class LandscapeGrid {
 
     /**
      * A portrait page of {@code columns} x {@code rows}, and its landscape page: the portrait
-     * page turned, {@code rows} x {@code columns} cells filling the page. {@code scale} is how
-     * large icons and widget contents are against portrait: as large as the cells allow, the
-     * same both ways, so they keep their portrait shape.
+     * page turned, {@code rows} x {@code columns} cells. {@code scale} is how large the turned
+     * page is against portrait.
      */
     private static final class Grid {
         final int columns;
@@ -172,6 +173,8 @@ final class LandscapeGrid {
             hookPagePadding();
         });
         Hooks.install("landscape grid spans", this::hookSpans);
+        Hooks.install("landscape occupied cells", this::hookOccupancy);
+        Hooks.install("landscape widget resize", this::hookResizeFrame);
         Hooks.install("landscape grid arrangement", this::hookArrange);
         Hooks.install("landscape grid safety", this::hookModelWriter);
         Hooks.install("landscape portrait guard", this::hookDatabase);
@@ -208,27 +211,22 @@ final class LandscapeGrid {
         int down = columns;
         Point p = portrait.cell;
         Point pb = portrait.border;
-        // The space between cells scales with the portrait cell; the cells fill the rest.
-        float fit = Math.min(width / (float) (across * (p.x + pb.x) - pb.x),
-                height / (float) (down * (p.y + pb.y) - pb.y));
-        Point border = new Point(Math.round(pb.x * fit), Math.round(pb.y * fit));
-        Point cell = new Point(
-                Math.max(1, (width - (across - 1) * border.x) / across),
-                Math.max(1, (height - (down - 1) * border.y) / down));
-        float scale = Math.min(cell.x / (float) p.x, cell.y / (float) p.y);
+        // The portrait page turned: a portrait row's height is a landscape column's width and a
+        // portrait column's width a landscape row's height, scaled the same both ways so the
+        // page keeps Nothing's proportions (and so its spacing), as large as the landscape page
+        // holds; centred in what is left (hookPagePadding).
+        float fit = Math.min(width / (float) (across * (p.y + pb.y) - pb.y),
+                height / (float) (down * (p.x + pb.x) - pb.x));
+        Point border = new Point((int) (pb.y * fit), (int) (pb.x * fit));
+        Point cell = new Point(Math.max(1, (int) (p.y * fit)), Math.max(1, (int) (p.x * fit)));
+        float scale = fit;
         return new Grid(columns, rows, cell, border, scale, portrait, width);
     }
 
-    /** The scale of icons and widget contents against portrait for {@code profile}, or 0. */
-    static float contentScale(Object profile) {
+    /** The landscape cell for {@code profile}, or null when not known. */
+    static Point cell(Object profile) {
         Grid grid = gridFor(profile);
-        return grid != null && grid.cell != null ? grid.scale : 0;
-    }
-
-    /** The landscape cell height for {@code profile}, or 0. */
-    static int cellHeight(Object profile) {
-        Grid grid = gridFor(profile);
-        return grid != null && grid.cell != null ? grid.cell.y : 0;
+        return grid != null ? grid.cell : null;
     }
 
     /** The key landscape places are kept under: the portrait grid and the landscape one. */
@@ -900,9 +898,10 @@ final class LandscapeGrid {
 
     /**
      * The padding of a widget of portrait spans {@code spanX} x {@code spanY} on the landscape
-     * page, from its portrait padding: the portrait widget scaled by the grid's scale, centred
-     * on its landscape cells, so it keeps its portrait shape. One as wide as the portrait page
-     * fills its landscape cells instead (see place).
+     * page, from its portrait padding: the portrait content as large as the landscape cells
+     * hold it with the least margin Nothing keeps around it in portrait, never larger than in
+     * portrait, centred, so it keeps its portrait shape. One as wide as the portrait page fills
+     * its landscape cells instead (see place).
      */
     private static Rect landscapePadding(Grid grid, Rect portraitPad, int spanX, int spanY) {
         Point p = grid.portrait.cell;
@@ -917,13 +916,19 @@ final class LandscapeGrid {
                 - grid.border.x;
         int boxY = Math.min(spanY, grid.landscapeRows()) * (grid.cell.y + grid.border.y)
                 - grid.border.y;
-        float portraitX = spanX * (p.x + pb.x) - pb.x;
-        float portraitY = spanY * (p.y + pb.y) - pb.y;
-        int contentX = Math.round((portraitX - portraitPad.left - portraitPad.right) * s);
-        int contentY = Math.round((portraitY - portraitPad.top - portraitPad.bottom) * s);
-        int left = Math.max(0, Math.round(portraitPad.left * s
-                + (boxX - portraitX * s) / 2f));
-        int top = Math.max(0, Math.round(portraitPad.top * s + (boxY - portraitY * s) / 2f));
+        float portraitX = spanX * (p.x + pb.x) - pb.x - portraitPad.left - portraitPad.right;
+        float portraitY = spanY * (p.y + pb.y) - pb.y - portraitPad.top - portraitPad.bottom;
+        if (portraitX <= 0 || portraitY <= 0) {
+            return new Rect(portraitPad);
+        }
+        int margin = Math.max(0, Math.min(Math.min(portraitPad.left, portraitPad.right),
+                Math.min(portraitPad.top, portraitPad.bottom)));
+        float fit = Math.min(1f, Math.min((boxX - 2 * margin) / portraitX,
+                (boxY - 2 * margin) / portraitY));
+        int contentX = Math.max(1, Math.round(portraitX * fit));
+        int contentY = Math.max(1, Math.round(portraitY * fit));
+        int left = Math.max(0, (boxX - contentX) / 2);
+        int top = Math.max(0, (boxY - contentY) / 2);
         return new Rect(left, top, Math.max(0, boxX - left - contentX),
                 Math.max(0, boxY - top - contentY));
     }
@@ -1033,6 +1038,99 @@ final class LandscapeGrid {
                         clampSpan(lp, "cellVSpan", countY - y);
                     }
                 });
+    }
+
+    /**
+     * A page marks a widget's cells from its item: the model cell and the portrait spans (a
+     * Nothing card even its portrait cell). A landscape page shows it elsewhere or at other
+     * spans, and those cells stayed marked while its own showed free, so drags and resizes
+     * met phantom widgets and went over real ones. On the launcher's landscape pages that one
+     * branch is switched off: every view marks the cells it is shown at, as Nothing already
+     * does for icons and folders.
+     */
+    private void hookOccupancy() {
+        XC_MethodHook shownCells = new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                Object layout = param.thisObject;
+                View view = (View) param.args[0];
+                if (view == null || XposedHelpers.getIntField(layout, "mContainerType")
+                        != CELL_LAYOUT_WORKSPACE
+                        || view.getParent() != XposedHelpers.getObjectField(layout,
+                                "mShortcutsAndWidgets")
+                        || !XposedHelpers.findClass(CLS_LAYOUT_PARAMS, cl)
+                                .isInstance(view.getLayoutParams())
+                        || gridOfView((View) layout) == null) {
+                    return;
+                }
+                Object lp = view.getLayoutParams();
+                XposedHelpers.callMethod(XposedHelpers.getObjectField(layout, "mOccupied"),
+                        "markCells", XposedHelpers.callMethod(lp, "getCellX"),
+                        XposedHelpers.callMethod(lp, "getCellY"),
+                        XposedHelpers.getIntField(lp, "cellHSpan"),
+                        XposedHelpers.getIntField(lp, "cellVSpan"),
+                        param.method.getName().equals("markCellsAsOccupiedForView"));
+                param.setResult(null);
+            }
+        };
+        XposedHelpers.findAndHookMethod(CLS_CELL_LAYOUT, cl, "markCellsAsOccupiedForView",
+                View.class, shownCells);
+        XposedHelpers.findAndHookMethod(CLS_CELL_LAYOUT, cl, "markCellsAsUnoccupiedForView",
+                View.class, shownCells);
+    }
+
+    /**
+     * Nothing's resize frame sets a widget up from its item: it put the widget back to its
+     * portrait spans (a calendar shrank to the portrait page's width) and freed only those
+     * cells. While it sets up a widget on a landscape page the item reads as shown there.
+     * Its span limits are the portrait page's: a widget that may be as wide or tall as the
+     * portrait page may be as wide or tall as the landscape one.
+     */
+    private void hookResizeFrame() {
+        Class<?> frame = XposedHelpers.findClass(CLS_RESIZE_FRAME, cl);
+        XposedBridge.hookAllMethods(frame, "setupForWidget", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                View view = (View) XposedHelpers.callMethod(param.args[0], "getView");
+                Object lp = view.getLayoutParams();
+                Object item = view.getTag();
+                if (!XposedHelpers.findClass(CLS_LAYOUT_PARAMS, cl).isInstance(lp)
+                        || !itemInfo().isInstance(item) || gridOfView(view) == null) {
+                    return;
+                }
+                int[] spans = {XposedHelpers.getIntField(item, "spanX"),
+                        XposedHelpers.getIntField(item, "spanY")};
+                param.setObjectExtra("spans", spans);
+                XposedHelpers.setIntField(item, "spanX",
+                        XposedHelpers.getIntField(lp, "cellHSpan"));
+                XposedHelpers.setIntField(item, "spanY",
+                        XposedHelpers.getIntField(lp, "cellVSpan"));
+            }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                int[] spans = (int[]) param.getObjectExtra("spans");
+                if (spans == null) {
+                    return;
+                }
+                Object item = ((View) XposedHelpers.callMethod(param.args[0], "getView")).getTag();
+                XposedHelpers.setIntField(item, "spanX", spans[0]);
+                XposedHelpers.setIntField(item, "spanY", spans[1]);
+                Grid grid = gridOfView((View) param.args[1]);
+                if (grid == null) {
+                    return;
+                }
+                Object f = param.thisObject;
+                if (XposedHelpers.getIntField(f, "mMaxHSpan") >= grid.columns) {
+                    XposedHelpers.setIntField(f, "mMaxHSpan", Math.max(grid.columns,
+                            grid.landscapeColumns()));
+                }
+                if (XposedHelpers.getIntField(f, "mMaxVSpan") >= grid.rows) {
+                    XposedHelpers.setIntField(f, "mMaxVSpan", Math.max(grid.rows,
+                            grid.landscapeRows()));
+                }
+            }
+        });
     }
 
     private static void clampSpan(Object lp, String field, int room) {

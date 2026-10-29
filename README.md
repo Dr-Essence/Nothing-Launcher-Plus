@@ -258,9 +258,14 @@ The landscape page is the portrait page turned: a C×R portrait grid becomes R×
 Each item sits at its portrait place turned (its portrait row is its landscape column, its
 portrait column its landscape row) with its own spans: icons, folders and square widgets turned
 that way never meet; a widget of another shape whose spot is taken goes to the nearest free
-spot that holds it whole. The cells fill the page; icons, names, folders and widget contents
-are the portrait ones scaled as far as the cells allow, the same both ways, and centred in
-their cells, so they keep their portrait shape. A widget as wide as the portrait page (a
+spot that holds it whole. The cells are the portrait cells turned (a portrait row's height is
+a landscape column's width, a portrait column's width a landscape row's height), scaled the
+same both ways as far as the page needs, so the page keeps Nothing's proportions and spacing;
+the grid is centred on the page. Icons, folders and widget contents keep their portrait shape
+and are as large as their landscape cells hold them, never larger than in portrait: a widget
+keeps the least margin Nothing gives it in portrait, and where a landscape row is too low for
+an icon and its name at near portrait size (5-column grids) icons and folders show at their
+portrait size without names, as Nothing's own landscape profile does. A widget as wide as the portrait page (a
 calendar) fills the landscape page's width and is as tall as in portrait, as far as the page
 allows; it is placed after the other items, in the room they leave. The grid in use is logged
 (`landscape grid 9x5 cells … gap … in … px`).
@@ -296,6 +301,16 @@ card widgets and the sizes widgets are told all use it. It works that out from i
 the cell, which in landscape is not the cell in use, and came out negative, so widgets grew
 past their cells into their neighbours. Landscape takes the portrait profile's padding, as its
 cells are the portrait ones.
+
+Pages mark a widget's cells from its item (its model cell and portrait spans; a Nothing card
+even its portrait cell), not from where it is shown, so on a landscape page the cells it was
+shown on read free while its portrait ones read taken: drags and resizes met phantom widgets
+and went over real ones. On the launcher's landscape pages every view marks the cells it is
+shown at, as Nothing already does for icons and folders. Nothing's resize frame also set a
+widget up from its item, putting it back to its portrait spans (the calendar shrank to five
+columns the moment it was touched) and freeing only those cells; while it sets up a widget on
+a landscape page the item reads as shown there, and a widget that may be as wide (or tall) as
+the portrait page may be resized as wide (or tall) as the landscape one.
 
 The launcher makes its profiles one after another and keeps a copy of each, which it copies
 its own from and Nothing sizes its widgets with. A landscape profile made before the portrait
