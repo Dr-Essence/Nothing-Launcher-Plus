@@ -27,7 +27,7 @@ public final class UpdateReceiver extends BroadcastReceiver {
             try {
                 restartLauncher();
                 if (onMemoryCard(context)) {
-                    moveToInternalStorage(context.getPackageName());
+                    moveToInternalStorage(context.getPackageName()); // Last: it stops this app.
                 }
             } finally {
                 result.finish();
@@ -42,16 +42,24 @@ public final class UpdateReceiver extends BroadcastReceiver {
     }
 
     /**
-     * Moves this app to the phone's own storage. The move stops this app, so it runs on its
-     * own, after this returns. Needs root.
+     * Moves this app to the phone's own storage, waiting for the move. The move force-stops
+     * this app, which may end this process before the command returns; the command itself
+     * runs as root and finishes regardless. Needs root; false if it could not be asked.
      */
-    public static void moveToInternalStorage(String pkg) {
+    public static boolean moveToInternalStorage(String pkg) {
         try {
-            Runtime.getRuntime().exec(new String[]{"su", "-c",
-                    "(sleep 1; pm move-package " + pkg + " internal) >/dev/null 2>&1 &"});
-        } catch (Exception ignored) {
-            // No root: the app's page says where it is installed.
+            Process p = Runtime.getRuntime().exec(new String[]{"su", "-c",
+                    "pm move-package " + pkg + " internal"});
+            return p.waitFor() == 0;
+        } catch (Exception e) {
+            return false;
         }
+    }
+
+    /** The "Force allow apps on external" developer option: installs ignore internalOnly. */
+    public static boolean externalForced(Context context) {
+        return android.provider.Settings.Global.getInt(context.getContentResolver(),
+                "force_allow_on_external", 0) != 0;
     }
 
     /** Force-stops Nothing Launcher; Android brings home straight back. Needs root. */

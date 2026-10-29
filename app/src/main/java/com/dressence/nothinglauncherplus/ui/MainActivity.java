@@ -56,16 +56,22 @@ public class MainActivity extends Activity {
     private void render() {
         Config config = store.config;
         Ui ui = Ui.page(this, "Custom folders", false);
+        if (com.dressence.nothinglauncherplus.UpdateReceiver.externalForced(this)) {
+            ui.note("Developer options → \"Force allow apps on external\" is on: Android then"
+                    + " installs updates of this module on the memory card, which LSPosed cannot"
+                    + " read at boot (and Android deletes these settings on a reboot). Turn it"
+                    + " off.");
+        }
         if (com.dressence.nothinglauncherplus.UpdateReceiver.onMemoryCard(this)) {
             // On a memory card used as internal storage: mounted after LSPosed loads its
             // modules at boot, and Android deletes this app's settings then (UpdateReceiver).
             ui.note("Installed on the memory card, which LSPosed cannot read at boot: the module"
                     + " is not loaded and Android deletes these settings on a reboot. Moving it to"
-                    + " the phone's storage (root); if it stays, turn off \"Force allow apps on"
-                    + " external\" in Developer options and run: pm move-package "
-                    + getPackageName() + " internal");
-            com.dressence.nothinglauncherplus.UpdateReceiver.moveToInternalStorage(
-                    getPackageName());
+                    + " the phone's storage now (root; this page closes). Without root, run: pm"
+                    + " move-package " + getPackageName() + " internal");
+            String pkg = getPackageName();
+            new Thread(() -> com.dressence.nothinglauncherplus.UpdateReceiver
+                    .moveToInternalStorage(pkg)).start();
         }
         if (!isModuleActive() || !store.shared) {
             ui.note("Module not active. Enable it in LSPosed with Nothing Launcher in scope, then"
