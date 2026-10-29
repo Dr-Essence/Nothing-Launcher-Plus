@@ -20,7 +20,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
@@ -29,13 +28,13 @@ import de.robv.android.xposed.XposedHelpers;
 /**
  * The landscape home screen grid.
  *
- * <p>A portrait page of C columns and R rows is shown in landscape as R columns by C rows, so
- * cells keep about their shape and icons, folders and widgets look as they do in portrait. Each
- * page's items are laid out on it in their portrait reading order, left to right and top to
- * bottom: widgets first, then apps and folders in the room left. Cells have the portrait
- * cell's shape (scaled down only if the page needs it) and the grid is centred, so widgets keep
- * their portrait size and look; one taller than the page is shown as tall as the page. Sizes in
- * the launcher's database are kept.
+ * <p>Every icon, folder and widget keeps its exact portrait size: landscape cells, the space
+ * between them and how icons sit in them are the portrait profile's (PortraitGeometry), and
+ * the page holds as many rows and columns of them as fit, centred. The portrait page is folded
+ * onto it: cut into bands as tall as the landscape page and laid side by side, each item where
+ * it is in its band. Larger items are placed first; one whose spot is taken or off the page
+ * goes to the nearest free spot that holds it whole, so items never overlap. A widget as wide
+ * as the portrait page (a calendar) is as wide as the landscape page.
  *
  * <p>Only the presentation changes: the launcher database keeps the portrait layout, which
  * stays the one you arrange. Moving or resizing an item within its page in landscape does not
@@ -64,34 +63,34 @@ final class LandscapeGrid {
     private static final int CONTAINER_DESKTOP = -100;
     private static final int CELL_LAYOUT_WORKSPACE = 0;
     private static final String CLS_WIDGET_SIZES = "com.android.launcher3.widget.util.WidgetSizes";
-    /**
-     * The portrait cell of each display width, as the launcher measured it: landscape profiles
-     * are also made before the portrait one is in the launcher's list (at startup, and the copy
-     * Nothing sizes its widgets with), and they take their cell from here.
-     */
-    private static final Map<Integer, Point> PORTRAIT_CELLS = new ConcurrentHashMap<>();
+    /** The fewest rows a landscape page has; portrait cells shrink only to keep this many. */
+    private static final int MIN_ROWS = 2;
     /** The longest a rotation may hold the launcher's drawing while its pages are rebuilt. */
     private static final long HOLD_DRAW_MS = 1000;
     /** How Launcher.bindInflatedItems words the delete of an item bound onto a taken cell. */
     private static final String COLLISION_DELETE = "Collision while binding";
 
     /**
-     * A portrait page's size, and its landscape page: {@code columns} rows (the portrait page
-     * turned) of cells with the portrait cell's shape, as many across as the page holds and at
-     * least {@code rows}.
+     * A portrait page's size, and its landscape page: cells and the space between them exactly
+     * as in portrait, as many rows and columns as the landscape page holds.
      */
     private static final class Grid {
         final int columns;
         final int rows;
         final int landscapeColumns;
-        /** The landscape cell; null if the portrait cell is not known yet. */
+        final int landscapeRows;
+        /** The landscape cell and the space between cells; null if portrait is not known. */
         final Point cell;
+        final Point border;
 
-        Grid(int columns, int rows, int landscapeColumns, Point cell) {
+        Grid(int columns, int rows, int landscapeColumns, int landscapeRows, Point cell,
+                Point border) {
             this.columns = columns;
             this.rows = rows;
             this.landscapeColumns = landscapeColumns;
+            this.landscapeRows = landscapeRows;
             this.cell = cell;
+            this.border = border;
         }
 
         int landscapeColumns() {
@@ -99,11 +98,7 @@ final class LandscapeGrid {
         }
 
         int landscapeRows() {
-            return columns;
-        }
-
-        boolean sameAs(Grid other) {
-            return other != null && other.columns == columns && other.rows == rows;
+            return landscapeRows;
         }
     }
 
@@ -163,28 +158,26 @@ final class LandscapeGrid {
         if (columns <= 0 || rows < 2) {
             return null;
         }
-        Point portrait = PORTRAIT_CELLS.get(XposedHelpers.getIntField(deviceProfile, "heightPx"));
+        PortraitGeometry portrait = PortraitGeometry.of(deviceProfile);
         if (portrait == null) {
-            portrait = portraitCell(deviceProfile);
-        }
-        if (portrait == null || portrait.x <= 0 || portrait.y <= 0) {
-            return new Grid(columns, rows, rows, null);
+            return new Grid(columns, rows, rows, columns, null, null);
         }
         Rect pad = (Rect) XposedHelpers.getObjectField(deviceProfile, "cellLayoutPaddingPx");
-        Point border = (Point) XposedHelpers.getObjectField(deviceProfile,
-                "cellLayoutBorderSpacePx");
         int width = (Integer) XposedHelpers.callMethod(deviceProfile, "getCellLayoutWidth")
                 - pad.left - pad.right;
         int height = (Integer) XposedHelpers.callMethod(deviceProfile, "getCellLayoutHeight")
                 - pad.top - pad.bottom;
-        // The portrait cell, smaller only if the turned page does not fit otherwise.
-        float scale = Math.min(1f, Math.min(
-                (height - (columns - 1) * border.y) / (float) (columns * portrait.y),
-                (width - (rows - 1) * border.x) / (float) (rows * portrait.x)));
-        Point cell = new Point(Math.max(1, (int) (portrait.x * scale)),
-                Math.max(1, (int) (portrait.y * scale)));
-        int across = Math.max(rows, (width + border.x) / (cell.x + border.x));
-        return new Grid(columns, rows, across, cell);
+        Point cell = new Point(portrait.cell);
+        Point border = new Point(portrait.border);
+        int down = (height + border.y) / (cell.y + border.y);
+        if (down < MIN_ROWS) {
+            // A page too low for the portrait cell: as small as two rows need, its shape kept.
+            down = MIN_ROWS;
+            float scale = (height - (MIN_ROWS - 1) * border.y) / (float) (MIN_ROWS * cell.y);
+            cell.set(Math.max(1, (int) (cell.x * scale)), Math.max(1, (int) (cell.y * scale)));
+        }
+        int across = Math.max(1, (width + border.x) / (cell.x + border.x));
+        return new Grid(columns, rows, across, down, cell, border);
     }
 
     /** The launcher activity that is up, or null. */
@@ -473,10 +466,9 @@ final class LandscapeGrid {
         views.sort((a, b) -> {
             int[] x = cells(a.getTag());
             int[] y = cells(b.getTag());
-            boolean xSingle = x[2] * x[3] == 1;
-            boolean ySingle = y[2] * y[3] == 1;
-            if (xSingle != ySingle) {
-                return xSingle ? 1 : -1;
+            int area = Integer.compare(y[2] * y[3], x[2] * x[3]);
+            if (area != 0) {
+                return area;
             }
             return x[1] != y[1] ? Integer.compare(x[1], y[1]) : Integer.compare(x[0], y[0]);
         });
@@ -536,25 +528,33 @@ final class LandscapeGrid {
     }
 
     /**
-     * The first free spot for an item of portrait spans {@code c[2]} x {@code c[3]}, row by
-     * row from the top left, marked as taken: cell x, y and the spans it is shown at, its
-     * portrait spans where they fit; a widget as wide as the portrait page is as wide as the
-     * landscape page, as it fills the page in portrait. If no spot holds it whole, it is shown
-     * smaller.
+     * Where an item of portrait cells {@code c} goes on the landscape page, marked as taken:
+     * cell x, y and the spans it is shown at.
+     *
+     * <p>The portrait page is folded onto the landscape one: cut into bands as tall as the
+     * landscape page, laid side by side, each item where it is in its band. One whose spot is
+     * taken or off the page goes to the nearest free spot that holds it whole; only if none
+     * does is it shown smaller. A widget as wide as the portrait page is as wide as the
+     * landscape page.
      */
     private static int[] place(boolean[][] taken, int[] c, Grid grid) {
         int columns = grid.landscapeColumns();
         int rows = grid.landscapeRows();
-        for (int spanY = Math.min(c[3], rows); spanY >= 1; spanY--) {
-            int wide = pageWide(c, grid) ? columns : Math.min(c[2], columns);
-            for (int spanX = wide; spanX >= 1; spanX--) {
-                for (int y = 0; y + spanY <= rows; y++) {
-                    for (int x = 0; x + spanX <= columns; x++) {
-                        if (isVacant(taken, x, y, spanX, spanY)) {
-                            mark(taken, x, y, spanX, spanY);
-                            return new int[] {x, y, spanX, spanY};
-                        }
-                    }
+        int spanX = pageWide(c, grid) ? columns : Math.min(c[2], columns);
+        int spanY = Math.min(c[3], rows);
+        int band = c[1] / rows;
+        int x = pageWide(c, grid) ? 0 : Math.min(c[0] + band * grid.columns, columns - spanX);
+        int y = Math.min(c[1] % rows, rows - spanY);
+        if (isVacant(taken, x, y, spanX, spanY)) {
+            mark(taken, x, y, spanX, spanY);
+            return new int[] {x, y, spanX, spanY};
+        }
+        for (int sy = spanY; sy >= 1; sy--) {
+            for (int sx = spanX; sx >= 1; sx--) {
+                int[] free = nearestVacant(taken, x, y, sx, sy);
+                if (free != null) {
+                    mark(taken, free[0], free[1], sx, sy);
+                    return new int[] {free[0], free[1], sx, sy};
                 }
             }
         }
@@ -583,39 +583,27 @@ final class LandscapeGrid {
                 point.set(grid.cell.x, grid.cell.y);
                 param.setResult(point);
             }
-
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) {
-                Object o = param.thisObject;
-                if (param.getResult() instanceof Point
-                        && !XposedHelpers.getBooleanField(o, "isLandscape")
-                        && XposedHelpers.getBooleanField(o, "isPhone")) {
-                    PORTRAIT_CELLS.put(XposedHelpers.getIntField(o, "widthPx"),
-                            new Point((Point) param.getResult()));
-                }
-            }
         });
         // getCellSize() is a one-line forwarder ART may inline into its callers.
         Hooks.deoptimizeAll(dp, "getCellSize");
-    }
 
-    /** The cell of the portrait profile for the same display as landscape profile {@code o}. */
-    private static Point portraitCell(Object o) {
-        Object inv = XposedHelpers.getObjectField(o, "inv");
-        int shortSide = XposedHelpers.getIntField(o, "heightPx");
-        Object profiles = XposedHelpers.getObjectField(inv, "supportedProfiles");
-        if (profiles == null) {
-            return null; // Still being made.
-        }
-        for (Object profile : (Iterable<?>) profiles) {
-            if (!XposedHelpers.getBooleanField(profile, "isLandscape")
-                    && XposedHelpers.getBooleanField(profile, "isPhone")
-                    && XposedHelpers.getIntField(profile, "widthPx") == shortSide) {
-                // Not landscape, so this is the launcher's own measure.
-                return (Point) XposedHelpers.callMethod(profile, "getCellSize", new Point());
+        // Each portrait profile is remembered once made; each landscape one takes the portrait
+        // space between cells (pages copy it as they are made).
+        XposedBridge.hookAllConstructors(dp, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                Object o = param.thisObject;
+                if (PortraitGeometry.isPortraitPhone(o)) {
+                    PortraitGeometry.record(o, true);
+                    return;
+                }
+                Grid grid = gridFor(o);
+                if (grid != null && grid.border != null) {
+                    XposedHelpers.setObjectField(o, "cellLayoutBorderSpacePx",
+                            new Point(grid.border));
+                }
             }
-        }
-        return null;
+        });
     }
 
     /**
@@ -647,8 +635,13 @@ final class LandscapeGrid {
                         int bottom = base.bottom;
                         if (cell != null && XposedHelpers.getIntField(layout, "mCountX")
                                 == grid.landscapeColumns()) {
-                            Point border = (Point) XposedHelpers.getObjectField(layout,
-                                    "mBorderSpace");
+                            Point border = grid.border;
+                            // The portrait space between cells, whatever the page copied.
+                            if (!border.equals(XposedHelpers.getObjectField(layout,
+                                    "mBorderSpace"))) {
+                                XposedHelpers.setObjectField(layout, "mBorderSpace",
+                                        new Point(border));
+                            }
                             int columns = grid.landscapeColumns();
                             int rows = grid.landscapeRows();
                             int spareX = View.MeasureSpec.getSize((Integer) param.args[0])

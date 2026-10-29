@@ -448,9 +448,10 @@ final class Landscape {
     /**
      * Nothing's grid keeps its 6-8 rows in landscape, so a row is only ~90-140 px tall while the
      * grid asks for 150+ px icons; they were drawn cut in half. After every icon sizing pass,
-     * the icon is set to what a cell holds, the label dropped and hotseat and folder icons
-     * resized. Raised as well as lowered: the launcher's profiles made from other contexts
-     * came out with smaller icons, and icons set up from those were drawn at that size.
+     * icons take the portrait profile's geometry exactly (landscape cells are the portrait
+     * ones, see LandscapeGrid); before that is known, the icon is set to what a cell holds and
+     * the label dropped. Raised as well as lowered: the launcher's profiles made from other
+     * contexts came out with smaller icons, and icons set up from those were drawn that size.
      */
     private void hookIconFit() {
         Class<?> base = XposedHelpers.findClass("com.android.launcher3.DeviceProfile", cl);
@@ -472,6 +473,20 @@ final class Landscape {
     }
 
     private void fitIcons(Object o) throws Exception {
+        PortraitGeometry portrait = PortraitGeometry.of(o);
+        if (portrait != null) {
+            // Landscape cells are the portrait ones: icons, names and folders exactly as there.
+            XposedHelpers.setIntField(o, "iconSizePx", portrait.iconSize);
+            XposedHelpers.setIntField(o, "iconTextSizePx", portrait.iconTextSize);
+            XposedHelpers.setIntField(o, "iconDrawablePaddingPx", portrait.iconDrawablePadding);
+            XposedHelpers.setIntField(o, "cellWidthPx", portrait.cellWidth);
+            XposedHelpers.setIntField(o, "cellHeightPx", portrait.cellHeight);
+            XposedHelpers.setIntField(o, "cellYPaddingPx", portrait.cellYPadding);
+            XposedHelpers.callMethod(o, "updateHotseatSizes", portrait.iconSize);
+            XposedHelpers.callMethod(o, "updateFolderIconSize");
+            XposedHelpers.setIntField(o, "folderIconOffsetYPx", portrait.folderIconOffsetY);
+            return;
+        }
         Point cell = (Point) XposedHelpers.callMethod(o, "getCellSize");
         int fit = (int) (Math.min(cell.x, cell.y) * ICON_TO_CELL);
         int icon = XposedHelpers.getIntField(o, "iconSizePx");
