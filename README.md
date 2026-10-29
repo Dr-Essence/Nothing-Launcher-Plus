@@ -266,22 +266,19 @@ Around the home screen:
   was taller than the screen: opened in landscape it showed as a full-screen gradient with no
   corners or close button, and after a turn it filled the height with its close button cut
   off.)
-- **The lock screen** turns with the device too. SystemUI's notification shade window, which
-  holds it, asks for a fixed portrait while the lock screen, bouncer or always-on display
-  shows unless `KeyguardStateController.isKeyguardScreenRotationAllowed()` (the
-  lockscreen.rot_override property, config_enableLockScreenRotation or a landscape lock screen
-  flag; all off on phones). While home rotation is on it answers yes, so the lock screen
-  follows auto-rotate in its own landscape layout (System UI in the module's LSPosed scope;
-  restart System UI once).
-- **Nothing's Customisation page** (Nothing Wallpaper's
-  `com.android.wallpaper.picker.CustomizationPickerActivity`, opened from the home screen
-  through the `com.android.customization.picker` alias) is declared portrait-only, and as it
-  starts it asks for portrait again (where it is not already) unless it is on a large
-  unfolded foldable, where it asks to follow the device. While home rotation is on, the
-  declared lock is lifted in system_server as it opens (the system knows it by the alias's
-  name, the activity in targetActivity), and its portrait request is made the foldable's one (Nothing
-  Wallpaper in the module's LSPosed scope), so it follows the home screen. Its other screens
-  keep their portrait locks.
+- **The lock screen and Nothing's Customisation page stay portrait**, as Nothing made them:
+  neither has a landscape design (the lock screen left its clock in a corner and its
+  notifications in a narrow column, the Customisation page fell back to its foldable layout,
+  tiny on a phone), so turning them was taken out again.
+- **Status bar padding through turns.** SystemUI works the status bar's side padding out
+  (StatusBarContentInsetsProviderImpl) from the display's rotation and its configuration's
+  screen bounds, read separately; while the screen turns they can disagree for a moment, and a
+  padding worked out then is wrong (the clock against the screen's edge). It was cached, and
+  the status bar (PhoneStatusBarView) fetches it again only when the rotation, bounds, cutout,
+  density or font scale it noted change, so it stayed wrong until the next turn; the home
+  screen turning makes that moment far more common. A padding worked out while the two
+  disagree is not cached, a status bar that fetched one fetches again once they agree, and
+  each such moment is logged (`status bar insets: …`).
 - **Hidden navigation bar.** With Nothing's "hide navigation bar" on, the taskbar window
   (which draws the gesture pill on phones) is made 0 px tall when it is created; when the
   home screen turned, the taskbar's `onRotationChanged` sized it again to the pill's height
@@ -452,8 +449,7 @@ the screen is touched.
 1. Build the APK (`./gradlew assembleRelease`) or download it from the *Build module* GitHub
    Actions run.
 2. Install it, enable it in LSPosed and select **Nothing Launcher** as the scope (plus
-   **Nothing Widgets** and **NothingCardService** for widget cards in landscape, **Nothing
-   Wallpaper** for the Customisation page in landscape).
+   **Nothing Widgets** and **NothingCardService** for widget cards in landscape).
    The module installs on internal storage only: LSPosed reads it at boot, before a memory
    card used as internal storage (adopted storage, `/mnt/expand/…`) is mounted, and a module
    there was not loaded after a reboot ("Failed to open APK … No such file"), and Android,

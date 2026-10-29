@@ -20,6 +20,6 @@ public final class SystemUi {
         Hooks.install("green icons", () -> GreenIcons.install(store));
         Hooks.install("green texts", () -> GreenTexts.install(store));
         Hooks.install("quick settings", () -> QuickSettings.install(cl, store));
-        Hooks.install("lock screen rotation", () -> KeyguardRotation.install(cl, store));
+        Hooks.install("status bar insets", () -> StatusBarInsets.install(cl));
     }
 }

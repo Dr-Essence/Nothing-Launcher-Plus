@@ -5,7 +5,6 @@ import com.dressence.nothinglauncherplus.launcher.Launcher;
 import com.dressence.nothinglauncherplus.system.SystemFonts;
 import com.dressence.nothinglauncherplus.systemui.SystemUi;
 import com.dressence.nothinglauncherplus.widgets.CardOrientation;
-import com.dressence.nothinglauncherplus.widgets.CustomizationPage;
 import com.dressence.nothinglauncherplus.widgets.WidgetApps;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
@@ -37,8 +36,6 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
             Launcher.install(cl, new ConfigStore());
         } else if (Config.SYSTEMUI_PKG.equals(pkg)) {
             SystemUi.install(cl, new ConfigStore());
-        } else if (CustomizationPage.PKG.equals(pkg)) {
-            Hooks.install("customization page", () -> CustomizationPage.install(new ConfigStore()));
         } else if (WidgetApps.handles(pkg)) {
             Hooks.install("widget apps", () -> WidgetApps.install(new ConfigStore()));
         }
