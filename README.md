@@ -267,10 +267,12 @@ Around the home screen:
   corners or close button, and after a turn it filled the height with its close button cut
   off.)
 - **The lock screen** turns with the device too. SystemUI's notification shade window, which
-  holds it, asks for a fixed orientation while the lock screen shows unless its keyguard
-  screen rotation switch is on (`mKeyguardScreenRotation`; off on phones); that one switch is
-  turned on while home rotation is on, so the lock screen follows auto-rotate in its own
-  landscape layout (System UI in the module's LSPosed scope; restart System UI once).
+  holds it, asks for a fixed portrait while the lock screen, bouncer or always-on display
+  shows unless `KeyguardStateController.isKeyguardScreenRotationAllowed()` (the
+  lockscreen.rot_override property, config_enableLockScreenRotation or a landscape lock screen
+  flag; all off on phones). While home rotation is on it answers yes, so the lock screen
+  follows auto-rotate in its own landscape layout (System UI in the module's LSPosed scope;
+  restart System UI once).
 - **Nothing's Customisation page** (Nothing Wallpaper's
   `com.android.wallpaper.picker.CustomizationPickerActivity`, opened from the home screen
   through the `com.android.customization.picker` alias) is declared portrait-only, and as it
