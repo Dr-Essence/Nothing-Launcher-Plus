@@ -238,9 +238,9 @@ Around the home screen:
   line and the folder has as many rows as fit under it (more apps go to further pages, as in
   portrait). Nothing places them 346 px down under a 399 px header, which left room for about
   one row of apps on a landscape screen and cut the rest off.
-- **The launcher's own screens** (search, home and drawer settings, icon packs, layout,
-  wallpaper) are locked to portrait in Nothing's manifest; with rotation on they follow the
-  device too.
+- **The launcher's own screens** (home and drawer settings, customization, icon packs) keep
+  Nothing's portrait lock: the home screen layout preview there is only drawn right in
+  portrait.
 - **Nothing's widget cards** (Calm / breathing, battery, photos, …) and their settings open in
   landscape. Nothing Widgets (`com.nothing.hearthstone`) and NothingCardService declare every
   screen portrait-only, and Android applies that as a card launches, so cards opened from a
@@ -253,14 +253,16 @@ Around the home screen:
 
 ### Landscape grid
 
-Every icon, folder and widget keeps its exact portrait size: landscape cells, the space
-between them, and the icon, name and folder geometry are the portrait profile's, and the page
-holds as many rows and columns of them as fit, centred in the page's whole width (Nothing's
-side padding only centres the portrait grid). The folded page needs its bands side by side
-(a 5-column portrait page on 4 landscape rows: 10 columns); if the portrait space between
-cells is all that keeps them from fitting, that space is narrowed, never the cells, so items
-keep their size and place. The grid in use is logged (`landscape grid 10x4 cells 203x203 gap
-… in … px`). The portrait page is folded onto it:
+The landscape page is the portrait page turned: a C×R portrait grid becomes R×C (5×9 → 9×5,
+4×8 → 8×4), the same number of cells, so every page fits on any grid, screen size or density.
+Each item sits at its portrait place turned (its portrait row is its landscape column, its
+portrait column its landscape row) with its own spans: icons, folders and square widgets turned
+that way never meet; a widget of another shape whose spot is taken goes to the nearest free
+spot that holds it whole. The cells fill the page; icons, names, folders and widget contents
+are the portrait ones scaled as far as the cells allow, the same both ways, and centred in
+their cells, so they keep their portrait shape. A widget as wide as the portrait page (a
+calendar) fills the landscape page's width, its height its share of the portrait page. The
+grid in use is logged (`landscape grid 9x5 cells … gap … in … px`). The portrait page is folded onto it:
 cut into bands as tall as the landscape page and laid side by side, each item where it is in
 its band (a 5×9 page on a 4-row landscape page: portrait rows 0–3 on the left, rows 4–7 next
 to them). Larger items are placed first; an item whose spot is taken or off the page goes to

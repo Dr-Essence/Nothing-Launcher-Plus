@@ -1,11 +1,8 @@
 package com.dressence.nothinglauncherplus.launcher;
 
-import android.app.Activity;
 import android.content.Context;
-import android.content.pm.ActivityInfo;
 import android.content.res.Resources;
 import android.graphics.Rect;
-import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
 
@@ -21,22 +18,21 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
 /**
- * Landscape for everything around the home screen: recents, folders and the launcher's own
- * screens. Each piece only acts while "Home screen rotation" is on.
+ * Landscape for everything around the home screen: recents and folders. Each piece only acts
+ * while "Home screen rotation" is on. The launcher's own settings screens keep Nothing's
+ * portrait lock: its home screen layout preview is only drawn right in portrait.
  */
 final class LandscapeSurfaces {
 
     private static final String CLS_ORIENTED_STATE = "com.android.quickstep.util.RecentsOrientedState";
     private static final String CLS_SYSUI_PROXY = "com.android.quickstep.SystemUiProxy";
     private static final String CLS_FOLDER = "com.android.launcher3.folder.Folder";
-    private static final String CLS_LAUNCHER = "com.android.launcher3.Launcher";
     private static final String CLS_DEVICE_PROFILE = "com.android.launcher3.DeviceProfile";
     /** The folder name's minimum height in Nothing's layout, and the gap under it. */
     private static final int FOLDER_NAME_DP = 72;
     private static final int FOLDER_NAME_GAP_DP = 8;
     /** RecentsOrientedState.FLAG_HOME_ROTATION_ALLOWED_IN_PREFS. */
     private static final int FLAG_HOME_ROTATION_ALLOWED = 4;
-    private static final String[] OWN_PACKAGES = {"com.nothing.", "com.android.searchlauncher."};
 
     private final ClassLoader cl;
     private final ConfigStore store;
@@ -51,7 +47,6 @@ final class LandscapeSurfaces {
     void install() {
         Hooks.install("landscape recents", this::hookRecents);
         Hooks.install("landscape folders", this::hookFolders);
-        Hooks.install("landscape launcher screens", this::hookOwnActivities);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -183,50 +178,5 @@ final class LandscapeSurfaces {
         if (fit != rows) {
             XposedHelpers.setIntField(dp, "numFolderRows", fit);
         }
-    }
-
-    // ---------------------------------------------------------------------------------------
-    // The launcher's own screens
-    // ---------------------------------------------------------------------------------------
-
-    /**
-     * Search, home settings, drawer settings, icon packs, layout and wallpaper settings are
-     * locked to portrait in Nothing's manifest, so opening one from landscape flipped the phone
-     * back. Let them follow the device like the home screen does.
-     */
-    private void hookOwnActivities() {
-        Class<?> launcher = XposedHelpers.findClass(CLS_LAUNCHER, cl);
-        XposedHelpers.findAndHookMethod(Activity.class, "onCreate", Bundle.class,
-                new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) {
-                        Activity activity = (Activity) param.thisObject;
-                        if (!store.get().allowRotation || launcher.isInstance(activity)
-                                || !isOwn(activity) || activity.getRequestedOrientation()
-                                != ActivityInfo.SCREEN_ORIENTATION_PORTRAIT) {
-                            return;
-                        }
-                        activity.setRequestedOrientation(
-                                ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-                    }
-                });
-    }
-
-    private static boolean isOwn(Activity activity) {
-        String name = activity.getClass().getName();
-        if (name.endsWith(".FallbackHome")) {
-            return false; // Shown before unlock, while the real home is not ready.
-        }
-        if (name.contains(".setting.")) {
-            // Nothing's settings pages crash when recreated by a rotation (their fragment
-            // host is gone); they keep their portrait lock.
-            return false;
-        }
-        for (String prefix : OWN_PACKAGES) {
-            if (name.startsWith(prefix)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

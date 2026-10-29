@@ -448,9 +448,9 @@ final class Landscape {
     /**
      * Nothing's grid keeps its 6-8 rows in landscape, so a row is only ~90-140 px tall while the
      * grid asks for 150+ px icons; they were drawn cut in half. After every icon sizing pass,
-     * icons take the portrait profile's geometry exactly (landscape cells are the portrait
-     * ones, see LandscapeGrid); before that is known, the icon is set to what a cell holds and
-     * the label dropped. Raised as well as lowered: the launcher's profiles made from other
+     * icons take the portrait profile's geometry, scaled as the landscape cells allow (see
+     * LandscapeGrid); before that is known, the icon is set to what a cell holds and the label
+     * dropped. Raised as well as lowered: the launcher's profiles made from other
      * contexts came out with smaller icons, and icons set up from those were drawn that size.
      */
     private void hookIconFit() {
@@ -474,17 +474,26 @@ final class Landscape {
 
     private void fitIcons(Object o) throws Exception {
         PortraitGeometry portrait = PortraitGeometry.of(o);
-        if (portrait != null) {
-            // Landscape cells are the portrait ones: icons, names and folders exactly as there.
-            XposedHelpers.setIntField(o, "iconSizePx", portrait.iconSize);
-            XposedHelpers.setIntField(o, "iconTextSizePx", portrait.iconTextSize);
-            XposedHelpers.setIntField(o, "iconDrawablePaddingPx", portrait.iconDrawablePadding);
-            XposedHelpers.setIntField(o, "cellWidthPx", portrait.cellWidth);
-            XposedHelpers.setIntField(o, "cellHeightPx", portrait.cellHeight);
-            XposedHelpers.setIntField(o, "cellYPaddingPx", portrait.cellYPadding);
-            XposedHelpers.callMethod(o, "updateHotseatSizes", portrait.iconSize);
+        float scale = LandscapeGrid.contentScale(o);
+        if (portrait != null && scale > 0) {
+            // Icons, names and folders as in portrait, scaled as the landscape cells allow and
+            // centred in them (see LandscapeGrid).
+            int icon = Math.round(portrait.iconSize * scale);
+            XposedHelpers.setIntField(o, "iconSizePx", icon);
+            XposedHelpers.setIntField(o, "iconTextSizePx",
+                    Math.round(portrait.iconTextSize * scale));
+            XposedHelpers.setIntField(o, "iconDrawablePaddingPx",
+                    Math.round(portrait.iconDrawablePadding * scale));
+            XposedHelpers.setIntField(o, "cellWidthPx", Math.round(portrait.cellWidth * scale));
+            XposedHelpers.setIntField(o, "cellHeightPx",
+                    Math.round(portrait.cellHeight * scale));
+            XposedHelpers.setIntField(o, "cellYPaddingPx", Math.max(0,
+                    Math.round(portrait.cellYPadding * scale) + (LandscapeGrid.cellHeight(o)
+                            - Math.round(portrait.cell.y * scale)) / 2));
+            XposedHelpers.callMethod(o, "updateHotseatSizes", icon);
             XposedHelpers.callMethod(o, "updateFolderIconSize");
-            XposedHelpers.setIntField(o, "folderIconOffsetYPx", portrait.folderIconOffsetY);
+            XposedHelpers.setIntField(o, "folderIconOffsetYPx",
+                    Math.round(portrait.folderIconOffsetY * scale));
             return;
         }
         Point cell = (Point) XposedHelpers.callMethod(o, "getCellSize");
