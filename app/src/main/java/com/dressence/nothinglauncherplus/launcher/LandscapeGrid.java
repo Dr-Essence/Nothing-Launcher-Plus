@@ -13,6 +13,8 @@ import android.view.ViewTreeObserver;
 import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -109,6 +111,8 @@ final class LandscapeGrid {
     private volatile Object bgDataModel;
 
     private boolean arrangePosted;
+    /** Set once Nothing's widget padding method is hooked. */
+    private boolean widgetPaddingHooked;
     /** The draw hold of a rotation in progress, and where it is; main thread. */
     private View heldRoot;
     private ViewTreeObserver.OnPreDrawListener heldDraw;
@@ -593,6 +597,7 @@ final class LandscapeGrid {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
                 Object o = param.thisObject;
+                hookWidgetPadding(o.getClass());
                 if (PortraitGeometry.isPortraitPhone(o)) {
                     PortraitGeometry.record(o, true);
                     return;
@@ -601,6 +606,51 @@ final class LandscapeGrid {
                 if (grid != null && grid.border != null) {
                     XposedHelpers.setObjectField(o, "cellLayoutBorderSpacePx",
                             new Point(grid.border));
+                }
+            }
+        });
+    }
+
+    /**
+     * Nothing insets each widget in its cells by a padding its profile works out for the span
+     * ({@code Rect o(int spanX, int spanY)} on its DeviceProfile subclass): app widgets, its own
+     * card widgets and the size widgets are told all take it from there. It works that out
+     * from its own idea of the cell, which in landscape is not the cell in use, and came out
+     * negative: widgets grew past their cells into their neighbours. Landscape cells are the
+     * portrait ones, so landscape asks the portrait profile.
+     */
+    private synchronized void hookWidgetPadding(Class<?> profileClass) {
+        if (widgetPaddingHooked) {
+            return;
+        }
+        widgetPaddingHooked = true;
+        Method padding = null;
+        for (Method m : profileClass.getDeclaredMethods()) {
+            Class<?>[] types = m.getParameterTypes();
+            if (m.getReturnType() == Rect.class && Modifier.isPublic(m.getModifiers())
+                    && types.length == 2 && types[0] == int.class && types[1] == int.class) {
+                if (padding != null) {
+                    Hooks.log("landscape widget padding: more than one candidate, left as is");
+                    return;
+                }
+                padding = m;
+            }
+        }
+        if (padding == null) {
+            Hooks.log("landscape widget padding: no Rect(int, int) method on "
+                    + profileClass.getName());
+            return;
+        }
+        Method portraitPadding = padding;
+        XposedBridge.hookMethod(padding, new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                Object o = param.thisObject;
+                Grid grid = gridFor(o);
+                PortraitGeometry portrait = grid != null && grid.cell != null
+                        ? PortraitGeometry.of(o) : null;
+                if (portrait != null && portrait.profile() != o) {
+                    param.setResult(portraitPadding.invoke(portrait.profile(), param.args));
                 }
             }
         });

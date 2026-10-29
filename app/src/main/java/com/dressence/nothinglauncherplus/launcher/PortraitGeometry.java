@@ -47,6 +47,11 @@ final class PortraitGeometry {
         folderIconOffsetY = XposedHelpers.getIntField(profile, "folderIconOffsetYPx");
     }
 
+    /** The portrait profile this was read from. */
+    Object profile() {
+        return source;
+    }
+
     /** True for a phone profile held upright. */
     static boolean isPortraitPhone(Object profile) {
         return !XposedHelpers.getBooleanField(profile, "isLandscape")

@@ -263,6 +263,13 @@ the nearest free spot that holds it whole, so nothing overlaps, and is only show
 no spot on the page holds it. A widget as wide as the portrait page (a calendar) is as wide
 as the landscape page.
 
+Nothing insets each widget in its cells by a padding its profile works out per span
+(`Rect o(spanX, spanY)` on its DeviceProfile subclass, found by signature); app widgets, its
+card widgets and the sizes widgets are told all use it. It works that out from its own idea of
+the cell, which in landscape is not the cell in use, and came out negative, so widgets grew
+past their cells into their neighbours. Landscape takes the portrait profile's padding, as its
+cells are the portrait ones.
+
 The launcher makes its profiles one after another and keeps a copy of each, which it copies
 its own from and Nothing sizes its widgets with. A landscape profile made before the portrait
 one had none to take its cell from (stock 396×92 cells, 85 px icons), so the portrait cell is
