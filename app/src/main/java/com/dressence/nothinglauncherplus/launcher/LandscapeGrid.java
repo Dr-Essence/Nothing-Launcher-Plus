@@ -111,6 +111,8 @@ final class LandscapeGrid {
     private volatile Object bgDataModel;
 
     private boolean arrangePosted;
+    /** The landscape grid last logged; main thread. */
+    private String loggedSize;
     /** Set once Nothing's widget padding method is hooked. */
     private boolean widgetPaddingHooked;
     /** The draw hold of a rotation in progress, and where it is; main thread. */
@@ -167,8 +169,9 @@ final class LandscapeGrid {
             return new Grid(columns, rows, rows, columns, null, null);
         }
         Rect pad = (Rect) XposedHelpers.getObjectField(deviceProfile, "cellLayoutPaddingPx");
-        int width = (Integer) XposedHelpers.callMethod(deviceProfile, "getCellLayoutWidth")
-                - pad.left - pad.right;
+        // Nothing's side padding only centres the portrait grid; the landscape grid is centred
+        // in the whole width (hookPagePadding), which can hold a column more.
+        int width = (Integer) XposedHelpers.callMethod(deviceProfile, "getCellLayoutWidth");
         int height = (Integer) XposedHelpers.callMethod(deviceProfile, "getCellLayoutHeight")
                 - pad.top - pad.bottom;
         Point cell = new Point(portrait.cell);
@@ -355,6 +358,13 @@ final class LandscapeGrid {
         Grid grid = current();
         if (grid == null) {
             return;
+        }
+        String size = grid.landscapeColumns() + "x" + grid.landscapeRows()
+                + (grid.cell != null ? " cells " + grid.cell.x + "x" + grid.cell.y : "");
+        if (!size.equals(loggedSize)) {
+            loggedSize = size;
+            Hooks.log("landscape grid " + size + " for portrait " + grid.columns + "x"
+                    + grid.rows);
         }
         Object launcher = createdLauncher();
         if (launcher == null) {
@@ -694,8 +704,10 @@ final class LandscapeGrid {
                             }
                             int columns = grid.landscapeColumns();
                             int rows = grid.landscapeRows();
+                            // Centred in the whole width, in place of Nothing's side padding.
+                            left = 0;
+                            right = 0;
                             int spareX = View.MeasureSpec.getSize((Integer) param.args[0])
-                                    - base.left - base.right
                                     - columns * cell.x - (columns - 1) * border.x;
                             int spareY = View.MeasureSpec.getSize((Integer) param.args[1])
                                     - base.top - base.bottom
