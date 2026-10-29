@@ -453,9 +453,13 @@ the screen is touched.
    Wallpaper** for the Customisation page in landscape).
    The module installs on internal storage only: LSPosed reads it at boot, before a memory
    card used as internal storage (adopted storage, `/mnt/expand/…`) is mounted, and a module
-   there was not loaded after a reboot ("Failed to open APK … No such file"). A copy already
-   on such a card is moved back with `pm move-package com.dressence.nothinglauncherplus
-   internal` (root), or Settings → Apps → Nothing Launcher+ → Storage → Change.
+   there was not loaded after a reboot ("Failed to open APK … No such file"), and Android,
+   checking its apps before the card is mounted, deleted the module's data (its settings and
+   folders) as belonging to a missing app. An install can still land there whatever the APK
+   asks for (the "Force allow apps on external" developer option, or an installer that picks
+   the card), so after an update, and whenever its page is opened, the module moves itself
+   back to the phone's storage (root; `pm move-package com.dressence.nothinglauncherplus
+   internal`), and its page says so.
 3. Force-stop Nothing Launcher, or use the "Restart Nothing Launcher (root)" button in the app.
 4. In Nothing Launcher settings, set *Drawer layout* to **Smart (Beta)** and tap **Custom folders**.
 
