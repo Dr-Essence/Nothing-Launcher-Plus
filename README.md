@@ -279,8 +279,9 @@ per item and per grid, in the launcher's own data), while the launcher's databas
 portrait home screen, keeps its portrait place and size. Items never arranged in landscape
 are placed by turning the portrait page, around the ones that were. Only a move or resize of
 an item already shown counts: the launcher builds new views whenever it binds its pages again
-(a rotation, a grid or label change), and their first places are not edits (they were
-remembered as edits before, which left items out of their turned places).
+(a rotation, a grid or label change), and their first places are not edits. Places are kept per
+portrait grid, so they stay when the landscape page's rows change; a place that no longer fits
+the landscape page is left for the item's turned place.
 
 Portrait is guarded at the database itself: every item write ends in one call
 (`ModelDbController.update`), whichever launcher method made it (the small methods that set an

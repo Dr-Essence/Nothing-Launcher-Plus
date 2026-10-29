@@ -241,10 +241,12 @@ final class LandscapeGrid {
         return grid != null ? grid.cell : null;
     }
 
-    /** The key landscape places are kept under: the portrait grid and the landscape one. */
+    /** The key landscape places are kept under: the portrait grid. */
     private static String gridKey(Grid grid) {
-        return grid.columns + "x" + grid.rows + ">" + grid.landscapeColumns() + "x"
-                + grid.landscapeRows();
+        // By the portrait grid alone (written as its turned page, as places were first kept),
+        // so places stay when the landscape page's rows change with the screen or a release;
+        // one that no longer fits the page is not used (saved).
+        return grid.columns + "x" + grid.rows + ">" + grid.rows + "x" + grid.columns;
     }
 
     private LandscapeMemory memory() {
