@@ -5,6 +5,7 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.content.res.TypedArray;
+import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
@@ -13,7 +14,9 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowInsets;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
@@ -80,8 +83,10 @@ public final class WidgetApps {
                         Object content = XposedHelpers.getAdditionalInstanceField(activity,
                                 CARD_CONTENT);
                         if (content != null) {
-                            Hooks.guard("portrait card turn",
-                                    () -> prepare(activity, (ViewGroup) content)).run();
+                            Hooks.guard("portrait card turn", () -> {
+                                ownDim(activity);
+                                prepare(activity, (ViewGroup) content);
+                            }).run();
                         }
                     }
                 });
@@ -127,6 +132,23 @@ public final class WidgetApps {
         } finally {
             a.recycle();
         }
+    }
+
+    /**
+     * A card darkens the screen behind it with the system's dim layer, which the system takes
+     * away for a turn and fades back in after it: the home screen flashed grey behind the card
+     * for a moment. From its first turn on, the card draws the same darkening itself, as its
+     * window's background, which turns with it. (Its opening is left as Nothing made it.)
+     */
+    private static void ownDim(Activity activity) {
+        Window window = activity.getWindow();
+        WindowManager.LayoutParams attrs = window.getAttributes();
+        if ((attrs.flags & WindowManager.LayoutParams.FLAG_DIM_BEHIND) == 0) {
+            return;
+        }
+        int alpha = Math.round(Math.max(0f, Math.min(1f, attrs.dimAmount)) * 255);
+        window.setBackgroundDrawable(new ColorDrawable(Color.argb(alpha, 0, 0, 0)));
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
     }
 
     /** The card's root, or null if the content is not one view in a FrameLayout. */

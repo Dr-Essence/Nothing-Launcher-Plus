@@ -258,7 +258,11 @@ Around the home screen:
   before it is laid out for the turned screen, and is exactly the size the card has in
   portrait, so turning never lays the card out again: it only moves and scales, settled
   before the first turned frame is drawn (it used to show small for a moment, or for seconds
-  when its views settled late). (Stretched across the landscape screen, the breathing card
+  when its views settled late). A card darkens the screen behind it with the system's dim
+  layer, which the system takes away for a turn and fades back in after it (the home screen
+  flashed grey behind the card); from its first turn on, the card draws the same darkening
+  itself as its window's background, which turns with it, while its opening stays as Nothing
+  made it. (Stretched across the landscape screen, the breathing card
   was taller than the screen: opened in landscape it showed as a full-screen gradient with no
   corners or close button, and after a turn it filled the height with its close button cut
   off.)
