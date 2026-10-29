@@ -26,13 +26,19 @@ public final class UpdateReceiver extends BroadcastReceiver {
         new Thread(() -> {
             try {
                 restartLauncher();
-                if (context.getApplicationInfo().volumeUuid != null) {
+                if (onMemoryCard(context)) {
                     moveToInternalStorage(context.getPackageName());
                 }
             } finally {
                 result.finish();
             }
         }).start();
+    }
+
+    /** True if this app is installed on adopted storage (a memory card), not the phone's. */
+    public static boolean onMemoryCard(Context context) {
+        String apk = context.getApplicationInfo().sourceDir;
+        return apk != null && apk.startsWith("/mnt/expand/");
     }
 
     /**

@@ -56,7 +56,7 @@ public class MainActivity extends Activity {
     private void render() {
         Config config = store.config;
         Ui ui = Ui.page(this, "Custom folders", false);
-        if (getApplicationInfo().volumeUuid != null) {
+        if (com.dressence.nothinglauncherplus.UpdateReceiver.onMemoryCard(this)) {
             // On a memory card used as internal storage: mounted after LSPosed loads its
             // modules at boot, and Android deletes this app's settings then (UpdateReceiver).
             ui.note("Installed on the memory card, which LSPosed cannot read at boot: the module"
