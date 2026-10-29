@@ -274,9 +274,10 @@ Around the home screen:
 - **Nothing's Customisation page** (Nothing Wallpaper's
   `com.android.wallpaper.picker.CustomizationPickerActivity`, opened from the home screen
   through the `com.android.customization.picker` alias) is declared portrait-only, and as it
-  starts it asks for portrait again unless it is on a large unfolded foldable, where it asks
-  to follow the device. While home rotation is on, the declared lock is lifted in
-  system_server as it opens, and its portrait request is made the foldable's one (Nothing
+  starts it asks for portrait again (where it is not already) unless it is on a large
+  unfolded foldable, where it asks to follow the device. While home rotation is on, the
+  declared lock is lifted in system_server as it opens (the system knows it by the alias's
+  name, the activity in targetActivity), and its portrait request is made the foldable's one (Nothing
   Wallpaper in the module's LSPosed scope), so it follows the home screen. Its other screens
   keep their portrait locks.
 - **Hidden navigation bar.** With Nothing's "hide navigation bar" on, the taskbar window

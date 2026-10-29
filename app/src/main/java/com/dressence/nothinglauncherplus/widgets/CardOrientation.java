@@ -50,9 +50,11 @@ public final class CardOrientation {
             return;
         }
         if (CUSTOMIZATION_PKG.equals(info.packageName)
-                && CUSTOMIZATION_ACTIVITY.equals(info.name)) {
+                && (CUSTOMIZATION_ACTIVITY.equals(info.name)
+                        || CUSTOMIZATION_ACTIVITY.equals(info.targetActivity))) {
             // Nothing's Customisation page (wallpaper, style, home screen), opened from the
-            // home screen (through an alias; this is the activity itself): it follows it, and
+            // home screen through an alias (named as the alias, the activity in
+            // targetActivity): it follows it, and
             // is made again for a turn as apps are (see CustomizationPage).
             store.reloadIfChanged();
             if (store.get().allowRotation) {
