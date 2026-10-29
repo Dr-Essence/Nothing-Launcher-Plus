@@ -39,9 +39,9 @@ import de.robv.android.xposed.XposedHelpers;
  * padding), so they keep their portrait shape. A widget as wide as the portrait page (a
  * calendar) fills the landscape page's width.
  *
- * <p>Only the presentation changes: the launcher database keeps the portrait layout, which
- * stays the one you arrange. Moving or resizing an item within its page in landscape does not
- * change where it sits in portrait (the landscape page arranges itself). An item added in
+ * <p>Moving or resizing an item within its page in landscape is remembered for landscape
+ * (LandscapeMemory); the launcher database keeps the portrait layout, so portrait is not
+ * changed by it. Remembered places are laid first, the rest turned around them. An item added in
  * landscape, or moved onto another page there, is put in a free spot of the portrait page,
  * since the launcher deletes items that overlap or leave the grid when it next loads.
  *
@@ -62,6 +62,12 @@ final class LandscapeGrid {
             "com.android.launcher3.celllayout.CellLayoutLayoutParams";
     private static final String CLS_DEVICE_PROFILE = "com.android.launcher3.DeviceProfile";
     private static final String CLS_LAUNCHER = "com.android.launcher3.Launcher";
+    private static final String CLS_ACTIVITY_CONTEXT = "com.android.launcher3.views.ActivityContext";
+    /** Nothing's widget views, which take their padding from the span they are told. */
+    private static final String[] CLS_WIDGET_VIEWS = {
+            "com.android.launcher3.widget.NavigableAppWidgetHostView",
+            "com.nothing.launcher.card.NavigableCardWidgetHostView",
+            "com.nothing.launcher.card.BaseLauncherCardHostView"};
 
     private static final int CONTAINER_DESKTOP = -100;
     private static final int CELL_LAYOUT_WORKSPACE = 0;
@@ -110,10 +116,13 @@ final class LandscapeGrid {
     private final ClassLoader cl;
     private final Handler main = new Handler(Looper.getMainLooper());
     private Class<?> launcherClass;
+    private Class<?> activityContext;
     private Constructor<?> cellPos;
     private volatile Object bgDataModel;
 
     private boolean arrangePosted;
+    /** Landscape places of items moved or resized in landscape; made with the launcher. */
+    private LandscapeMemory memory;
     /** The landscape grid last logged; main thread. */
     private String loggedSize;
     /** Set once Nothing's widget padding method is hooked. */
@@ -139,6 +148,7 @@ final class LandscapeGrid {
     void install() {
         Hooks.install("landscape grid", () -> {
             launcherClass = XposedHelpers.findClass(CLS_LAUNCHER, cl);
+            activityContext = XposedHelpers.findClass(CLS_ACTIVITY_CONTEXT, cl);
             cellPos = XposedHelpers.findConstructorExact(CLS_CELL_POS, cl,
                     int.class, int.class, int.class);
             hookMapper();
@@ -149,6 +159,7 @@ final class LandscapeGrid {
         Hooks.install("landscape grid spans", this::hookSpans);
         Hooks.install("landscape grid arrangement", this::hookArrange);
         Hooks.install("landscape grid safety", this::hookModelWriter);
+        Hooks.install("landscape widget spans", this::hookDisplaySpan);
         Hooks.install("clean rotation", this::hookRebindHold);
     }
 
@@ -204,6 +215,37 @@ final class LandscapeGrid {
         return grid != null && grid.cell != null ? grid.cell.y : 0;
     }
 
+    /** The key landscape places are kept under: the portrait grid and the landscape one. */
+    private static String gridKey(Grid grid) {
+        return grid.columns + "x" + grid.rows + ">" + grid.landscapeColumns() + "x"
+                + grid.landscapeRows();
+    }
+
+    private LandscapeMemory memory() {
+        if (memory == null) {
+            Object launcher = createdLauncher();
+            if (launcher != null) {
+                memory = new LandscapeMemory((android.content.Context) launcher);
+            }
+        }
+        return memory;
+    }
+
+    /**
+     * The grid for {@code view}'s home screen, or null: only the launcher's own pages are
+     * landscape pages. Nothing draws previews (the home screen layout in its settings) with
+     * the same page classes in its own context, and those are left as they are.
+     */
+    private Grid gridOfView(View view) {
+        Object launcher = createdLauncher();
+        if (launcher == null || XposedHelpers.callStaticMethod(
+                activityContext, "lookupContext",
+                view.getContext()) != launcher) {
+            return null;
+        }
+        return gridFor(XposedHelpers.callMethod(launcher, "getDeviceProfile"));
+    }
+
     /** The launcher activity that is up, or null. */
     private Object createdLauncher() {
         return XposedHelpers.callMethod(
@@ -254,6 +296,11 @@ final class LandscapeGrid {
                         if (!onDesktop(item)) {
                             return;
                         }
+                        Object launcher = createdLauncher();
+                        if (launcher == null || param.thisObject
+                                != XposedHelpers.callMethod(launcher, "getCellPosMapper")) {
+                            return; // A preview's mapper, or no launcher up.
+                        }
                         Grid grid = current();
                         if (grid == null) {
                             return;
@@ -266,6 +313,11 @@ final class LandscapeGrid {
                                     (Integer) XposedHelpers.callMethod(lp, "getCellX"),
                                     (Integer) XposedHelpers.callMethod(lp, "getCellY"),
                                     screenId));
+                            return;
+                        }
+                        int[] saved = saved(grid, item, screenId);
+                        if (saved != null) {
+                            param.setResult(cellPos.newInstance(saved[0], saved[1], screenId));
                             return;
                         }
                         int[] c = cells(item);
@@ -341,7 +393,8 @@ final class LandscapeGrid {
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) {
                         if (binding > 0 && XposedHelpers.getIntField(param.thisObject,
-                                "mContainerType") == CELL_LAYOUT_WORKSPACE && current() != null) {
+                                "mContainerType") == CELL_LAYOUT_WORKSPACE
+                                && gridOfView((View) param.thisObject) != null) {
                             param.setResult(false);
                         }
                     }
@@ -418,6 +471,46 @@ final class LandscapeGrid {
                 return;
             }
         }
+    }
+
+    /**
+     * The landscape place {@code x, y, spanX, spanY} kept for {@code item} on page
+     * {@code screenId}, if it still fits the page; else null.
+     */
+    private int[] saved(Grid grid, Object item, int screenId) {
+        LandscapeMemory memory = memory();
+        if (memory == null) {
+            return null;
+        }
+        int[] place = memory.get(gridKey(grid), XposedHelpers.getIntField(item, "id"), screenId);
+        if (place == null || place[0] < 0 || place[1] < 0 || place[2] < 1 || place[3] < 1
+                || place[0] + place[2] > grid.landscapeColumns()
+                || place[1] + place[3] > grid.landscapeRows()) {
+            return null;
+        }
+        return place;
+    }
+
+    /**
+     * Keeps where {@code item} was put on the landscape page: where its view now is (a drop or
+     * a resize has already laid it there), else the written cells.
+     */
+    private void remember(Object item, int screenId, int x, int y, int spanX, int spanY) {
+        Grid grid = current();
+        LandscapeMemory memory = memory();
+        if (grid == null || memory == null || XposedHelpers.getIntField(item, "id") < 0) {
+            return;
+        }
+        View shown = shownView(item, screenId);
+        if (shown != null) {
+            Object lp = shown.getLayoutParams();
+            x = (Integer) XposedHelpers.callMethod(lp, "getCellX");
+            y = (Integer) XposedHelpers.callMethod(lp, "getCellY");
+            spanX = XposedHelpers.getIntField(lp, "cellHSpan");
+            spanY = XposedHelpers.getIntField(lp, "cellVSpan");
+        }
+        memory.put(gridKey(grid), XposedHelpers.getIntField(item, "id"), screenId, x, y,
+                spanX, spanY);
     }
 
     /** True for an item as wide as the portrait page (a calendar, say). */
@@ -499,6 +592,12 @@ final class LandscapeGrid {
         views.sort((a, b) -> {
             int[] x = cells(a.getTag());
             int[] y = cells(b.getTag());
+            // A page-wide widget takes what the others leave.
+            boolean xWide = pageWide(x, grid);
+            boolean yWide = pageWide(y, grid);
+            if (xWide != yWide) {
+                return xWide ? 1 : -1;
+            }
             int area = Integer.compare(y[2] * y[3], x[2] * x[3]);
             if (area != 0) {
                 return area;
@@ -507,9 +606,20 @@ final class LandscapeGrid {
         });
         boolean[][] taken = new boolean[grid.landscapeColumns()][grid.landscapeRows()];
         int[][] places = new int[views.size()][];
+        // Places kept from landscape edits first, as they were left.
+        for (int i = 0; i < views.size(); i++) {
+            Object tag = views.get(i).getTag();
+            int[] saved = saved(grid, tag, XposedHelpers.getIntField(tag, "screenId"));
+            if (saved != null && isVacant(taken, saved[0], saved[1], saved[2], saved[3])) {
+                mark(taken, saved[0], saved[1], saved[2], saved[3]);
+                places[i] = saved;
+            }
+        }
         boolean changed = false;
         for (int i = 0; i < views.size(); i++) {
-            places[i] = place(taken, cells(views.get(i).getTag()), grid);
+            if (places[i] == null) {
+                places[i] = place(taken, cells(views.get(i).getTag()), grid);
+            }
             Object lp = views.get(i).getLayoutParams();
             changed |= (Integer) XposedHelpers.callMethod(lp, "getCellX") != places[i][0]
                     || (Integer) XposedHelpers.callMethod(lp, "getCellY") != places[i][1]
@@ -531,6 +641,12 @@ final class LandscapeGrid {
             XposedHelpers.setIntField(lp, "cellHSpan", places[i][2]);
             XposedHelpers.setIntField(lp, "cellVSpan", places[i][3]);
             XposedHelpers.callMethod(cellLayout, "markCellsAsOccupiedForView", view);
+            // Nothing pads a widget for the span it is told: tell it the one it is shown at.
+            try {
+                XposedHelpers.callMethod(view, "applyDisplaySpan", places[i][2], places[i][3]);
+            } catch (NoSuchMethodError notAWidget) {
+                // Icons and folders.
+            }
         }
         container.requestLayout();
     }
@@ -543,8 +659,8 @@ final class LandscapeGrid {
      * and its portrait column its landscape row, its spans its own. Icons, folders and square
      * widgets turned that way never meet; a widget of another shape whose spot is taken goes to
      * the nearest free spot that holds it whole, and is only shown smaller if none does. A
-     * widget as wide as the portrait page is as wide as the landscape page, its height its
-     * share of the portrait page.
+     * widget as wide as the portrait page is as wide as the landscape page and as tall as it
+     * is in portrait, as far as the page allows.
      */
     private static int[] place(boolean[][] taken, int[] c, Grid grid) {
         int columns = grid.landscapeColumns();
@@ -554,8 +670,10 @@ final class LandscapeGrid {
         int x;
         int y;
         if (pageWide(c, grid)) {
+            // As in portrait, where it fills the page: the whole width, and as many rows as
+            // it has there (all of them, mostly). Placed last, it takes the room left.
             spanX = columns;
-            spanY = Math.max(1, Math.min(rows, Math.round(c[3] * rows / (float) grid.rows)));
+            spanY = Math.min(c[3], rows);
             x = 0;
             y = Math.min(Math.round(c[1] * rows / (float) grid.rows), rows - spanY);
         } else {
@@ -675,6 +793,37 @@ final class LandscapeGrid {
     }
 
     /**
+     * Nothing pads each widget for the span it is told ({@code applyDisplaySpan}), which it
+     * takes from the item: the portrait span. On a landscape page a widget is told the span it
+     * is shown at there (after a landscape resize, or kept within a smaller page).
+     */
+    private void hookDisplaySpan() {
+        XC_MethodHook shownSpan = new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                View view = (View) param.thisObject;
+                Object lp = view.getLayoutParams();
+                if (lp == null || !XposedHelpers.findClass(CLS_LAYOUT_PARAMS, cl).isInstance(lp)
+                        || gridOfView(view) == null) {
+                    return;
+                }
+                param.args[0] = XposedHelpers.getIntField(lp, "cellHSpan");
+                param.args[1] = XposedHelpers.getIntField(lp, "cellVSpan");
+            }
+        };
+        for (String name : CLS_WIDGET_VIEWS) {
+            Class<?> cls = XposedHelpers.findClassIfExists(name, cl);
+            if (cls != null) {
+                for (Method m : cls.getDeclaredMethods()) {
+                    if (m.getName().equals("applyDisplaySpan") && m.getParameterCount() == 2) {
+                        XposedBridge.hookMethod(m, shownSpan);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * The padding of a widget of portrait spans {@code spanX} x {@code spanY} on the landscape
      * page, from its portrait padding: the portrait widget scaled by the grid's scale, centred
      * on its landscape cells, so it keeps its portrait shape. One as wide as the portrait page
@@ -719,8 +868,10 @@ final class LandscapeGrid {
                             return;
                         }
                         Object launcher = createdLauncher();
-                        if (launcher == null) {
-                            return;
+                        if (launcher == null || XposedHelpers.callStaticMethod(
+                                activityContext,
+                                "lookupContext", layout.getContext()) != launcher) {
+                            return; // A preview's page: as Nothing lays it out.
                         }
                         Object profile = XposedHelpers.callMethod(launcher, "getDeviceProfile");
                         Rect base = (Rect) XposedHelpers.getObjectField(profile,
@@ -794,9 +945,8 @@ final class LandscapeGrid {
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) {
                         Object layout = param.thisObject;
-                        Grid grid = current();
                         if (XposedHelpers.getIntField(layout, "mContainerType")
-                                != CELL_LAYOUT_WORKSPACE || grid == null) {
+                                != CELL_LAYOUT_WORKSPACE || gridOfView((View) layout) == null) {
                             return;
                         }
                         Object lp = param.args[3];
@@ -839,6 +989,9 @@ final class LandscapeGrid {
                     protected void beforeHookedMethod(MethodHookParam param) {
                         Object item = param.args[0];
                         if (staysOnPage(item, (Integer) param.args[1], (Integer) param.args[2])) {
+                            remember(item, (Integer) param.args[2], (Integer) param.args[3],
+                                    (Integer) param.args[4], XposedHelpers.getIntField(item,
+                                            "spanX"), XposedHelpers.getIntField(item, "spanY"));
                             param.args[3] = XposedHelpers.getIntField(item, "cellX");
                             param.args[4] = XposedHelpers.getIntField(item, "cellY");
                         }
@@ -857,8 +1010,11 @@ final class LandscapeGrid {
                     protected void beforeHookedMethod(MethodHookParam param) {
                         Object item = param.args[0];
                         if (staysOnPage(item, (Integer) param.args[1], (Integer) param.args[2])) {
-                            // Its portrait place and size, whatever it was dragged or resized
-                            // to on the landscape page.
+                            // Kept as the landscape place; the database keeps its portrait
+                            // place and size, whatever it was dragged or resized to here.
+                            remember(item, (Integer) param.args[2], (Integer) param.args[3],
+                                    (Integer) param.args[4], (Integer) param.args[5],
+                                    (Integer) param.args[6]);
                             int[] c = cells(item);
                             param.args[3] = c[0];
                             param.args[4] = c[1];

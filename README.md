@@ -261,8 +261,19 @@ that way never meet; a widget of another shape whose spot is taken goes to the n
 spot that holds it whole. The cells fill the page; icons, names, folders and widget contents
 are the portrait ones scaled as far as the cells allow, the same both ways, and centred in
 their cells, so they keep their portrait shape. A widget as wide as the portrait page (a
-calendar) fills the landscape page's width, its height its share of the portrait page. The
-grid in use is logged (`landscape grid 9x5 cells … gap … in … px`). The portrait page is folded onto it:
+calendar) fills the landscape page's width and is as tall as in portrait, as far as the page
+allows; it is placed after the other items, in the room they leave. The grid in use is logged
+(`landscape grid 9x5 cells … gap … in … px`).
+
+**Arranging landscape on its own.** Icons, folders and widgets can be moved and resized on the
+landscape home screen like in portrait. Each keeps that landscape place and size (remembered
+per item and per grid, in the launcher's own data), while the launcher's database, and so the
+portrait home screen, keeps its portrait place and size. Items never arranged in landscape
+are placed by turning the portrait page, around the ones that were.
+
+The landscape grid only acts on the launcher's own home pages: Nothing draws its home screen
+previews (the layout preview in its settings) with the same page classes, and those are left
+exactly as Nothing lays them out. The portrait page is folded onto it:
 cut into bands as tall as the landscape page and laid side by side, each item where it is in
 its band (a 5×9 page on a 4-row landscape page: portrait rows 0–3 on the left, rows 4–7 next
 to them). Larger items are placed first; an item whose spot is taken or off the page goes to
@@ -310,9 +321,8 @@ available") until the launcher went to the background. Dot-matrix icons animate 
 they are in view (the closed drawer and other pages get one still frame, rechecked once a
 second), and the loader waits for idle at most three seconds per step.
 
-- Only the presentation changes: the launcher database keeps the portrait layout, and that
-  stays the one you arrange. Moving or resizing an item within its page in landscape leaves its
-  portrait place as it is (the landscape page arranges itself).
+- The launcher database keeps the portrait layout: moving or resizing an item within its page
+  in landscape is remembered for landscape only and leaves its portrait place as it is.
 - An item added in landscape, or moved onto another page there, goes to a free spot of the
   portrait page: the launcher deletes items that overlap or leave the grid when it next loads,
   so every landscape write is checked against the portrait page. The page is then arranged
