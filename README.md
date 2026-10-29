@@ -271,6 +271,15 @@ per item and per grid, in the launcher's own data), while the launcher's databas
 portrait home screen, keeps its portrait place and size. Items never arranged in landscape
 are placed by turning the portrait page, around the ones that were.
 
+Portrait is guarded at the database itself: every item write ends in one call
+(`ModelDbController.update`), whichever launcher method made it (the small methods that set an
+item's cells are inlined by ART into the drop, reorder and resize code, past hooks on them; a
+landscape drop with a reorder wrote landscape cells into portrait this way). In landscape, a
+write that keeps an item on its page keeps its portrait cells and spans in the row, and its
+landscape place is remembered; a move to another page or into a folder is written as it is.
+Back in portrait, items the launcher changed in memory while in landscape get their portrait
+cells back before the pages are built.
+
 The landscape grid only acts on the launcher's own home pages: Nothing draws its home screen
 previews (the layout preview in its settings) with the same page classes, and those are left
 exactly as Nothing lays them out. The portrait page is folded onto it:
