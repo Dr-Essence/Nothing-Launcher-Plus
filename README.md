@@ -250,11 +250,14 @@ Around the home screen:
   without being restarted, so a breathing session keeps going. Nothing lays its cards out for a
   portrait screen only (it ships no landscape layout for any of them), so in landscape each
   card (any translucent, portrait-only screen of those apps, Calm and Relax included, and any
-  Nothing adds later) gets a canvas of the portrait screen's width and of the height its
-  content takes there: centred, and scaled down evenly only if the landscape screen is lower.
-  The card's layout and code see a portrait screen, so it looks and works as in portrait on
-  any screen size, aspect ratio or density (the breathing card used to fill the whole height
-  and push its close button off screen).
+  Nothing adds later) is laid out on a canvas the size of the portrait screen, exactly as in
+  portrait, and what it shows there (its views that draw, close button included) is centred
+  in the room the system bars leave, scaled down evenly only if it does not fit. The card's
+  layout and code see a portrait screen, so it looks and works as in portrait on any screen
+  size, aspect ratio or density. (Stretched across the landscape screen, the breathing card
+  was taller than the screen: opened in landscape it showed as a full-screen gradient with no
+  corners or close button, and after a turn it filled the height with its close button cut
+  off.)
 - **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
 
 ### Landscape grid
@@ -278,6 +281,14 @@ portrait size without names, as Nothing's own landscape profile does. A widget a
 calendar) fills the landscape page's width and is as tall as in portrait, as far as the page
 allows; it is placed after the other items, in the room they leave. The grid in use is logged
 (`landscape grid 9x5 cells … gap … in … px`).
+
+**Crowded pages.** A landscape page with portrait-size cells holds fewer cells than the
+portrait page (36 against 45 on 5×9). If any home page holds more than that (a page full of
+apps), the landscape grid gets a row for every portrait column instead, with cells as much
+smaller as that needs (9×5 cells of 167 px on 5×9), so every item keeps a cell of its own and
+nothing overlaps. This is decided from the launcher's items as the landscape pages are built
+(and by the arrangement, should a page still not fit), and goes back to portrait-size cells
+on the next turn once no page is crowded. Icons are refitted to the cells either way.
 
 **Arranging landscape on its own.** Icons, folders and widgets can be moved and resized on the
 landscape home screen like in portrait. Each keeps that landscape place and size (remembered

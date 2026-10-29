@@ -71,6 +71,13 @@ final class Landscape {
         Hooks.install("landscape layout", this::hookDeviceProfile);
         Hooks.install("landscape smart drawer", this::hookSmartProfile);
         Hooks.install("landscape icon fit", this::hookIconFit);
+        LandscapeGrid.iconFit = profile -> {
+            try {
+                fitIcons(profile);
+            } catch (Throwable t) {
+                Hooks.log("landscape icon refit failed: " + t);
+            }
+        };
         Hooks.install("landscape hotseat log", this::hookHotseatLog);
     }
 

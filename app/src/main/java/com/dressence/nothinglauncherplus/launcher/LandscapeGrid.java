@@ -145,6 +145,18 @@ final class LandscapeGrid {
      * a grid or label change), and a new view's first place is not an edit.
      */
     private final Map<View, int[]> placed = new java.util.WeakHashMap<>();
+    /**
+     * Set while a landscape page holds more than the portrait-size grid does (a page full of
+     * apps: 45 cells on a 5 x 9 grid against 36 on 9 x 4): the grid then has a row for every
+     * portrait column, with smaller cells, so every item has a cell of its own. Decided from
+     * the launcher's items as the landscape pages are built, and by the arrangement if a page
+     * still does not fit; back to portrait-size cells on the next turn when none is crowded.
+     * Main thread writes.
+     */
+    private static volatile boolean crowded;
+    /** Fits a landscape profile's icons to the grid in use (Landscape). */
+    static java.util.function.Consumer<Object> iconFit;
+
     /** Landscape places of items moved or resized in landscape; made with the launcher. */
     private LandscapeMemory memory;
     /** The landscape grid last logged; main thread. */
@@ -196,6 +208,15 @@ final class LandscapeGrid {
 
     /** The projection of {@code deviceProfile}, or null when it is not phone landscape. */
     private static Grid gridFor(Object deviceProfile) {
+        return gridFor(deviceProfile, crowded);
+    }
+
+    /**
+     * The projection of {@code deviceProfile}; {@code everyColumn} gives the page a row for
+     * every portrait column, the cells as much smaller as that needs (for a page that holds
+     * more than the portrait-size grid, see crowded).
+     */
+    private static Grid gridFor(Object deviceProfile, boolean everyColumn) {
         if (deviceProfile == null || !Landscape.isPhoneLandscape(deviceProfile)) {
             return null;
         }
@@ -226,8 +247,8 @@ final class LandscapeGrid {
         // nearest free room (place). Centred in what is left (hookPagePadding).
         float scale = Math.min(1f, width / (float) (across * (p.y + pb.y) - pb.y));
         int down = Math.min(columns, (int) ((height + pb.x * scale) / ((p.x + pb.x) * scale)));
-        if (down < MIN_ROWS) {
-            down = Math.min(columns, MIN_ROWS);
+        if (down < MIN_ROWS || (everyColumn && down < columns)) {
+            down = everyColumn ? columns : Math.min(columns, MIN_ROWS);
             scale = Math.min(scale, height / (float) (down * (p.x + pb.x) - pb.x));
         }
         Point border = new Point((int) (pb.y * scale), (int) (pb.x * scale));
@@ -605,6 +626,11 @@ final class LandscapeGrid {
             protected void beforeHookedMethod(MethodHookParam param) {
                 if (current() == null) {
                     restorePortrait();
+                    setCrowded(false);
+                } else if (!crowded) {
+                    Object profile = XposedHelpers.callMethod(param.thisObject,
+                            "getDeviceProfile");
+                    setCrowded(modelCrowded(gridFor(profile, false)));
                 }
                 placed.clear(); // New pages: their first places are not edits.
                 holdDrawing((Activity) param.thisObject);
@@ -663,21 +689,8 @@ final class LandscapeGrid {
         if (views.isEmpty()) {
             return;
         }
-        views.sort((a, b) -> {
-            int[] x = portraitCells(a.getTag());
-            int[] y = portraitCells(b.getTag());
-            // A page-wide widget takes what the others leave.
-            boolean xWide = pageWide(x, grid);
-            boolean yWide = pageWide(y, grid);
-            if (xWide != yWide) {
-                return xWide ? 1 : -1;
-            }
-            int area = Integer.compare(y[2] * y[3], x[2] * x[3]);
-            if (area != 0) {
-                return area;
-            }
-            return x[1] != y[1] ? Integer.compare(x[1], y[1]) : Integer.compare(x[0], y[0]);
-        });
+        java.util.Comparator<Object> order = order(grid);
+        views.sort((a, b) -> order.compare(a.getTag(), b.getTag()));
         // Edits made on this page since it was last arranged, kept before it is arranged again.
         LandscapeMemory memory = memory();
         for (View view : views) {
@@ -702,9 +715,14 @@ final class LandscapeGrid {
             }
         }
         boolean changed = false;
+        boolean full = false;
         for (int i = 0; i < views.size(); i++) {
             if (places[i] == null) {
                 places[i] = place(taken, portraitCells(views.get(i).getTag()), grid);
+            }
+            if (places[i] == null) {
+                full = true;
+                places[i] = new int[] {0, 0, 1, 1}; // Shown over another item, not lost.
             }
             placed.put(views.get(i), places[i]);
             Object lp = views.get(i).getLayoutParams();
@@ -712,6 +730,15 @@ final class LandscapeGrid {
                     || (Integer) XposedHelpers.callMethod(lp, "getCellY") != places[i][1]
                     || XposedHelpers.getIntField(lp, "cellHSpan") != places[i][2]
                     || XposedHelpers.getIntField(lp, "cellVSpan") != places[i][3];
+        }
+        if (full && !crowded) {
+            // More than the page holds at portrait size: smaller cells, pages built again.
+            setCrowded(true);
+            Object launcher = createdLauncher();
+            if (launcher != null) {
+                main.post(Hooks.guard("crowded landscape page",
+                        () -> XposedHelpers.callMethod(launcher, "rebindCallbacks")));
+            }
         }
         if (!changed) {
             return;
@@ -736,6 +763,100 @@ final class LandscapeGrid {
             }
         }
         container.requestLayout();
+    }
+
+    /**
+     * The order a page's items are placed in: larger first, in portrait reading order, a
+     * page-wide widget last (it takes what the others leave).
+     */
+    private java.util.Comparator<Object> order(Grid grid) {
+        return (a, b) -> {
+            int[] x = portraitCells(a);
+            int[] y = portraitCells(b);
+            boolean xWide = pageWide(x, grid);
+            boolean yWide = pageWide(y, grid);
+            if (xWide != yWide) {
+                return xWide ? 1 : -1;
+            }
+            int area = Integer.compare(y[2] * y[3], x[2] * x[3]);
+            if (area != 0) {
+                return area;
+            }
+            return x[1] != y[1] ? Integer.compare(x[1], y[1]) : Integer.compare(x[0], y[0]);
+        };
+    }
+
+    /** True if one page's {@code items} all get a cell of their own on {@code grid}. */
+    private boolean fits(List<Object> items, Grid grid) {
+        items.sort(order(grid));
+        boolean[][] taken = new boolean[grid.landscapeColumns()][grid.landscapeRows()];
+        List<Object> rest = new ArrayList<>();
+        for (Object item : items) {
+            int[] saved = saved(grid, item, XposedHelpers.getIntField(item, "screenId"));
+            if (saved != null && isVacant(taken, saved[0], saved[1], saved[2], saved[3])) {
+                mark(taken, saved[0], saved[1], saved[2], saved[3]);
+            } else {
+                rest.add(item);
+            }
+        }
+        for (Object item : rest) {
+            if (place(taken, portraitCells(item), grid) == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** True if some home page of the launcher's items holds more than {@code grid} does. */
+    private boolean modelCrowded(Grid grid) {
+        Object model = bgDataModel;
+        if (model == null || grid == null || grid.cell == null) {
+            return false;
+        }
+        Map<Integer, List<Object>> pages = new java.util.HashMap<>();
+        synchronized (model) {
+            for (Object item : (Iterable<?>) XposedHelpers.getObjectField(model, "itemsIdMap")) {
+                if (onDesktop(item)) {
+                    pages.computeIfAbsent(XposedHelpers.getIntField(item, "screenId"),
+                            k -> new ArrayList<>()).add(item);
+                }
+            }
+        }
+        for (List<Object> items : pages.values()) {
+            if (!fits(items, grid)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Switches between portrait-size and every-column cells, icons refitted to match. */
+    private void setCrowded(boolean value) {
+        if (crowded == value) {
+            return;
+        }
+        crowded = value;
+        Object launcher = createdLauncher();
+        if (launcher == null || iconFit == null) {
+            return;
+        }
+        Object profile = XposedHelpers.callMethod(launcher, "getDeviceProfile");
+        List<?> all = (List<?>) XposedHelpers.getObjectField(
+                XposedHelpers.getObjectField(profile, "inv"), "recentActivitySupportedProfiles");
+        boolean own = false;
+        for (Object p : all) {
+            if (Landscape.isPhoneLandscape(p)) {
+                iconFit.accept(p);
+                own |= p == profile;
+            }
+        }
+        if (!own && Landscape.isPhoneLandscape(profile)) {
+            iconFit.accept(profile);
+        }
+        if (value) {
+            Hooks.log("landscape grid: a page holds more than portrait-size cells allow;"
+                    + " a row for every portrait column");
+        }
     }
 
     /**
@@ -782,7 +903,7 @@ final class LandscapeGrid {
                 }
             }
         }
-        return new int[] {0, 0, 1, 1}; // A full page: shown over another item, not lost.
+        return null; // A full page.
     }
 
     // ---------------------------------------------------------------------------------------
