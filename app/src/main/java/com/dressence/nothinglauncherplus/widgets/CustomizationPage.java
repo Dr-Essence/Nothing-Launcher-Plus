@@ -28,6 +28,24 @@ public final class CustomizationPage {
     }
 
     public static void install(ConfigStore store) {
+        // As it is made: follow the device, as on the foldable (this alone lets it turn, from
+        // the app itself, without the system's lift).
+        XposedHelpers.findAndHookMethod(Activity.class, "onCreate", android.os.Bundle.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Activity activity = (Activity) param.thisObject;
+                        if (!ACTIVITY.equals(activity.getClass().getName())) {
+                            return;
+                        }
+                        store.reloadIfChanged();
+                        if (store.get().allowRotation && activity.getRequestedOrientation()
+                                != ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) {
+                            activity.setRequestedOrientation(
+                                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                        }
+                    }
+                });
         XposedHelpers.findAndHookMethod(Activity.class, "setRequestedOrientation", int.class,
                 new XC_MethodHook() {
                     @Override
