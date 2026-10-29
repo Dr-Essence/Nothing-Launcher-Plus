@@ -440,6 +440,11 @@ the screen is touched.
    Actions run.
 2. Install it, enable it in LSPosed and select **Nothing Launcher** as the scope (plus
    **Nothing Widgets** and **NothingCardService** for widget cards in landscape).
+   The module installs on internal storage only: LSPosed reads it at boot, before a memory
+   card used as internal storage (adopted storage, `/mnt/expand/…`) is mounted, and a module
+   there was not loaded after a reboot ("Failed to open APK … No such file"). A copy already
+   on such a card is moved back with `pm move-package com.dressence.nothinglauncherplus
+   internal` (root), or Settings → Apps → Nothing Launcher+ → Storage → Change.
 3. Force-stop Nothing Launcher, or use the "Restart Nothing Launcher (root)" button in the app.
 4. In Nothing Launcher settings, set *Drawer layout* to **Smart (Beta)** and tap **Custom folders**.
 
