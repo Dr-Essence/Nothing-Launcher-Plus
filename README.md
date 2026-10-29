@@ -256,8 +256,11 @@ Around the home screen:
 Every icon, folder and widget keeps its exact portrait size: landscape cells, the space
 between them, and the icon, name and folder geometry are the portrait profile's, and the page
 holds as many rows and columns of them as fit, centred in the page's whole width (Nothing's
-side padding only centres the portrait grid; without it a 2400×1080 screen holds 10 columns
-of 203 px cells instead of 9, room for a 5-column portrait page folded in two). The portrait page is folded onto it:
+side padding only centres the portrait grid). The folded page needs its bands side by side
+(a 5-column portrait page on 4 landscape rows: 10 columns); if the portrait space between
+cells is all that keeps them from fitting, that space is narrowed, never the cells, so items
+keep their size and place. The grid in use is logged (`landscape grid 10x4 cells 203x203 gap
+… in … px`). The portrait page is folded onto it:
 cut into bands as tall as the landscape page and laid side by side, each item where it is in
 its band (a 5×9 page on a 4-row landscape page: portrait rows 0–3 on the left, rows 4–7 next
 to them). Larger items are placed first; an item whose spot is taken or off the page goes to

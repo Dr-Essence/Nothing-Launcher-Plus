@@ -85,8 +85,12 @@ final class LandscapeGrid {
         final Point cell;
         final Point border;
 
+        /** The width the landscape grid is laid out in; for the log. */
+        final int width;
+
         Grid(int columns, int rows, int landscapeColumns, int landscapeRows, Point cell,
-                Point border) {
+                Point border, int width) {
+            this.width = width;
             this.columns = columns;
             this.rows = rows;
             this.landscapeColumns = landscapeColumns;
@@ -166,7 +170,7 @@ final class LandscapeGrid {
         }
         PortraitGeometry portrait = PortraitGeometry.of(deviceProfile);
         if (portrait == null) {
-            return new Grid(columns, rows, rows, columns, null, null);
+            return new Grid(columns, rows, rows, columns, null, null, 0);
         }
         Rect pad = (Rect) XposedHelpers.getObjectField(deviceProfile, "cellLayoutPaddingPx");
         // Nothing's side padding only centres the portrait grid; the landscape grid is centred
@@ -184,7 +188,17 @@ final class LandscapeGrid {
             cell.set(Math.max(1, (int) (cell.x * scale)), Math.max(1, (int) (cell.y * scale)));
         }
         int across = Math.max(1, (width + border.x) / (cell.x + border.x));
-        return new Grid(columns, rows, across, down, cell, border);
+        // The folded portrait page needs its bands side by side (a 5-column page on 4 rows:
+        // 10 columns). If the portrait space between cells is all that keeps them from fitting,
+        // that space is narrowed, never the cells: items keep their size and place.
+        int bands = (rows + down - 1) / down;
+        int wanted = Math.min(columns * bands, width / cell.x);
+        if (wanted > across) {
+            across = wanted;
+            border.x = across > 1 ? Math.min(border.x, (width - across * cell.x) / (across - 1))
+                    : 0;
+        }
+        return new Grid(columns, rows, across, down, cell, border, width);
     }
 
     /** The launcher activity that is up, or null. */
@@ -360,7 +374,9 @@ final class LandscapeGrid {
             return;
         }
         String size = grid.landscapeColumns() + "x" + grid.landscapeRows()
-                + (grid.cell != null ? " cells " + grid.cell.x + "x" + grid.cell.y : "");
+                + (grid.cell != null ? " cells " + grid.cell.x + "x" + grid.cell.y
+                        + " gap " + grid.border.x + "x" + grid.border.y
+                        + " in " + grid.width + " px" : "");
         if (!size.equals(loggedSize)) {
             loggedSize = size;
             Hooks.log("landscape grid " + size + " for portrait " + grid.columns + "x"
