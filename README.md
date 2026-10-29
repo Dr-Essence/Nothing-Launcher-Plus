@@ -254,7 +254,11 @@ Around the home screen:
   portrait, and what it shows there (its views that draw, close button included) is centred
   in the room the system bars leave, scaled down evenly only if it does not fit. The card's
   layout and code see a portrait screen, so it looks and works as in portrait on any screen
-  size, aspect ratio or density. (Stretched across the landscape screen, the breathing card
+  size, aspect ratio or density. The canvas is put in place as the turn is told to the card,
+  before it is laid out for the turned screen, and is exactly the size the card has in
+  portrait, so turning never lays the card out again: it only moves and scales, settled
+  before the first turned frame is drawn (it used to show small for a moment, or for seconds
+  when its views settled late). (Stretched across the landscape screen, the breathing card
   was taller than the screen: opened in landscape it showed as a full-screen gradient with no
   corners or close button, and after a turn it filled the height with its close button cut
   off.)

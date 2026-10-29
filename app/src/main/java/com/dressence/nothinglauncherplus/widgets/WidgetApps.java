@@ -3,6 +3,7 @@ package com.dressence.nothinglauncherplus.widgets;
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.content.res.TypedArray;
 import android.graphics.Insets;
 import android.graphics.Rect;
@@ -45,6 +46,8 @@ public final class WidgetApps {
     private static final String CARD_SERVICE_PKG = "com.nothing.cardservice";
     /** The card root's own layout, kept on it while it is on a landscape canvas. */
     private static final String OWN_LAYOUT = "nlplus.ownLayout";
+    /** Set on a card activity: its content view, which holds the card. */
+    private static final String CARD_CONTENT = "nlplus.cardContent";
 
     private final ConfigStore store;
 
@@ -66,6 +69,22 @@ public final class WidgetApps {
                         apps.onCreated((Activity) param.thisObject);
                     }
                 });
+        // A card turns without a restart (CardOrientation): it is put on (or taken off) its
+        // canvas as the turn is told, before it is laid out for the turned screen, so it is
+        // never laid out or drawn stretched across it.
+        XposedHelpers.findAndHookMethod(Activity.class, "onConfigurationChanged",
+                Configuration.class, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Activity activity = (Activity) param.thisObject;
+                        Object content = XposedHelpers.getAdditionalInstanceField(activity,
+                                CARD_CONTENT);
+                        if (content != null) {
+                            Hooks.guard("portrait card turn",
+                                    () -> prepare(activity, (ViewGroup) content)).run();
+                        }
+                    }
+                });
     }
 
     private void onCreated(Activity activity) {
@@ -79,8 +98,11 @@ public final class WidgetApps {
         if (isPortraitCard(activity)) {
             ViewGroup content = activity.findViewById(android.R.id.content);
             if (content != null) {
-                // Cards turn without a restart (CardOrientation) and fill in their content
-                // after onCreate (fragments): fitted on every layout, cheaply when unchanged.
+                XposedHelpers.setAdditionalInstanceField(activity, CARD_CONTENT, content);
+                // Before its first layout, so it is never drawn stretched across the screen.
+                prepare(activity, content);
+                // Cards fill in their content after onCreate (fragments) and change it as they
+                // run: fitted after every layout, before it is drawn, cheaply when unchanged.
                 content.getViewTreeObserver().addOnGlobalLayoutListener(
                         Hooks.guard("portrait card", () -> fit(activity, content))::run);
             }
@@ -107,26 +129,39 @@ public final class WidgetApps {
         }
     }
 
+    /** The card's root, or null if the content is not one view in a FrameLayout. */
+    private static View root(ViewGroup content) {
+        return content.getChildCount() == 1
+                && content.getChildAt(0).getLayoutParams() instanceof FrameLayout.LayoutParams
+                ? content.getChildAt(0) : null;
+    }
+
+    private static boolean isLandscape(Activity activity) {
+        return activity.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+    }
+
+    /** The portrait screen: {width, height}. */
+    private static int[] portraitScreen(Activity activity) {
+        Rect screen = activity.getWindowManager().getMaximumWindowMetrics().getBounds();
+        return new int[] {Math.min(screen.width(), screen.height()),
+                Math.max(screen.width(), screen.height())};
+    }
+
     /**
-     * Puts the card's root on a canvas the size of the portrait screen while the screen is wider
-     * than a portrait one, and gives it back its own layout otherwise. The card lays itself out
-     * there exactly as in portrait; what it shows (its views that draw) is then centred in the
-     * room the system bars leave, scaled down evenly only if it does not fit.
+     * Puts the card's root on a canvas the size of the portrait screen in landscape, and gives
+     * it back its own layout in portrait. On the canvas the card lays itself out exactly as in
+     * portrait, so turning the screen does not lay it out again at all: only where it is shown,
+     * and how large, changes (fit).
      */
-    private static void fit(Activity activity, ViewGroup content) {
-        if (content.getChildCount() != 1
-                || !(content.getChildAt(0).getLayoutParams() instanceof FrameLayout.LayoutParams)) {
+    private static void prepare(Activity activity, ViewGroup content) {
+        View root = root(content);
+        if (root == null) {
             return;
         }
-        View root = content.getChildAt(0);
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) root.getLayoutParams();
         int[] own = (int[]) XposedHelpers.getAdditionalInstanceField(root, OWN_LAYOUT);
-        Rect screen = activity.getWindowManager().getMaximumWindowMetrics().getBounds();
-        int portraitWidth = Math.min(screen.width(), screen.height());
-        int portraitHeight = Math.max(screen.width(), screen.height());
-        int width = content.getWidth();
-        int height = content.getHeight();
-        if (width <= portraitWidth || height <= 0) {
+        if (!isLandscape(activity)) {
             if (own != null) {
                 XposedHelpers.removeAdditionalInstanceField(root, OWN_LAYOUT);
                 apply(root, lp, own[0], own[1], own[2]);
@@ -138,15 +173,37 @@ public final class WidgetApps {
             own = new int[] {lp.width, lp.height, lp.gravity};
             XposedHelpers.setAdditionalInstanceField(root, OWN_LAYOUT, own);
         }
-        if (apply(root, lp, portraitWidth, portraitHeight, Gravity.CENTER)
-                || root.getWidth() != portraitWidth || root.getHeight() != portraitHeight) {
-            return; // Fitted once it is laid out on the canvas.
+        int[] portrait = portraitScreen(activity);
+        apply(root, lp, portrait[0], portrait[1], Gravity.CENTER);
+    }
+
+    /**
+     * Shows what the card draws on its canvas (its views that draw) centred in the room the
+     * system bars leave, scaled down evenly only if it does not fit. Run after each layout,
+     * before the frame is drawn.
+     */
+    private static void fit(Activity activity, ViewGroup content) {
+        View root = root(content);
+        if (root == null) {
+            return;
+        }
+        if (!isLandscape(activity)
+                || XposedHelpers.getAdditionalInstanceField(root, OWN_LAYOUT) == null) {
+            prepare(activity, content);
+            return;
+        }
+        int[] portrait = portraitScreen(activity);
+        int width = content.getWidth();
+        int height = content.getHeight();
+        if (root.getWidth() != portrait[0] || root.getHeight() != portrait[1]
+                || root.isLayoutRequested() || width <= 0 || height <= 0) {
+            return; // Not laid out on its canvas yet: fitted after that layout.
         }
         Rect shown = new Rect();
         if (root instanceof ViewGroup) {
             addShown((ViewGroup) root, (ViewGroup) root, shown);
         }
-        if (shown.isEmpty()) {
+        if (shown.isEmpty() || !shown.intersect(0, 0, portrait[0], portrait[1])) {
             return; // Nothing drawn yet (its content comes in a moment).
         }
         Insets bars = Insets.NONE;
@@ -157,22 +214,21 @@ public final class WidgetApps {
         }
         int[] at = new int[2];
         content.getLocationInWindow(at);
+        View window = content.getRootView();
         // The room left by the system bars, in content coordinates.
         int left = Math.max(0, bars.left - at[0]);
         int top = Math.max(0, bars.top - at[1]);
-        int right = width - Math.max(0, bars.right - (content.getRootView().getWidth() - at[0]
-                - width));
-        int bottom = height - Math.max(0, bars.bottom - (content.getRootView().getHeight()
-                - at[1] - height));
+        int right = width - Math.max(0, bars.right - (window.getWidth() - at[0] - width));
+        int bottom = height - Math.max(0, bars.bottom - (window.getHeight() - at[1] - height));
         float roomX = Math.max(1, right - left);
         float roomY = Math.max(1, bottom - top);
         float scale = Math.min(1f, Math.min(roomX / shown.width(), roomY / shown.height()));
         // The root is centred in the content and scaled about its centre; move what it shows
         // to the centre of the room.
         float dx = (left + right) / 2f - width / 2f
-                - scale * (shown.exactCenterX() - portraitWidth / 2f);
+                - scale * (shown.exactCenterX() - portrait[0] / 2f);
         float dy = (top + bottom) / 2f - height / 2f
-                - scale * (shown.exactCenterY() - portraitHeight / 2f);
+                - scale * (shown.exactCenterY() - portrait[1] / 2f);
         place(root, scale, dx, dy);
     }
 
