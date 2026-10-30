@@ -41,6 +41,12 @@ import de.robv.android.xposed.XposedHelpers;
  * screen turns (not while going to sleep, as before). The lock icon over the sensor
  * (DefaultDeviceEntrySection) is placed from the sensor's unturned spot; it is given the spot
  * turned the same way, in the lock screen's own coordinates.
+ *
+ * <p>The overlay turns its {@code sensorBounds} in place on every layout (twice when it shows),
+ * and after {@code updateOverlayParams} that Rect is the overlay parameters' own, so the
+ * sensor's spot was turned again and again (the scanning animation landed near the top left).
+ * While the lock screen turns, each layout starts {@code sensorBounds} from a fresh copy of the
+ * unturned spot, so it is turned exactly once and the parameters stay unturned.
  */
 final class LockScreenTurn {
 
@@ -66,11 +72,12 @@ final class LockScreenTurn {
     private static final int END = 7;
     private static final int VERTICAL = 1;
     /** The lock screen's views, by resource name. */
-    private static final String[] ROOTS = {"keyguard_root_view", "shared_notification_container"};
-    private static final int MAX_DEPTH = 7;
-    private static final int MAX_LINES = 90;
+    private static final String[] ROOTS = {"keyguard_root_view", "shared_notification_container",
+            "keyguard_message_area_container", "keyguard_bouncer_container", "nt_bouncer_icon_area"};
+    private static final int MAX_DEPTH = 9;
+    private static final int MAX_LINES = 160;
     /** Layouts logged per System UI run at most, so the log stays readable. */
-    private static final int MAX_DUMPS = 12;
+    private static final int MAX_DUMPS = 30;
 
     private static int dumps;
     private static String lastLayout;
@@ -193,6 +200,26 @@ final class LockScreenTurn {
                         if (!(Boolean) XposedHelpers.callMethod(monitor, "isGoingToSleep")) {
                             param.setResult(true);
                         }
+                    } catch (Throwable t) {
+                        Hooks.log("lock screen fingerprint: " + t);
+                    }
+                }
+            });
+        }
+        if (overlay != null) {
+            XposedBridge.hookAllMethods(overlay, "updateDimensions", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (!store.get().lockRotation) {
+                        return;
+                    }
+                    try {
+                        Object params = XposedHelpers.getObjectField(param.thisObject,
+                                "overlayParams");
+                        Rect natural = (Rect) XposedHelpers.callMethod(params,
+                                "getSensorBounds");
+                        XposedHelpers.setObjectField(param.thisObject, "sensorBounds",
+                                new Rect(natural));
                     } catch (Throwable t) {
                         Hooks.log("lock screen fingerprint: " + t);
                     }

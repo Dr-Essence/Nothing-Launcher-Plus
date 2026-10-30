@@ -294,8 +294,13 @@ Around the home screen:
   screen turns (not while going to sleep). The lock icon over the sensor
   (`DefaultDeviceEntrySection`) is placed from the sensor's unturned spot; it is given the spot
   turned the same way, in the lock screen's own coordinates (logged as
-  `lock screen fingerprint: icon at …`). The bouncer's own fingerprint icon is still placed
-  for portrait.
+  `lock screen fingerprint: icon at …`). The overlay turns its `sensorBounds` Rect in place on
+  every layout (twice when it shows), and after `updateOverlayParams` that Rect is the overlay
+  parameters' own, so the spot was turned again and again and the scanning animation landed
+  near the top left; while the lock screen turns, each layout starts from a fresh copy of the
+  unturned spot, so it is turned exactly once. The bouncer's own fingerprint icon is still
+  placed for portrait. The PIN / pattern / password screen is blacked out in screen
+  recordings (a secure window), so its landscape layout is logged too.
 - **Status bar.** The clock pressed against the screen's edge, investigated in 0.29.8–0.30.0,
   came from another LSPosed module (OLED burn-in protection shifting the status bar), not from
   this one; the guard and the diagnostic hooks added for it are removed again.
