@@ -268,23 +268,22 @@ Around the home screen:
   was taller than the screen: opened in landscape it showed as a full-screen gradient with no
   corners or close button, and after a turn it filled the height with its close button cut
   off.)
-- **The lock screen and Nothing's Customisation page stay portrait**, as Nothing made them:
-  neither has a landscape design (the lock screen left its clock in a corner and its
+- **The lock screen and Nothing's Customisation page stay portrait** by default, as Nothing
+  made them: neither has a landscape design (the lock screen left its clock in a corner and its
   notifications in a narrow column, the Customisation page fell back to its foldable layout,
-  tiny on a phone), so turning them was taken out again.
-- **Status bar padding through turns.** SystemUI works the status bar's side padding out
-  (StatusBarContentInsetsProviderImpl) from the display's rotation and its configuration's
-  screen bounds, read separately; while the screen turns they can disagree for a moment, and a
-  padding worked out then is wrong (the clock against the screen's edge). It was cached, and
-  the status bar (PhoneStatusBarView) fetches it again only when the rotation, bounds, cutout,
-  density or font scale it noted change, so it stayed wrong until the next turn; the home
-  screen turning makes that moment far more common. A padding worked out while the two
-  disagree is not cached, a status bar that fetched one fetches again once they agree, and
-  each such moment is logged (`status bar insets: …`). That was not what moved the clock (no
-  such moment was logged when it happened), so while the cause is looked for, every change to
-  the padding or horizontal offset of the status bar and the containers holding its clock is
-  logged with the code that made it, and every new place of the clock on screen with the
-  paddings and offsets around it (`status bar probe: …`).
+  tiny on a phone).
+- **Lock screen rotation (test)**, off by default. When it is on, the lock screen follows
+  auto-rotate: SystemUI's own switch for that, `KeyguardStateController
+  .isKeyguardScreenRotationAllowed()` (also set by the `lockscreen.rot_override` property and
+  `config_enableLockScreenRotation`), answers yes. In landscape SystemUI then uses its own
+  split-shade lock screen (its `values-land` resources turn split shade on), but Nothing's clock
+  and widgets are drawn by Nothing for portrait. So each landscape layout of the lock screen
+  is written to the LSPosed log (`lock screen layout: …`): every view shown, where it is, and
+  which lie off the screen. Nothing in the layout is changed. The log is for fitting Nothing's
+  lock screen to any landscape screen from what really happens, rather than from a guess.
+- **Status bar.** The clock pressed against the screen's edge, investigated in 0.29.8–0.30.0,
+  came from another LSPosed module (OLED burn-in protection shifting the status bar), not from
+  this one; the guard and the diagnostic hooks added for it are removed again.
 - **Hidden navigation bar.** With Nothing's "hide navigation bar" on, the taskbar window
   (which draws the gesture pill on phones) is made 0 px tall when it is created; when the
   home screen turned, the taskbar's `onRotationChanged` sized it again to the pill's height
@@ -452,22 +451,23 @@ up, the controller types on it the way a PlayStation's on-screen keyboard works:
 
 | Button | Keyboard |
 | --- | --- |
-| D-pad / left stick | Move the highlight over the keys; up from the top row into the suggestions and toolbar keys, down back to the keys; rows wrap left and right |
-| Cross (A) | Press the highlighted key (held on backspace or an arrow, it repeats), or pick the highlighted suggestion / toolbar key |
+| D-pad / left stick | Move the highlight over everything HeliBoard shows: keys, suggestions, the toolbar (open or closed) and pinned keys, the emoji pages with their categories and bottom row, the clipboard and its buttons, the one-handed mode buttons, and the panels that open over the keys. Rows wrap left and right; lists and the toolbar scroll as it moves |
+| Cross (A) | Touch what is highlighted, for as long as it is held: a tap types or picks; held, it does what a held finger does (backspace and arrows repeat; a key opens its accents / long-press keys, a suggestion opens more suggestions, an emoji its skin tones, a toolbar key pins). While held with a panel open, the d-pad slides over the panel and letting go picks |
 | Square (X) | Backspace (held, it repeats) |
 | Triangle (Y) | Space |
 | L1 / R1 | Move the text cursor left / right |
 | L2 | Shift (twice quickly: caps lock) |
 | R2 | Done (the keyboard's enter / action key) |
-| Circle (B) | Close the keyboard |
+| Circle (B) | Back: close an open panel, else from emoji / clipboard back to the letters, else close the keyboard |
 
-A key is pressed exactly the way a finger presses it in HeliBoard (press, the key's input,
-release: its `PointerTracker` path), so shift, caps lock, auto-capitals, suggestions, haptics
-and sound behave as with touch; a suggestion or toolbar key is clicked as a tap clicks it.
-Only controller buttons are taken, and only while the letters / symbols keyboard is up: a
-hardware keyboard's arrows stay HeliBoard's, and with the keyboard closed every button goes to
-the app. The hooks use HeliBoard's own names, kept in its release builds (`-dontobfuscate`),
-and were checked against HeliBoard 4.2's release APK.
+Cross is a finger: a touch is given to HeliBoard's window at the highlight (down when Cross
+goes down, up when it comes up), so HeliBoard's own code handles every press, repeat,
+long-press, popup and pick exactly as with touch. The highlight is drawn in that window's
+overlay, above all of HeliBoard's views, and stays on what it is on when the keys change
+(shift, symbols, emoji), or moves to what is now nearest. Only controller buttons are taken,
+and only while the keyboard is up: a hardware keyboard's arrows stay HeliBoard's, and with the
+keyboard closed every button goes to the app. The hooks use HeliBoard's own names, kept in its
+release builds (`-dontobfuscate`), and were checked against HeliBoard 4.2's release APK.
 
 ## Requirements
 

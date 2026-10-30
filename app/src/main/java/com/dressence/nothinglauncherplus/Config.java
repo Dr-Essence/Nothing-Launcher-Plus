@@ -48,6 +48,7 @@ public final class Config {
     public static final String KEY_MUSIC_VOLUME = "music_volume";
     public static final String KEY_ALLOW_ROTATION = "allow_rotation";
     public static final String KEY_CONTROLLER_NAV = "controller_nav";
+    public static final String KEY_LOCK_ROTATION = "lock_rotation";
 
     /** Broadcast sent to the launcher after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
@@ -134,6 +135,8 @@ public final class Config {
     public boolean allowRotation = false;
     /** Game controller buttons (Y, L1/R1, X, Start) and focus animations. */
     public boolean controllerNav = true;
+    /** Test: the lock screen follows auto-rotate too, and its landscape layout is logged. */
+    public boolean lockRotation = false;
 
     private final Map<String, Folder> byComponent = new HashMap<>();
     private final Map<String, Folder> byKey = new HashMap<>();
@@ -278,6 +281,7 @@ public final class Config {
         musicVolume = Math.max(0, Math.min(100, in.number(KEY_MUSIC_VOLUME, 45)));
         allowRotation = in.bool(KEY_ALLOW_ROTATION, false);
         controllerNav = in.bool(KEY_CONTROLLER_NAV, true);
+        lockRotation = in.bool(KEY_LOCK_ROTATION, false);
     }
 
     private void writeSettings(Sink out) {
@@ -299,6 +303,7 @@ public final class Config {
         out.number(KEY_MUSIC_VOLUME, musicVolume);
         out.bool(KEY_ALLOW_ROTATION, allowRotation);
         out.bool(KEY_CONTROLLER_NAV, controllerNav);
+        out.bool(KEY_LOCK_ROTATION, lockRotation);
     }
 
     private void readFolders(JSONArray array) throws JSONException {

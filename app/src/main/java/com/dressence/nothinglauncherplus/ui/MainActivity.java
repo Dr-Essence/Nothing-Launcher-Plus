@@ -147,6 +147,12 @@ public class MainActivity extends Activity {
                     config.allowRotation = checked;
                     store.save(this);
                 });
+        ui.switchRow("Lock screen rotation (test)",
+                "Lock screen follows auto-rotate and logs its landscape layout, for fixing it",
+                config.lockRotation, checked -> {
+                    config.lockRotation = checked;
+                    store.save(this);
+                });
         ui.switchRow("Game controller navigation",
                 "Y app drawer · L1/R1 pages · L2/R2 first/last · X menu · Start options",
                 config.controllerNav, checked -> {
