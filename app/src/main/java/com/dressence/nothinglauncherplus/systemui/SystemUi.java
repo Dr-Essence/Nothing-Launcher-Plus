@@ -21,5 +21,6 @@ public final class SystemUi {
         Hooks.install("green texts", () -> GreenTexts.install(store));
         Hooks.install("quick settings", () -> QuickSettings.install(cl, store));
         Hooks.install("status bar insets", () -> StatusBarInsets.install(cl));
+        Hooks.install("status bar probe", () -> StatusBarProbe.install(cl));
     }
 }

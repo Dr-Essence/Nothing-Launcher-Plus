@@ -278,7 +278,11 @@ Around the home screen:
   density or font scale it noted change, so it stayed wrong until the next turn; the home
   screen turning makes that moment far more common. A padding worked out while the two
   disagree is not cached, a status bar that fetched one fetches again once they agree, and
-  each such moment is logged (`status bar insets: …`).
+  each such moment is logged (`status bar insets: …`). That was not what moved the clock (no
+  such moment was logged when it happened), so while the cause is looked for, every change to
+  the padding or horizontal offset of the status bar and the containers holding its clock is
+  logged with the code that made it, and every new place of the clock on screen with the
+  paddings and offsets around it (`status bar probe: …`).
 - **Hidden navigation bar.** With Nothing's "hide navigation bar" on, the taskbar window
   (which draws the gesture pill on phones) is made 0 px tall when it is created; when the
   home screen turned, the taskbar's `onRotationChanged` sized it again to the pill's height
