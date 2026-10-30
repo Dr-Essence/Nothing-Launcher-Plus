@@ -370,20 +370,14 @@ Around the home screen:
   pulled down, the shade is laid out as SystemUI makes it). The always-on display follows the
   screen's turn like the lock screen (its landscape layout is logged for fitting it). Fingerprint events in landscape are logged
   (`fingerprint: …`: finger down / up, the overlay window's place, what the fingerprint
-  service answers). The full logcat showed why every landscape read failed ("Hold longer"
-  500 ms after finger down): the Goodix fingerprint driver reads only when the panel reports
-  both "UI ready" and its high-brightness mode (HBM) on (portrait `hbm_status=1,ui_status=1`,
-  `FP_UI_READY`; landscape `hbm_status=0`, `FP_UI_DISAPPEAR`). SystemUI asks for no HBM; the
-  display composer switches it on while Nothing's sensor dim layer (`NTFingerprintDimLayer`)
-  reaches it and off when the screen turns. `dumpsys SurfaceFlinger` shows why: in portrait
-  that layer is in the composer's list (full panel, transform 0), in landscape it is not
-  there at all. Nothing makes its sensor layers (dim and light) as portrait buffers drawn as
-  the panel physically is. While the screen is turned, each is marked as drawn for the panel:
-  its buffer transform is the inverse of the display's turn (the same dump shows the display
-  turning an upright landscape buffer by 90° at rotation 90, so the mark is 270° there and
-  90° at 270), so the composer gets it unturned over the whole panel, as in portrait. Put on
-  when the screen turns and after each buffer Nothing draws, taken off when it turns back
-  (`fingerprint dim/light: marked for the panel …`).
+  service answers). Known limit: the fingerprint does not read in landscape yet. The Goodix
+  driver reads only with the panel's high-brightness mode (HBM) on, and MediaTek's display
+  composer (`hwcomposer.mtk_common.so`) switches HBM on for a frame only when SurfaceFlinger
+  hands it a layer whose buffer is named `NTFingerprintDimLayer` (`HWCLayer::setupPrivateHandle`
+  finds the name, `HWCDisplay::validate` sets the display's flag, `HWCDispatcher::setJob` puts
+  it in the frame's job; nothing else is checked). `dumpsys SurfaceFlinger` shows that layer
+  in the composer's list in portrait and not in landscape; why SurfaceFlinger leaves it out in
+  landscape is being looked into. Nothing's sensor layers are left as Nothing makes them.
   A finger on the sensor also pulled the shade down: Nothing's touch handling asks
   `UdfpsUtils.isWithinSensorArea` with the touch as it is on screen against the sensor's
   unturned bounds ("rotate to portrait" off), so in landscape the sensor window never took the
