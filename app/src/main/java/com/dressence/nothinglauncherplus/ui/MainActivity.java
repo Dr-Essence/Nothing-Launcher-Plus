@@ -211,6 +211,12 @@ public class MainActivity extends Activity {
         ui.section("Launcher");
         ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,
                 null, v -> restartLauncher());
+
+        ui.section("Diagnostics");
+        ui.row("Capture debug report", "Waits " + DebugReport.COUNTDOWN_SECONDS + " s to let you"
+                + " set the screen up (lock, turn, hold the fingerprint), then saves screenshots,"
+                + " screen and window dumps, logcat and the LSPosed log to Download · needs root"
+                + " · may hold personal info", null, null, v -> captureReport());
     }
 
     private void addSoundSection(Ui ui, Config config) {
@@ -524,6 +530,16 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, choice.title + " added. Restart the phone once: it is the"
                         + " system font from then on.", Toast.LENGTH_LONG).show();
             });
+        }).start();
+    }
+
+    private void captureReport() {
+        new Thread(() -> {
+            String failure = DebugReport.start(this);
+            runOnUiThread(() -> Toast.makeText(this, failure == null
+                    ? "Capturing in " + DebugReport.COUNTDOWN_SECONDS + " s for about 15 s; a"
+                            + " notification says when the report is in Download"
+                    : "Failed: " + failure, Toast.LENGTH_LONG).show());
         }).start();
     }
 

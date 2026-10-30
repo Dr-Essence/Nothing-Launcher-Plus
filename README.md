@@ -22,7 +22,14 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
   another phone, please open an issue with:
   - your device and Nothing OS version;
   - what works and what doesn't;
-  - an LSPosed log (LSPosed → Logs → save), and a screen recording if something looks wrong.
+  - an LSPosed log (LSPosed → Logs → save), and a screen recording if something looks wrong;
+  - for a screen that looks or turns wrong, a debug report: in the module's app, Diagnostics →
+    **Capture debug report** (root). It waits 15 seconds while you set the screen up (lock
+    the phone, turn it, hold a finger on the sensor), then takes three rounds of screenshots
+    and screen-composer and window dumps, adds logcat and the LSPosed log, and saves one
+    `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. It can hold
+    personal information (screenshots, notifications, logs), so look through it before
+    posting it publicly.
 
 ### Before you install: protect your phone
 
@@ -622,7 +629,7 @@ The module's code is grouped by where it runs:
 | `xposed` | The entry point (`ModuleEntry`, named in `assets/xposed_init`), hook helpers (`Hooks`: installing a feature so its failure is its own, guarding code the apps call back into), the settings as hooked apps read them (`ConfigStore`) and Nothing's NDot font (`NdotFont`). |
 | `launcher` | Everything in Nothing Launcher: the Smart drawer's folders and covers, the folder menu, landscape, controllers, sounds, dot-matrix icons (`DotIcons`, `IconScreen`) and scrolling names. |
 | `systemui` | The status bar and quick settings: `Clock`, `Battery`, `GreenIcons`, `GreenTexts`, `QuickSettings`, `NetworkSpeed`, all in the lit look of `Led`. |
-| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`). |
+| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |

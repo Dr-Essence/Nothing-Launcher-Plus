@@ -3,6 +3,7 @@ package com.dressence.nothinglauncherplus.xposed;
 import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.keyboard.HeliBoardGamepad;
 import com.dressence.nothinglauncherplus.launcher.Launcher;
+import com.dressence.nothinglauncherplus.system.OrientationProbe;
 import com.dressence.nothinglauncherplus.system.SystemFonts;
 import com.dressence.nothinglauncherplus.systemui.SystemUi;
 import com.dressence.nothinglauncherplus.widgets.CardOrientation;
@@ -31,6 +32,7 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
             ConfigStore store = new ConfigStore();
             Hooks.install("system font", () -> SystemFonts.install(cl, store));
             Hooks.install("widget card orientation", () -> CardOrientation.install(cl, store));
+            Hooks.install("orientation probe", () -> OrientationProbe.install(cl));
         } else if (!lpparam.isFirstApplication) {
             return;
         } else if (Config.LAUNCHER_PKG.equals(pkg)) {
