@@ -109,6 +109,8 @@ final class LockScreenTurn {
     private static String lastLayout;
     /** Set by the clock's constraints, used by the widgets' in the same pass (main thread). */
     private static android.content.Context halfContext;
+    /** Whether the half layout was put on Nothing's pieces (to be taken off again). */
+    private static boolean halfApplied;
 
     private LockScreenTurn() {
     }
@@ -198,6 +200,13 @@ final class LockScreenTurn {
                         // clock kept the half's end but got its full width back (logged at
                         // -1008..1180, gone). So the half applies here too.
                         leftHalf(context, param.args[0]);
+                        halfApplied = true;
+                    } else if (halfApplied) {
+                        // Back to centered (no notifications, or portrait): the clock's edges
+                        // back on the screen's, as Nothing has them. SystemUI's clock-only
+                        // pass copies the lock screen's constraints, so the half's end stayed
+                        // and the full-width clock sat half off the screen (-461..1727).
+                        wholeWidth(context, param.args[0]);
                     }
                 } catch (Throwable t) {
                     Hooks.log("lock screen layout: " + t);
@@ -746,6 +755,18 @@ final class LockScreenTurn {
                 + XposedBridge.hookAllMethods(utils, "getTouchInNativeCoordinates", turnTouch)
                         .size();
         Hooks.log("fingerprint touch: " + n + " hooks");
+    }
+
+    /** Nothing's clock across the whole lock screen again, as Nothing lays it out. */
+    private static void wholeWidth(android.content.Context context, Object set) {
+        Resources res = context.getResources();
+        int id = res.getIdentifier("lockscreen_clock_view", "id", context.getPackageName());
+        int[] known = (int[]) XposedHelpers.callMethod(set, "getKnownIds");
+        if (id == 0 || !contains(known, id)) {
+            return;
+        }
+        XposedHelpers.callMethod(set, "connect", id, START, PARENT, START);
+        XposedHelpers.callMethod(set, "connect", id, END, PARENT, END);
     }
 
     /** Whether the screen is turned so the fingerprint sensor is on the left (270 degrees). */
