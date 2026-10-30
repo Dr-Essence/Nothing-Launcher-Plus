@@ -367,13 +367,14 @@ Around the home screen:
   always-on display stays portrait, as Nothing made it: while dozing, the shade window gets
   Nothing's own portrait answer. Fingerprint events in landscape are logged
   (`fingerprint: …`: finger down / up, the overlay window's place, what the fingerprint
-  service answers). That log showed why reads failed in landscape: on MediaTek phones Nothing
-  lights the optical sensor with a white dot drawn on a layer of its own
-  (`NTUdfpsIlluminationController`), sized to the portrait screen and drawn at the sensor's
-  portrait spot; that layer is placed in the screen's current coordinates, so in landscape the
-  dot was off the screen and every landscape read ended in "Hold longer" (acquired 5), while
-  the reads that passed were in portrait. While the screen is turned that layer is moved so the
-  dot lands on the sensor; Nothing draws it as before.
+  service answers). Every landscape read ended in "Hold longer" (acquired 5) with the finger
+  still down, and every read that passed was in portrait. On MediaTek phones Nothing lights
+  the optical sensor with a white dot on a layer of its own (`NTUdfpsIlluminationController`),
+  drawn at the sensor's portrait spot; moving that layer (0.30.7) did not help, so it is left
+  as Nothing draws it. While the screen is turned the sensor is also lit the way Nothing
+  lights it on its other phones: the white dot view (`hbm_view`, in Nothing's layout but
+  unused on MediaTek) inside the sensor overlay window, which sits on the sensor, shown at
+  finger down and hidden at finger up (`fingerprint light: lit in the sensor window`).
   Not from this module: "Remove anything covering this area" is Nothing's accidental-touch
   protection, shown when its proximity sensor (top edge in portrait, a side in landscape) is
   covered, e.g. by a hand holding the phone sideways.

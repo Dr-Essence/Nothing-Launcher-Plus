@@ -642,28 +642,41 @@ final class LockScreenTurn {
     }
 
     /**
-     * The light under the finger for the optical fingerprint sensor. On MediaTek phones Nothing
-     * draws it (NTUdfpsIlluminationController) as a white dot on a layer of its own, sized to
-     * the portrait screen and drawn at the sensor's portrait spot. Windows turn with the
-     * screen; that layer is placed in the screen's current coordinates, so in landscape the
-     * dot was drawn off the screen and the sensor read in the dark: "Hold longer" (acquired 5)
-     * on every landscape try, while both reads that passed were in portrait. While the screen
-     * is turned, the layer is moved so the dot (a circle, the same however it is turned) lands
-     * on the sensor's turned spot; Nothing draws it as before. Back at its place in portrait.
+     * The light under the finger for the optical fingerprint sensor, in landscape. On MediaTek
+     * phones Nothing lights it with a white dot on a layer of its own
+     * (NTUdfpsIlluminationController), drawn at the sensor's portrait spot; every landscape
+     * read ended in "Hold longer" (acquired 5) with the finger still down, and every read that
+     * passed was in portrait. Moving that layer (0.30.7) did not help, so it is left as Nothing
+     * draws it. While the screen is turned the sensor is also lit the way Nothing lights it on
+     * its other phones: the white dot view (hbm_view, in Nothing's layout but left unused on
+     * MediaTek) inside the sensor overlay window, which sits on the sensor (its scanning ring
+     * shows there), shown at finger down and hidden at finger up.
      */
     private static void lightSensor(ClassLoader cl, ConfigStore store) {
-        Class<?> light = XposedHelpers.findClassIfExists(
-                "com.nothing.systemui.biometrics.NTUdfpsIlluminationController", cl);
-        if (light == null) {
-            Hooks.log("fingerprint light: no illumination controller");
+        Class<?> view = XposedHelpers.findClassIfExists(
+                "com.nothing.systemui.biometrics.NTUdfpsView", cl);
+        if (view == null) {
+            Hooks.log("fingerprint light: no NTUdfpsView");
             return;
         }
-        XposedBridge.hookAllMethods(light, "drawIlluminationDot", new XC_MethodHook() {
+        XposedBridge.hookAllMethods(view, "onFingerDown", new XC_MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
+            protected void afterHookedMethod(MethodHookParam param) {
+                if (!store.get().lockRotation) {
+                    return;
+                }
                 try {
-                    placeLight(param.thisObject, (Rect) param.args[0],
-                            store.get().lockRotation);
+                    windowLight((ViewGroup) param.thisObject, true);
+                } catch (Throwable t) {
+                    Hooks.log("fingerprint light: " + t);
+                }
+            }
+        });
+        XposedBridge.hookAllMethods(view, "onFingerUp", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                try {
+                    windowLight((ViewGroup) param.thisObject, false);
                 } catch (Throwable t) {
                     Hooks.log("fingerprint light: " + t);
                 }
@@ -671,44 +684,46 @@ final class LockScreenTurn {
         });
     }
 
-    private static final String LIGHT_MOVED = "nlplus.lightMoved";
+    private static final String LIGHT_SHOWN = "nlplus.lightShown";
 
-    private static void placeLight(Object controller, Rect natural, boolean turnable) {
-        Object surface = XposedHelpers.getObjectField(controller, "mSurfaceControl");
-        android.view.Display display = (android.view.Display)
-                XposedHelpers.getObjectField(controller, "mDisplay");
-        if (!(surface instanceof android.view.SurfaceControl) || display == null
-                || natural == null) {
+    private static void windowLight(ViewGroup udfps, boolean down) {
+        int id = udfps.getResources().getIdentifier("hbm_view", "id",
+                udfps.getContext().getPackageName());
+        View light = id != 0 ? udfps.findViewById(id) : null;
+        if (light == null) {
             return;
         }
-        android.view.SurfaceControl layer = (android.view.SurfaceControl) surface;
-        int rotation = display.getRotation();
-        boolean turned = turnable && (rotation == android.view.Surface.ROTATION_90
-                || rotation == android.view.Surface.ROTATION_270);
-        if (!turned) {
-            if (XposedHelpers.removeAdditionalInstanceField(controller, LIGHT_MOVED) != null) {
-                new android.view.SurfaceControl.Transaction().setPosition(layer, 0, 0).apply();
+        if (!down) {
+            if (XposedHelpers.removeAdditionalInstanceField(light, LIGHT_SHOWN) != null) {
+                light.setVisibility(View.INVISIBLE);
             }
             return;
         }
-        int naturalW = XposedHelpers.getIntField(controller, "mDisplayWidth");
-        int naturalH = XposedHelpers.getIntField(controller, "mDisplayHeight");
-        Rect turnedRect = new Rect(natural);
-        // RotationUtils.rotateBounds, as the sensor overlay turns the sensor's spot.
-        if (rotation == android.view.Surface.ROTATION_90) {
-            turnedRect.set(natural.top, naturalW - natural.right, natural.bottom,
-                    naturalW - natural.left);
-        } else {
-            turnedRect.set(naturalH - natural.bottom, natural.left, naturalH - natural.top,
-                    natural.right);
+        if (!XposedHelpers.getBooleanField(udfps, "mIsMTK")
+                || XposedHelpers.getObjectField(udfps, "mGhbmView") != null
+                || udfps.getDisplay() == null) {
+            return; // Nothing lights it in this window itself already, or not on MediaTek.
         }
-        float dx = turnedRect.left - natural.left;
-        float dy = turnedRect.top - natural.top;
-        new android.view.SurfaceControl.Transaction().setPosition(layer, dx, dy).apply();
-        if (XposedHelpers.setAdditionalInstanceField(controller, LIGHT_MOVED, Boolean.TRUE)
-                == null) {
-            Hooks.log("fingerprint light: moved to " + turnedRect.toShortString()
-                    + " (rotation " + rotation + ")");
+        int rotation = udfps.getDisplay().getRotation();
+        if (rotation != android.view.Surface.ROTATION_90
+                && rotation != android.view.Surface.ROTATION_270) {
+            return;
+        }
+        Rect sensor = (Rect) XposedHelpers.callMethod(
+                XposedHelpers.getObjectField(udfps, "overlayParams"), "getSensorBounds");
+        int size = XposedHelpers.getIntField(udfps, "mScanningViewSize");
+        // As Nothing's updateGhbmLayoutParams: sensor-sized, in the middle of the window.
+        android.widget.FrameLayout.LayoutParams lp =
+                (android.widget.FrameLayout.LayoutParams) light.getLayoutParams();
+        lp.width = sensor.width();
+        lp.height = sensor.height();
+        lp.topMargin = size / 2 - sensor.width() / 2;
+        lp.setMarginStart(size / 2 - sensor.width() / 2);
+        light.setLayoutParams(lp);
+        light.setVisibility(View.VISIBLE);
+        XposedHelpers.callMethod(light, "drawIlluminationDot", sensor);
+        if (XposedHelpers.setAdditionalInstanceField(light, LIGHT_SHOWN, Boolean.TRUE) == null) {
+            Hooks.log("fingerprint light: lit in the sensor window (rotation " + rotation + ")");
         }
     }
 
