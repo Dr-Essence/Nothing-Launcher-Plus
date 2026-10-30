@@ -363,9 +363,12 @@ Around the home screen:
   above the PIN starts at the top of its half instead of 448 px down
   (`nt_message_area_margin_top`), which had pushed the PIN entry below the bouncer; both come
   back as Nothing made them in portrait. Nothing's clock, measured as wide as the screen, gets
-  the left half's width (kept at full width it stuck out past the left edge and vanished). The
-  always-on display stays portrait, as Nothing made it: while dozing, the shade window gets
-  Nothing's own portrait answer. Fingerprint events in landscape are logged
+  the half's width, also in the pass where SystemUI lays out the clock alone (kept at full
+  width it stuck out past the screen's edge and vanished). With the fingerprint sensor on the
+  left (the screen turned 270°), Nothing's clock, date and widgets go to the right half and
+  the lock screen's notifications to the left half (only while the lock screen itself shows;
+  pulled down, the shade is laid out as SystemUI makes it). The always-on display follows the
+  screen's turn like the lock screen (its landscape layout is logged for fitting it). Fingerprint events in landscape are logged
   (`fingerprint: …`: finger down / up, the overlay window's place, what the fingerprint
   service answers). Every landscape read ended in "Hold longer" (acquired 5), and every read
   that passed was in portrait. On MediaTek phones Nothing lights the optical sensor with a

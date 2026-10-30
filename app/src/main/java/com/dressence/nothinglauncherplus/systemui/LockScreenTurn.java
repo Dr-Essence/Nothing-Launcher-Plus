@@ -89,13 +89,14 @@ final class LockScreenTurn {
     private static final int START = 6;
     private static final int END = 7;
     private static final int VERTICAL = 1;
+    private static final int PARENT = 0;
     /** The lock screen's views, by resource name. */
     private static final String[] ROOTS = {"keyguard_root_view", "shared_notification_container",
             "keyguard_message_area_container", "keyguard_bouncer_container", "nt_bouncer_icon_area"};
     private static final int MAX_DEPTH = 9;
     private static final int MAX_LINES = 160;
     /** Layouts logged per System UI run at most, so the log stays readable. */
-    private static final int MAX_DUMPS = 30;
+    private static final int MAX_DUMPS = 60;
 
     /** Inside the bouncer's own code, where the landscape flag is answered yes. */
     private static final ThreadLocal<int[]> BOUNCER = ThreadLocal.withInitial(() -> new int[1]);
@@ -134,7 +135,7 @@ final class LockScreenTurn {
         keepNothingLayout(cl, store);
         turnFingerprint(cl, store);
         landscapeBouncer(cl, store);
-        portraitAod(cl, store);
+        mirrorNotifications(cl, store);
         logFingerprint(cl, store);
         lightSensor(cl, store);
         sensorTouches(cl, store);
@@ -192,6 +193,11 @@ final class LockScreenTurn {
                                     == Configuration.ORIENTATION_LANDSCAPE
                             && split != 0 && res.getBoolean(split)) {
                         halfContext = context;
+                        // SystemUI also lays the clock out on its own (clock changes), cloning
+                        // the lock screen's constraints and applying only the clock's: the
+                        // clock kept the half's end but got its full width back (logged at
+                        // -1008..1180, gone). So the half applies here too.
+                        leftHalf(context, param.args[0]);
                     }
                 } catch (Throwable t) {
                     Hooks.log("lock screen layout: " + t);
@@ -550,41 +556,6 @@ final class LockScreenTurn {
     }
 
     /**
-     * The always-on display stays portrait, as Nothing made it (in landscape its portrait AOD
-     * was drawn sideways in a strip). SystemUI turns the shade window with the device while it
-     * shows the lock screen, the bouncer or the AOD if rotation is allowed; while dozing it
-     * gets Nothing's own answer when rotation is not allowed (5, nosensor), as before.
-     */
-    private static void portraitAod(ClassLoader cl, ConfigStore store) {
-        Class<?> window = XposedHelpers.findClassIfExists(
-                "com.android.systemui.shade.NotificationShadeWindowControllerImpl", cl);
-        if (window == null) {
-            Hooks.log("lock screen aod: no shade window controller");
-            return;
-        }
-        XposedBridge.hookAllMethods(window, "adjustScreenOrientation", new XC_MethodHook() {
-            @Override
-            protected void afterHookedMethod(MethodHookParam param) {
-                if (!store.get().lockRotation || param.args.length != 1) {
-                    return;
-                }
-                try {
-                    Object state = param.args[0];
-                    if (XposedHelpers.getBooleanField(state, "dozing")
-                            && !XposedHelpers.getBooleanField(state, "keyguardGoingAway")) {
-                        Object lp = XposedHelpers.getObjectField(param.thisObject, "mLpChanged");
-                        XposedHelpers.setIntField(lp, "screenOrientation",
-                                android.content.pm.ActivityInfo
-                                        .SCREEN_ORIENTATION_NOSENSOR);
-                    }
-                } catch (Throwable t) {
-                    Hooks.log("lock screen aod: " + t);
-                }
-            }
-        });
-    }
-
-    /**
      * What the fingerprint does in landscape, in the LSPosed log: finger down / up on the
      * sensor overlay, where the overlay window is, and what the fingerprint service answers
      * (acquired, help, failed, error, authenticated). For finding why a read fails.
@@ -611,6 +582,13 @@ final class LockScreenTurn {
             for (String m : new String[] {"onFingerDown", "onFingerUp", "onFingerDownFromTP",
                     "onFingerUpFromTP"}) {
                 XposedBridge.hookAllMethods(controller, m, log);
+            }
+            // "UI ready" to the fingerprint service (the light is up).
+            for (java.lang.reflect.Method m : controller.getDeclaredMethods()) {
+                if (m.getName().equals("lambda$onFingerDown$6")
+                        || m.getName().equals("dispatchOnUiReady")) {
+                    XposedBridge.hookMethod(m, log);
+                }
             }
         }
         Class<?> monitor = XposedHelpers.findClassIfExists(
@@ -763,6 +741,105 @@ final class LockScreenTurn {
         Hooks.log("fingerprint touch: " + n + " hooks");
     }
 
+    /** Whether the screen is turned so the fingerprint sensor is on the left (270 degrees). */
+    private static boolean sensorOnLeft(android.content.Context context) {
+        android.view.WindowManager wm = (android.view.WindowManager) context.getSystemService(
+                android.content.Context.WINDOW_SERVICE);
+        return wm != null && wm.getDefaultDisplay().getRotation()
+                == android.view.Surface.ROTATION_270;
+    }
+
+    /** The StatusBarState of the lock screen itself (not the shade pulled over it). */
+    private static final int STATE_KEYGUARD = 1;
+
+    /**
+     * With the sensor on the left, the lock screen's notifications go to the left half, beside
+     * Nothing's pieces on the right. SystemUI's SharedNotificationContainer puts them from its
+     * middle guideline to the right edge ("MiddleToEdge"); while the lock screen itself shows
+     * (not the shade pulled over it, where quick settings take the left half) they go from the
+     * left edge to that guideline instead, otherwise as SystemUI places them. Laid out again
+     * when that state changes.
+     */
+    private static void mirrorNotifications(ClassLoader cl, ConfigStore store) {
+        Class<?> container = XposedHelpers.findClassIfExists(
+                "com.android.systemui.statusbar.notification.stack.ui.view"
+                        + ".SharedNotificationContainer", cl);
+        Class<?> dependency = XposedHelpers.findClassIfExists("com.android.systemui.Dependency",
+                cl);
+        Class<?> stateClass = XposedHelpers.findClassIfExists(
+                "com.android.systemui.plugins.statusbar.StatusBarStateController", cl);
+        Class<?> listenerClass = XposedHelpers.findClassIfExists(
+                "com.android.systemui.plugins.statusbar.StatusBarStateController$StateListener",
+                cl);
+        if (container == null || dependency == null || stateClass == null
+                || listenerClass == null) {
+            Hooks.log("lock screen notifications: classes not found");
+            return;
+        }
+        Object[] last = new Object[2]; // The container and its last updateConstraints args.
+        boolean[] listening = {false};
+        XposedBridge.hookAllMethods(container, "updateConstraints", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                if (param.args.length != 6) {
+                    return;
+                }
+                last[0] = param.thisObject;
+                last[1] = param.args.clone();
+                if (!store.get().lockRotation) {
+                    return;
+                }
+                try {
+                    Object state = XposedHelpers.callStaticMethod(dependency, "get", stateClass);
+                    if (!listening[0] && state != null) {
+                        listening[0] = true;
+                        XposedHelpers.callMethod(state, "addCallback", java.lang.reflect.Proxy
+                                .newProxyInstance(cl, new Class<?>[] {listenerClass},
+                                        (proxy, method, args) -> {
+                                            if (method.getName().equals("onStateChanged")
+                                                    && last[0] != null) {
+                                                XposedHelpers.callMethod(last[0],
+                                                        "updateConstraints", (Object[]) last[1]);
+                                            }
+                                            return method.getReturnType() == boolean.class
+                                                    ? Boolean.FALSE : null;
+                                        }));
+                    }
+                    View view = (View) param.thisObject;
+                    if (!param.args[0].getClass().getSimpleName().equals("MiddleToEdge")
+                            || !sensorOnLeft(view.getContext()) || state == null
+                            || (Integer) XposedHelpers.callMethod(state, "getState")
+                                    != STATE_KEYGUARD) {
+                        return;
+                    }
+                    Resources res = view.getResources();
+                    String pkg = view.getContext().getPackageName();
+                    int nssl = res.getIdentifier("notification_stack_scroller", "id", pkg);
+                    int guide = res.getIdentifier("nssl_guideline", "id", pkg);
+                    Object base = XposedHelpers.getObjectField(view, "baseConstraintSet");
+                    if (nssl == 0 || guide == 0 || base == null) {
+                        return;
+                    }
+                    Object set = XposedHelpers.newInstance(base.getClass());
+                    XposedHelpers.callMethod(set, "clone", base);
+                    XposedHelpers.callMethod(set, "setAlpha", nssl, (Float) param.args[5]);
+                    XposedHelpers.callMethod(set, "connect", nssl, START, PARENT, START,
+                            (Integer) param.args[1]);
+                    XposedHelpers.callMethod(set, "connect", nssl, END, guide, END,
+                            (Integer) param.args[3]);
+                    XposedHelpers.callMethod(set, "connect", nssl, 4, PARENT, 4,
+                            (Integer) param.args[4]);
+                    XposedHelpers.callMethod(set, "connect", nssl, 3, PARENT, 3,
+                            (Integer) param.args[2]);
+                    XposedHelpers.callMethod(set, "applyTo", view);
+                    param.setResult(null);
+                } catch (Throwable t) {
+                    Hooks.log("lock screen notifications: " + t);
+                }
+            }
+        });
+    }
+
     /** Ends Nothing's clock, date and widgets at the middle of the lock screen. */
     private static void leftHalf(android.content.Context context, Object set) {
         Resources res = context.getResources();
@@ -774,10 +851,19 @@ final class LockScreenTurn {
         int[] known = (int[]) XposedHelpers.callMethod(set, "getKnownIds");
         XposedHelpers.callMethod(set, "create", guide, VERTICAL);
         XposedHelpers.callMethod(set, "setGuidelinePercent", guide, 0.5f);
+        boolean mirrored = sensorOnLeft(context);
         for (String name : LEFT_HALF) {
             int id = res.getIdentifier(name, "id", pkg);
             if (id != 0 && contains(known, id)) {
-                XposedHelpers.callMethod(set, "connect", id, END, guide, START);
+                if (mirrored) {
+                    // The fingerprint sensor is on the left: Nothing's pieces on the right
+                    // half, the notifications on the left (mirrorNotifications).
+                    XposedHelpers.callMethod(set, "connect", id, START, guide, END);
+                    XposedHelpers.callMethod(set, "connect", id, END, PARENT, END);
+                } else {
+                    XposedHelpers.callMethod(set, "connect", id, START, PARENT, START);
+                    XposedHelpers.callMethod(set, "connect", id, END, guide, START);
+                }
                 if (name.equals("lockscreen_clock_view")) {
                     // Nothing measures its clock as wide as the screen; kept that wide it
                     // stuck out past the left edge (logged at -1008..1180): the half's width.
