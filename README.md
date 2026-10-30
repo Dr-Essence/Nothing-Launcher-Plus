@@ -370,16 +370,19 @@ Around the home screen:
   pulled down, the shade is laid out as SystemUI makes it). The always-on display follows the
   screen's turn like the lock screen (its landscape layout is logged for fitting it). Fingerprint events in landscape are logged
   (`fingerprint: …`: finger down / up, the overlay window's place, what the fingerprint
-  service answers). Every landscape read ended in "Hold longer" (acquired 5), and every read
-  that passed was in portrait. On MediaTek phones Nothing lights the optical sensor with a
-  white dot on a top layer of its own (`NTUdfpsIlluminationController`): a buffer the size of
-  the portrait screen with the dot at the sensor's portrait spot, placed in the turned screen's
-  coordinates, where that spot is off the screen. While the screen is turned, that same layer
-  is made the size of the turned screen and the dot drawn at the sensor's turned spot (Nothing
-  still makes and draws it), back to portrait size in portrait (`fingerprint light: layer …`).
-  Nothing's full-screen dim layer for the sensor (`NTUdfpsDimLayerController`, the screen dimmed
-  around the bright dot) is made the same portrait-sized way and covered 1080x1080 of the
-  landscape screen; it is sized the same way (`fingerprint dim: layer …`).
+  service answers). The full logcat showed why every landscape read failed ("Hold longer"
+  500 ms after finger down): the Goodix fingerprint driver reads only when the panel reports
+  both "UI ready" and its high-brightness mode (HBM) on. Portrait: `hbm_status=1,ui_status=1`,
+  `FP_UI_READY`, a read. Landscape: `hbm_status=0,ui_status=1`, `FP_UI_DISAPPEAR`. SystemUI
+  asks for no HBM itself; MediaTek's display composer switches it on when it puts Nothing's
+  sensor layers on the panel (the dim layer and the light, `NTUdfpsDimLayerController` and
+  `NTUdfpsIlluminationController`), portrait buffers drawn as the panel physically is. On a
+  turned screen the composer has to turn them and switched no HBM on (neither at portrait
+  size nor remade at the turned size). While the screen is turned, both layers are kept
+  exactly as Nothing makes and draws them and marked as already turned for the panel (buffer
+  transform set to the layer's transform hint, frame set to the turned screen), so they reach
+  the panel unturned, as in portrait; the mark is put back after each buffer Nothing draws
+  (`fingerprint light/dim: marked turned …`).
   A finger on the sensor also pulled the shade down: Nothing's touch handling asks
   `UdfpsUtils.isWithinSensorArea` with the touch as it is on screen against the sensor's
   unturned bounds ("rotate to portrait" off), so in landscape the sensor window never took the

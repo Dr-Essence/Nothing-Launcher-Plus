@@ -621,116 +621,92 @@ final class LockScreenTurn {
     }
 
     /**
-     * The light under the finger for the optical fingerprint sensor, in landscape. On MediaTek
-     * phones Nothing lights it with a white dot on a top layer of its own
-     * (NTUdfpsIlluminationController), a buffer the size of the portrait screen with the dot at
-     * the sensor's portrait spot. That layer is placed in the turned screen's coordinates, where
-     * the portrait spot is off the screen: no glow in landscape, and every read "Hold longer".
-     * (Moving the layer did not take: its buffer queue sets where the buffer goes. A dot drawn
-     * in the sensor window glowed but did not light the sensor the way Nothing's layer does.)
-     * While the screen is turned, Nothing's own layer is made the size of the turned screen
-     * and the dot drawn at the sensor's turned spot (RotationUtils.rotateBounds, as the sensor
-     * overlay turns it); back to Nothing's portrait size in portrait. Nothing makes and draws
-     * it as before.
+     * The optical fingerprint sensor in landscape. The fingerprint driver (Goodix) reads only
+     * when the panel reports both "UI ready" and its high-brightness mode (HBM) on: in portrait
+     * the logcat shows hbm_status=1, ui_status=1, FP_UI_READY and a read; in landscape
+     * hbm_status=0, ui_status=1, FP_UI_DISAPPEAR, and "Hold longer" 500 ms later, every time.
+     * SystemUI asks for no HBM itself: MediaTek's display composer switches it on when it puts
+     * Nothing's sensor layers on the panel (the dim layer, NTUdfpsDimLayerController, and the
+     * light, NTUdfpsIlluminationController). Those layers are portrait buffers, drawn as the
+     * panel physically is; on a turned screen the composer has to turn them, and it switched no
+     * HBM on (with them at portrait size, or remade at the turned size in 0.30.10-12).
+     * While the screen is turned, each layer is kept exactly as Nothing makes and draws it
+     * (portrait buffer, dot at the sensor's portrait spot, which is where the sensor is on the
+     * panel) and marked as already turned for the panel: its buffer transform set to the
+     * layer's transform hint (what SurfaceFlinger asks buffers to be turned by for this
+     * display) and its frame to the turned screen, so it reaches the panel unturned, as in
+     * portrait. Its buffer queue sets the transform afresh with each buffer Nothing draws, so
+     * the mark is put back just after each draw. Nothing is marked in portrait.
      */
     private static void lightSensor(ClassLoader cl, ConfigStore store) {
-        Class<?> light = XposedHelpers.findClassIfExists(
-                "com.nothing.systemui.biometrics.NTUdfpsIlluminationController", cl);
-        if (light == null) {
-            Hooks.log("fingerprint light: no illumination controller");
-            return;
-        }
-        // Nothing's full-screen dim layer for the sensor (NTUdfpsDimLayerController: the
-        // screen dimmed around the bright dot) is made the same way, portrait-sized; in
-        // landscape it covered 1080x1080 of the 2400x1080 screen. Sized like the light.
-        Class<?> dim = XposedHelpers.findClassIfExists(
-                "com.nothing.systemui.biometrics.NTUdfpsDimLayerController", cl);
-        if (dim != null) {
-            XC_MethodHook sizeDim = new XC_MethodHook() {
+        for (String name : new String[] {
+                "com.nothing.systemui.biometrics.NTUdfpsIlluminationController",
+                "com.nothing.systemui.biometrics.NTUdfpsDimLayerController"}) {
+            Class<?> layer = XposedHelpers.findClassIfExists(name, cl);
+            if (layer == null) {
+                Hooks.log("fingerprint layers: no " + name);
+                continue;
+            }
+            String what = name.endsWith("DimLayerController") ? "dim" : "light";
+            XC_MethodHook mark = new XC_MethodHook() {
                 @Override
-                protected void beforeHookedMethod(MethodHookParam param) {
-                    try {
-                        sizeLayer(param.thisObject, store.get().lockRotation, "dim");
-                    } catch (Throwable t) {
-                        Hooks.log("fingerprint dim: " + t);
+                protected void afterHookedMethod(MethodHookParam param) {
+                    if (!store.get().lockRotation) {
+                        return;
+                    }
+                    Object controller = param.thisObject;
+                    for (long delay : new long[] {16, 64, 160}) {
+                        MAIN.postDelayed(Hooks.guard("fingerprint " + what,
+                                () -> markTurned(controller, what, delay == 160)), delay);
                     }
                 }
             };
-            XposedBridge.hookAllMethods(dim, "show", sizeDim);
-            XposedBridge.hookAllMethods(dim, "preCreate", sizeDim);
+            // Each draw (a new buffer) and each show.
+            XposedBridge.hookAllMethods(layer, "show", mark);
+            XposedBridge.hookAllMethods(layer, "drawIlluminationDot", mark);
+            XposedBridge.hookAllMethods(layer, "updateAlpha", mark);
         }
-        XposedBridge.hookAllMethods(light, "show", new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
-                if (param.args.length != 1 || !(param.args[0] instanceof Rect)) {
-                    return;
-                }
-                try {
-                    Rect turned = sizeLight(param.thisObject, (Rect) param.args[0],
-                            store.get().lockRotation);
-                    if (turned != null) {
-                        param.args[0] = turned;
-                    }
-                } catch (Throwable t) {
-                    Hooks.log("fingerprint light: " + t);
-                }
-            }
-        });
     }
 
-    /**
-     * Nothing's light layer sized for the screen as it is now; the sensor's spot turned with
-     * it, or null when the screen is not turned.
-     */
-    private static Rect sizeLight(Object controller, Rect natural, boolean turnable) {
-        int rotation = sizeLayer(controller, turnable, "light");
-        if (rotation < 0) {
-            return null;
-        }
-        int w = XposedHelpers.getIntField(controller, "mDisplayWidth");
-        int h = XposedHelpers.getIntField(controller, "mDisplayHeight");
-        int naturalW = Math.min(w, h);
-        int naturalH = Math.max(w, h);
-        Rect spot = new Rect();
-        if (rotation == android.view.Surface.ROTATION_90) {
-            spot.set(natural.top, naturalW - natural.right, natural.bottom,
-                    naturalW - natural.left);
-        } else {
-            spot.set(naturalH - natural.bottom, natural.left, naturalH - natural.top,
-                    natural.right);
-        }
-        return spot;
-    }
+    private static final android.os.Handler MAIN =
+            new android.os.Handler(android.os.Looper.getMainLooper());
 
-    /**
-     * One of Nothing's sensor layers (light or dim; fields mDisplay, mDisplayWidth/Height,
-     * mSurfaceControl, onDestroy) sized for the screen as it is now: the turned screen's size
-     * while turned, the portrait size otherwise; made again at that size by Nothing's own
-     * code. The turned rotation, or -1 when not turned.
-     */
-    private static int sizeLayer(Object controller, boolean turnable, String what) {
+    /** Marks one of Nothing's sensor layers as already turned for the panel, if turned. */
+    private static void markTurned(Object controller, String what, boolean log) {
+        Object sc = XposedHelpers.getObjectField(controller, "mSurfaceControl");
         android.view.Display display = (android.view.Display)
                 XposedHelpers.getObjectField(controller, "mDisplay");
-        if (display == null) {
-            return -1;
+        if (!(sc instanceof android.view.SurfaceControl) || display == null
+                || !((android.view.SurfaceControl) sc).isValid()) {
+            return;
         }
         int rotation = display.getRotation();
-        boolean turned = turnable && (rotation == android.view.Surface.ROTATION_90
-                || rotation == android.view.Surface.ROTATION_270);
-        int w = XposedHelpers.getIntField(controller, "mDisplayWidth");
-        int h = XposedHelpers.getIntField(controller, "mDisplayHeight");
-        int wantW = turned ? Math.max(w, h) : Math.min(w, h);
-        int wantH = turned ? Math.min(w, h) : Math.max(w, h);
-        if (w != wantW || h != wantH) {
-            if (XposedHelpers.getObjectField(controller, "mSurfaceControl") != null) {
-                XposedHelpers.callMethod(controller, "onDestroy");
-            }
-            XposedHelpers.setIntField(controller, "mDisplayWidth", wantW);
-            XposedHelpers.setIntField(controller, "mDisplayHeight", wantH);
-            Hooks.log("fingerprint " + what + ": layer " + wantW + "x" + wantH + " (rotation "
-                    + rotation + ")");
+        if (rotation != android.view.Surface.ROTATION_90
+                && rotation != android.view.Surface.ROTATION_270) {
+            return;
         }
-        return turned ? rotation : -1;
+        android.view.SurfaceControl layer = (android.view.SurfaceControl) sc;
+        int hint = 0;
+        try {
+            hint = (Integer) XposedHelpers.callMethod(layer, "getTransformHint");
+        } catch (Throwable ignored) {
+            // Hidden: fall back below.
+        }
+        if (hint == 0) {
+            hint = rotation == android.view.Surface.ROTATION_90
+                    ? android.view.SurfaceControl.BUFFER_TRANSFORM_ROTATE_90
+                    : android.view.SurfaceControl.BUFFER_TRANSFORM_ROTATE_270;
+        }
+        android.graphics.Point size = new android.graphics.Point();
+        display.getRealSize(size); // The turned screen.
+        new android.view.SurfaceControl.Transaction()
+                .setBufferTransform(layer, hint)
+                .setDestinationFrame(layer, new Rect(0, 0, size.x, size.y))
+                .apply();
+        if (log) {
+            Hooks.log("fingerprint " + what + ": marked turned (transform " + hint
+                    + ", frame " + size.x + "x" + size.y + ", rotation " + rotation + ")");
+        }
     }
 
     /**
