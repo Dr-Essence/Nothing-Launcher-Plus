@@ -22,10 +22,16 @@ import de.robv.android.xposed.XposedHelpers;
  * while the lock screen shows only if {@code KeyguardStateController
  * .isKeyguardScreenRotationAllowed()}; that is SystemUI's own switch for it (also set by the
  * lockscreen.rot_override property and config_enableLockScreenRotation), answered yes here.
- * In landscape SystemUI then uses its own split-shade lock screen (values-land), but Nothing's
- * clock and widgets have no landscape design, so each landscape layout is logged: every view
- * shown on the lock screen with where it is, and which lie off the screen or over another.
- * Nothing is changed in the layout.
+ *
+ * <p>In landscape SystemUI's resources (values-land) turn on split shade, and with it the lock
+ * screen would swap Nothing's own layout ("default" blueprint) for AOSP's "split-shade" one.
+ * Nothing added its pieces (date, widgets, depth-effect wallpaper) to its default layout only,
+ * so the swapped one showed just a clock across the top with the notifications over it (seen
+ * in the logged layout). That swap is switched off: Nothing's layout stays. SystemUI still
+ * puts the notifications on the right half in landscape, so while it says the clock is not to
+ * be centered (notifications showing), Nothing's clock, date and widgets end at the middle in
+ * the same layout pass, as AOSP's split layout does with its clock: they center on the left
+ * half. Each landscape layout is still logged (views, where they are, which lie off screen).
  */
 final class LockScreenTurn {
 
@@ -33,6 +39,19 @@ final class LockScreenTurn {
             "com.android.systemui.statusbar.policy.KeyguardStateControllerImpl";
     private static final String CLS_SHADE_WINDOW =
             "com.android.systemui.shade.NotificationShadeWindowView";
+    private static final String CLS_BLUEPRINTS =
+            "com.android.systemui.keyguard.data.repository.KeyguardBlueprintRepository";
+    private static final String CLS_CLOCK_SECTION =
+            "com.android.systemui.keyguard.ui.view.layout.sections.ClockSection";
+    private static final String CLS_WIDGET_SECTION =
+            "com.nothing.systemui.keyguard.ui.view.layout.sections.NTWidgetContainerSection";
+    /** Nothing's lock screen pieces kept to the left half beside the notifications. */
+    private static final String[] LEFT_HALF = {"lockscreen_clock_view", "keyguard_slice_view",
+            "nt_widget_host_view_container"};
+    /** ConstraintSet sides and guideline orientation. */
+    private static final int START = 6;
+    private static final int END = 7;
+    private static final int VERTICAL = 1;
     /** The lock screen's views, by resource name. */
     private static final String[] ROOTS = {"keyguard_root_view", "shared_notification_container"};
     private static final int MAX_DEPTH = 7;
@@ -42,6 +61,8 @@ final class LockScreenTurn {
 
     private static int dumps;
     private static String lastLayout;
+    /** Set by the clock's constraints, used by the widgets' in the same pass (main thread). */
+    private static android.content.Context halfContext;
 
     private LockScreenTurn() {
     }
@@ -65,6 +86,7 @@ final class LockScreenTurn {
                         }
                     }
                 }).size();
+        keepNothingLayout(cl, store);
         Class<?> window = XposedHelpers.findClassIfExists(CLS_SHADE_WINDOW, cl);
         if (window != null) {
             XposedHelpers.findAndHookMethod(window, "onAttachedToWindow", new XC_MethodHook() {
@@ -82,6 +104,92 @@ final class LockScreenTurn {
         }
         Hooks.log("lock screen rotation: " + hooked + " hooks, layout log "
                 + (window != null ? "on" : "off"));
+    }
+
+    private static void keepNothingLayout(ClassLoader cl, ConfigStore store) {
+        Class<?> blueprints = XposedHelpers.findClassIfExists(CLS_BLUEPRINTS, cl);
+        Class<?> clock = XposedHelpers.findClassIfExists(CLS_CLOCK_SECTION, cl);
+        Class<?> widgets = XposedHelpers.findClassIfExists(CLS_WIDGET_SECTION, cl);
+        if (blueprints == null || clock == null || widgets == null) {
+            Hooks.log("lock screen layout: classes not found, layout left to SystemUI");
+            return;
+        }
+        XposedBridge.hookAllMethods(blueprints, "applyBlueprint", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                if ("split-shade".equals(param.args[0]) && store.get().lockRotation) {
+                    param.args[0] = "default";
+                }
+            }
+        });
+        XposedBridge.hookAllMethods(clock, "applyConstraints", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                halfContext = null;
+                try {
+                    android.content.Context context = (android.content.Context)
+                            XposedHelpers.getObjectField(param.thisObject, "context");
+                    Object model = XposedHelpers.getObjectField(param.thisObject,
+                            "keyguardClockViewModel");
+                    Object centered = XposedHelpers.callMethod(XposedHelpers.callMethod(model,
+                            "getClockShouldBeCentered"), "getValue");
+                    Resources res = context.getResources();
+                    int split = res.getIdentifier("config_use_split_notification_shade", "bool",
+                            context.getPackageName());
+                    if (store.get().lockRotation && Boolean.FALSE.equals(centered)
+                            && res.getConfiguration().orientation
+                                    == Configuration.ORIENTATION_LANDSCAPE
+                            && split != 0 && res.getBoolean(split)) {
+                        halfContext = context;
+                    }
+                } catch (Throwable t) {
+                    Hooks.log("lock screen layout: " + t);
+                }
+            }
+        });
+        XposedBridge.hookAllMethods(widgets, "applyConstraints", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                android.content.Context context = halfContext;
+                halfContext = null;
+                if (context == null) {
+                    return;
+                }
+                try {
+                    leftHalf(context, param.args[0]);
+                } catch (Throwable t) {
+                    Hooks.log("lock screen layout: " + t);
+                }
+            }
+        });
+    }
+
+    /** Ends Nothing's clock, date and widgets at the middle of the lock screen. */
+    private static void leftHalf(android.content.Context context, Object set) {
+        Resources res = context.getResources();
+        String pkg = context.getPackageName();
+        int guide = res.getIdentifier("split_shade_guideline", "id", pkg);
+        if (guide == 0) {
+            return;
+        }
+        int[] known = (int[]) XposedHelpers.callMethod(set, "getKnownIds");
+        XposedHelpers.callMethod(set, "create", guide, VERTICAL);
+        XposedHelpers.callMethod(set, "setGuidelinePercent", guide, 0.5f);
+        for (String name : LEFT_HALF) {
+            int id = res.getIdentifier(name, "id", pkg);
+            if (id != 0 && contains(known, id)) {
+                XposedHelpers.callMethod(set, "connect", id, END, guide, START);
+            }
+        }
+    }
+
+    private static boolean contains(int[] ids, int id) {
+        for (int i : ids) {
+            if (i == id) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Logs the lock screen's layout if it shows in landscape and differs from the last one. */

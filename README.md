@@ -275,12 +275,19 @@ Around the home screen:
 - **Lock screen rotation (test)**, off by default. When it is on, the lock screen follows
   auto-rotate: SystemUI's own switch for that, `KeyguardStateController
   .isKeyguardScreenRotationAllowed()` (also set by the `lockscreen.rot_override` property and
-  `config_enableLockScreenRotation`), answers yes. In landscape SystemUI then uses its own
-  split-shade lock screen (its `values-land` resources turn split shade on), but Nothing's clock
-  and widgets are drawn by Nothing for portrait. So each landscape layout of the lock screen
-  is written to the LSPosed log (`lock screen layout: …`): every view shown, where it is, and
-  which lie off the screen. Nothing in the layout is changed. The log is for fitting Nothing's
-  lock screen to any landscape screen from what really happens, rather than from a guess.
+  `config_enableLockScreenRotation`), answers yes. In landscape, SystemUI's resources
+  (`values-land`) turn split shade on, and the lock screen would swap Nothing's own layout
+  (the `default` keyguard blueprint) for AOSP's `split-shade` one. Nothing added its pieces
+  (date, widgets, depth-effect wallpaper) to its default layout only, so the logged landscape
+  layout showed just the clock across the top with the notifications over it. That swap
+  (`KeyguardBlueprintRepository.applyBlueprint`) is switched off, so Nothing's layout stays.
+  SystemUI still puts the notifications on the right half in landscape, so while it says the
+  clock is not to be centered (notifications showing), Nothing's clock, date and widgets end
+  at the middle in the same layout pass (`split_shade_guideline` at 50%, as AOSP's split
+  layout does with its clock) and center on the left half; with no notifications they stay
+  centered across the screen. Each landscape layout is still logged (`lock screen layout: …`).
+  Known: the lock / fingerprint icon is placed at its portrait spot, which is off the screen
+  in landscape.
 - **Status bar.** The clock pressed against the screen's edge, investigated in 0.29.8–0.30.0,
   came from another LSPosed module (OLED burn-in protection shifting the status bar), not from
   this one; the guard and the diagnostic hooks added for it are removed again.
