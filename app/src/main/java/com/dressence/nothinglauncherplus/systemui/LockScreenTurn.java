@@ -134,6 +134,8 @@ final class LockScreenTurn {
         keepNothingLayout(cl, store);
         turnFingerprint(cl, store);
         landscapeBouncer(cl, store);
+        portraitAod(cl, store);
+        logFingerprint(cl, store);
         Class<?> window = XposedHelpers.findClassIfExists(CLS_SHADE_WINDOW, cl);
         if (window != null) {
             XposedHelpers.findAndHookMethod(window, "onAttachedToWindow", new XC_MethodHook() {
@@ -345,6 +347,61 @@ final class LockScreenTurn {
         icon.setLayoutParams(lp);
     }
 
+    /**
+     * Nothing's bouncer lock icon (a lock glyph above the PIN, 348 px from the top for
+     * portrait) sat between the landscape bouncer's two halves, over its message: left out in
+     * landscape, back as Nothing had it when the screen turns back.
+     */
+    private static void landscapeBouncerLock(Object section) {
+        View lock = (View) XposedHelpers.getObjectField(section, "bouncerlockIconContainer");
+        android.view.WindowManager wm = (android.view.WindowManager)
+                XposedHelpers.getObjectField(section, "windowManager");
+        if (lock == null) {
+            return;
+        }
+        int rotation = wm.getDefaultDisplay().getRotation();
+        boolean turned = rotation == android.view.Surface.ROTATION_90
+                || rotation == android.view.Surface.ROTATION_270;
+        String key = "nlplus.hiddenLock";
+        if (turned && lock.getVisibility() == View.VISIBLE) {
+            lock.setVisibility(View.GONE);
+            XposedHelpers.setAdditionalInstanceField(lock, key, Boolean.TRUE);
+        } else if (!turned && XposedHelpers.removeAdditionalInstanceField(lock, key) != null) {
+            lock.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /**
+     * Nothing places the bouncer's message 448 px down (nt_message_area_margin_top), under its
+     * portrait lock icon; in the landscape bouncer that pushed the PIN entry below the
+     * bouncer's bottom (logged 902..1039 against 976). In landscape the message starts at the
+     * top of its half; Nothing's margin comes back in portrait.
+     */
+    private static void messageMargin(View bouncer, boolean landscape) {
+        int id = bouncer.getResources().getIdentifier("bouncer_message_area", "id",
+                bouncer.getContext().getPackageName());
+        View message = id != 0 ? bouncer.findViewById(id) : null;
+        if (message == null
+                || !(message.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)) {
+            return;
+        }
+        ViewGroup.MarginLayoutParams lp = (ViewGroup.MarginLayoutParams) message.getLayoutParams();
+        String key = "nlplus.messageTop";
+        Object nothing = XposedHelpers.getAdditionalInstanceField(message, key);
+        if (landscape) {
+            if (nothing == null) {
+                XposedHelpers.setAdditionalInstanceField(message, key, lp.topMargin);
+            }
+            lp.topMargin = 0;
+        } else if (nothing != null) {
+            lp.topMargin = (Integer) nothing;
+            XposedHelpers.removeAdditionalInstanceField(message, key);
+        } else {
+            return;
+        }
+        message.setLayoutParams(lp);
+    }
+
     private static void landscapeBouncer(ClassLoader cl, ConfigStore store) {
         Class<?> flags = XposedHelpers.findClassIfExists(CLS_FLAGS, cl);
         Class<?> flipper = XposedHelpers.findClassIfExists(CLS_FLIPPER, cl);
@@ -426,11 +483,33 @@ final class LockScreenTurn {
                             }
                             try {
                                 turnBouncerIcon(param.thisObject);
+                                landscapeBouncerLock(param.thisObject);
                             } catch (Throwable t) {
                                 Hooks.log("lock screen bouncer: " + t);
                             }
                         }
                     });
+        }
+        for (String view : new String[] {"com.android.keyguard.KeyguardPINView",
+                "com.android.keyguard.KeyguardPatternView",
+                "com.android.keyguard.KeyguardPasswordView"}) {
+            Class<?> c = XposedHelpers.findClassIfExists(view, cl);
+            if (c != null) {
+                XposedBridge.hookAllMethods(c, "updateConstraints", new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        if (!store.get().lockRotation || param.args.length != 1) {
+                            return;
+                        }
+                        try {
+                            messageMargin((View) param.thisObject,
+                                    Boolean.TRUE.equals(param.args[0]));
+                        } catch (Throwable t) {
+                            Hooks.log("lock screen bouncer: " + t);
+                        }
+                    }
+                });
+            }
         }
         Hooks.log("lock screen bouncer: flag answered in " + answered + ", bouncer code "
                 + scoped);
@@ -461,6 +540,99 @@ final class LockScreenTurn {
         return new int[] {insets.left, 0};
     }
 
+    /**
+     * The always-on display stays portrait, as Nothing made it (in landscape its portrait AOD
+     * was drawn sideways in a strip). SystemUI turns the shade window with the device while it
+     * shows the lock screen, the bouncer or the AOD if rotation is allowed; while dozing it
+     * gets Nothing's own answer when rotation is not allowed (5, nosensor), as before.
+     */
+    private static void portraitAod(ClassLoader cl, ConfigStore store) {
+        Class<?> window = XposedHelpers.findClassIfExists(
+                "com.android.systemui.shade.NotificationShadeWindowControllerImpl", cl);
+        if (window == null) {
+            Hooks.log("lock screen aod: no shade window controller");
+            return;
+        }
+        XposedBridge.hookAllMethods(window, "adjustScreenOrientation", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                if (!store.get().lockRotation || param.args.length != 1) {
+                    return;
+                }
+                try {
+                    Object state = param.args[0];
+                    if (XposedHelpers.getBooleanField(state, "dozing")
+                            && !XposedHelpers.getBooleanField(state, "keyguardGoingAway")) {
+                        Object lp = XposedHelpers.getObjectField(param.thisObject, "mLpChanged");
+                        XposedHelpers.setIntField(lp, "screenOrientation",
+                                android.content.pm.ActivityInfo
+                                        .SCREEN_ORIENTATION_NOSENSOR);
+                    }
+                } catch (Throwable t) {
+                    Hooks.log("lock screen aod: " + t);
+                }
+            }
+        });
+    }
+
+    /**
+     * What the fingerprint does in landscape, in the LSPosed log: finger down / up on the
+     * sensor overlay, where the overlay window is, and what the fingerprint service answers
+     * (acquired, help, failed, error, authenticated). For finding why a read fails.
+     */
+    private static void logFingerprint(ClassLoader cl, ConfigStore store) {
+        XC_MethodHook log = new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                if (!store.get().lockRotation) {
+                    return;
+                }
+                StringBuilder args = new StringBuilder();
+                for (Object a : param.args) {
+                    if (!(a instanceof View)) {
+                        args.append(args.length() == 0 ? "" : ", ").append(a);
+                    }
+                }
+                Hooks.log("fingerprint: " + param.method.getName() + "(" + args + ")");
+            }
+        };
+        Class<?> controller = XposedHelpers.findClassIfExists(
+                "com.android.systemui.biometrics.UdfpsController", cl);
+        if (controller != null) {
+            for (String m : new String[] {"onFingerDown", "onFingerUp", "onFingerDownFromTP",
+                    "onFingerUpFromTP"}) {
+                XposedBridge.hookAllMethods(controller, m, log);
+            }
+        }
+        Class<?> monitor = XposedHelpers.findClassIfExists(
+                "com.android.keyguard.KeyguardUpdateMonitor", cl);
+        if (monitor != null) {
+            for (String m : new String[] {"handleFingerprintAcquired", "handleFingerprintHelp",
+                    "handleFingerprintAuthFailed", "handleFingerprintError",
+                    "handleFingerprintAuthenticated"}) {
+                XposedBridge.hookAllMethods(monitor, m, log);
+            }
+        }
+        Class<?> overlay = XposedHelpers.findClassIfExists(CLS_UDFPS_OVERLAY, cl);
+        if (overlay != null) {
+            XposedBridge.hookAllMethods(overlay, "updateDimensions", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    Object lp = param.getResult();
+                    if (!store.get().lockRotation || !(lp instanceof
+                            android.view.WindowManager.LayoutParams)) {
+                        return;
+                    }
+                    android.view.WindowManager.LayoutParams w =
+                            (android.view.WindowManager.LayoutParams) lp;
+                    Hooks.log("fingerprint: overlay window at " + w.x + "," + w.y + " size "
+                            + w.width + "x" + w.height + ", sensor " + XposedHelpers
+                            .getObjectField(param.thisObject, "sensorBounds"));
+                }
+            });
+        }
+    }
+
     /** Ends Nothing's clock, date and widgets at the middle of the lock screen. */
     private static void leftHalf(android.content.Context context, Object set) {
         Resources res = context.getResources();
@@ -476,6 +648,11 @@ final class LockScreenTurn {
             int id = res.getIdentifier(name, "id", pkg);
             if (id != 0 && contains(known, id)) {
                 XposedHelpers.callMethod(set, "connect", id, END, guide, START);
+                if (name.equals("lockscreen_clock_view")) {
+                    // Nothing measures its clock as wide as the screen; kept that wide it
+                    // stuck out past the left edge (logged at -1008..1180): the half's width.
+                    XposedHelpers.callMethod(set, "constrainWidth", id, 0);
+                }
             }
         }
     }

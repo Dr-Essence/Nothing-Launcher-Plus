@@ -6,6 +6,48 @@ Nothing Launcher's **Smart (Beta)** drawer layout sorts apps into folders by cat
 "Tools", …). The categories come from Nothing's server, and you can't change them. This module
 adds your own folders next to them. Apps you put in a custom folder leave their automatic one.
 
+> **Heavily experimental alpha.** Expect bugs, and expect things to change from build to build.
+
+## Who this is for
+
+- **Nothing and CMF phones only.** The module hooks Nothing's own apps (Nothing Launcher,
+  Nothing's System UI, Nothing Widgets, NothingCardService). It does nothing useful on other
+  phones and is not meant for them.
+- **Tested on one phone so far:** a CMF Phone 1 on Nothing OS 4.1 (Android 16). Other Nothing
+  devices and Nothing OS versions are untested.
+- **Why it exists:** it started as a project for my own CMF Phone 1, which I don't use as my main
+  phone but as an Android "iPod" (an *Andropod*): music, games with a controller, the home
+  screen in landscape. Much of what it does comes from that.
+- **Feedback from other Nothing devices is very welcome, and a huge help.** If you try it on
+  another phone, please open an issue with:
+  - your device and Nothing OS version;
+  - what works and what doesn't;
+  - an LSPosed log (LSPosed → Logs → save), and a screen recording if something looks wrong.
+
+### Before you install: protect your phone
+
+- **Don't use it on a phone you depend on.** It is alpha software that hooks System UI and the
+  system framework; a phone you can afford to have misbehave for a while is the right place for it.
+- **Have a way out before you need one.** Know how to start your phone with all modules
+  disabled (Magisk and KernelSU have a safe mode started by pressing volume down during boot;
+  check your root manager's documentation), and how to turn the module off in LSPosed.
+  If System UI keeps crashing, Android may offer a factory reset ("Rescue Party"); don't accept
+  it, boot into your root manager's safe mode instead.
+- **Back up first.** Use the module's **Export** to save your folders and options. Keep a
+  backup of your own data as well, as you would before any system modification.
+- **Scope only what you use.** In LSPosed, tick only the apps for the features you want (see
+  *Install*). System UI and System framework hooks only load after restarting System UI or
+  rebooting.
+- **Turn on one feature at a time**, and use it for a while before the next, so you know what
+  caused a problem if one appears.
+- **Leave the test switches off** unless you are testing them: *Lock screen rotation (test)*
+  changes the lock screen, PIN screen, fingerprint overlay and always-on display.
+- **Keep the module on internal storage** (it moves itself there; see *Install*).
+- **Turning a feature off, or uninstalling the module, puts Nothing's behaviour back.** If
+  something stays wrong after that, restart System UI or reboot. Check other LSPosed modules
+  too: a burn-in protection module once moved the status bar in a way that looked like this
+  module's doing.
+
 ## Features
 
 Everything new is opt-in: with the defaults the drawer looks exactly like stock Smart (Beta)
@@ -309,7 +351,16 @@ Around the home screen:
   on, the bouncer uses that layout in portrait too. Should that code ever fail, the error is
   kept from System UI and the bouncer goes back to Nothing's layouts. The bouncer's
   fingerprint icon is placed over the sensor as on the lock screen. Restart System UI after
-  turning the switch on, so the bouncer is built again.
+  turning the switch on, so the bouncer is built again. In the landscape bouncer, Nothing's
+  bouncer lock glyph (placed 348 px from the top, for portrait) is left out, and the message
+  above the PIN starts at the top of its half instead of 448 px down
+  (`nt_message_area_margin_top`), which had pushed the PIN entry below the bouncer; both come
+  back as Nothing made them in portrait. Nothing's clock, measured as wide as the screen, gets
+  the left half's width (kept at full width it stuck out past the left edge and vanished). The
+  always-on display stays portrait, as Nothing made it: while dozing, the shade window gets
+  Nothing's own portrait answer. Fingerprint events in landscape are logged
+  (`fingerprint: …`: finger down / up, the overlay window's place, what the fingerprint
+  service answers).
   Not from this module: "Remove anything covering this area" is Nothing's accidental-touch
   protection, shown when its proximity sensor (top edge in portrait, a side in landscape) is
   covered, e.g. by a hand holding the phone sideways.
@@ -511,9 +562,12 @@ release builds (`-dontobfuscate`), and were checked against HeliBoard 4.2's rele
 
 1. Build the APK (`./gradlew assembleRelease`) or download it from the *Build module* GitHub
    Actions run.
-2. Install it, enable it in LSPosed and select **Nothing Launcher** as the scope (plus
-   **Nothing Widgets** and **NothingCardService** for widget cards in landscape, **HeliBoard**
-   for typing with a controller).
+2. Install it, enable it in LSPosed and select **Nothing Launcher** as the scope, plus only
+   what you use:
+   - **System UI**: the lit status bar, quick settings and *Lock screen rotation (test)*;
+   - **System Framework** (`android`, needs a reboot): system font and widget cards in landscape;
+   - **Nothing Widgets** and **NothingCardService**: widget cards in landscape;
+   - **HeliBoard**: typing with a controller.
    The module installs on internal storage only: LSPosed reads it at boot, before a memory
    card used as internal storage (adopted storage, `/mnt/expand/…`) is mounted, and a module
    there was not loaded after a reboot ("Failed to open APK … No such file"), and Android,
