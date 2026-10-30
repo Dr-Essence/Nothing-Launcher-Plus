@@ -377,6 +377,9 @@ Around the home screen:
   coordinates, where that spot is off the screen. While the screen is turned, that same layer
   is made the size of the turned screen and the dot drawn at the sensor's turned spot (Nothing
   still makes and draws it), back to portrait size in portrait (`fingerprint light: layer …`).
+  Nothing's full-screen dim layer for the sensor (`NTUdfpsDimLayerController`, the screen dimmed
+  around the bright dot) is made the same portrait-sized way and covered 1080x1080 of the
+  landscape screen; it is sized the same way (`fingerprint dim: layer …`).
   A finger on the sensor also pulled the shade down: Nothing's touch handling asks
   `UdfpsUtils.isWithinSensorArea` with the touch as it is on screen against the sensor's
   unturned bounds ("rotate to portrait" off), so in landscape the sensor window never took the

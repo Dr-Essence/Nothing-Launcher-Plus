@@ -640,6 +640,25 @@ final class LockScreenTurn {
             Hooks.log("fingerprint light: no illumination controller");
             return;
         }
+        // Nothing's full-screen dim layer for the sensor (NTUdfpsDimLayerController: the
+        // screen dimmed around the bright dot) is made the same way, portrait-sized; in
+        // landscape it covered 1080x1080 of the 2400x1080 screen. Sized like the light.
+        Class<?> dim = XposedHelpers.findClassIfExists(
+                "com.nothing.systemui.biometrics.NTUdfpsDimLayerController", cl);
+        if (dim != null) {
+            XC_MethodHook sizeDim = new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    try {
+                        sizeLayer(param.thisObject, store.get().lockRotation, "dim");
+                    } catch (Throwable t) {
+                        Hooks.log("fingerprint dim: " + t);
+                    }
+                }
+            };
+            XposedBridge.hookAllMethods(dim, "show", sizeDim);
+            XposedBridge.hookAllMethods(dim, "preCreate", sizeDim);
+        }
         XposedBridge.hookAllMethods(light, "show", new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
@@ -664,33 +683,14 @@ final class LockScreenTurn {
      * it, or null when the screen is not turned.
      */
     private static Rect sizeLight(Object controller, Rect natural, boolean turnable) {
-        android.view.Display display = (android.view.Display)
-                XposedHelpers.getObjectField(controller, "mDisplay");
-        if (display == null) {
+        int rotation = sizeLayer(controller, turnable, "light");
+        if (rotation < 0) {
             return null;
         }
-        int rotation = display.getRotation();
-        boolean turned = turnable && (rotation == android.view.Surface.ROTATION_90
-                || rotation == android.view.Surface.ROTATION_270);
         int w = XposedHelpers.getIntField(controller, "mDisplayWidth");
         int h = XposedHelpers.getIntField(controller, "mDisplayHeight");
         int naturalW = Math.min(w, h);
         int naturalH = Math.max(w, h);
-        int wantW = turned ? naturalH : naturalW;
-        int wantH = turned ? naturalW : naturalH;
-        if (w != wantW || h != wantH) {
-            // Made again at that size by Nothing's own show (createSurface).
-            if (XposedHelpers.getObjectField(controller, "mSurfaceControl") != null) {
-                XposedHelpers.callMethod(controller, "onDestroy");
-            }
-            XposedHelpers.setIntField(controller, "mDisplayWidth", wantW);
-            XposedHelpers.setIntField(controller, "mDisplayHeight", wantH);
-            Hooks.log("fingerprint light: layer " + wantW + "x" + wantH + " (rotation "
-                    + rotation + ")");
-        }
-        if (!turned) {
-            return null;
-        }
         Rect spot = new Rect();
         if (rotation == android.view.Surface.ROTATION_90) {
             spot.set(natural.top, naturalW - natural.right, natural.bottom,
@@ -700,6 +700,37 @@ final class LockScreenTurn {
                     natural.right);
         }
         return spot;
+    }
+
+    /**
+     * One of Nothing's sensor layers (light or dim; fields mDisplay, mDisplayWidth/Height,
+     * mSurfaceControl, onDestroy) sized for the screen as it is now: the turned screen's size
+     * while turned, the portrait size otherwise; made again at that size by Nothing's own
+     * code. The turned rotation, or -1 when not turned.
+     */
+    private static int sizeLayer(Object controller, boolean turnable, String what) {
+        android.view.Display display = (android.view.Display)
+                XposedHelpers.getObjectField(controller, "mDisplay");
+        if (display == null) {
+            return -1;
+        }
+        int rotation = display.getRotation();
+        boolean turned = turnable && (rotation == android.view.Surface.ROTATION_90
+                || rotation == android.view.Surface.ROTATION_270);
+        int w = XposedHelpers.getIntField(controller, "mDisplayWidth");
+        int h = XposedHelpers.getIntField(controller, "mDisplayHeight");
+        int wantW = turned ? Math.max(w, h) : Math.min(w, h);
+        int wantH = turned ? Math.min(w, h) : Math.max(w, h);
+        if (w != wantW || h != wantH) {
+            if (XposedHelpers.getObjectField(controller, "mSurfaceControl") != null) {
+                XposedHelpers.callMethod(controller, "onDestroy");
+            }
+            XposedHelpers.setIntField(controller, "mDisplayWidth", wantW);
+            XposedHelpers.setIntField(controller, "mDisplayHeight", wantH);
+            Hooks.log("fingerprint " + what + ": layer " + wantW + "x" + wantH + " (rotation "
+                    + rotation + ")");
+        }
+        return turned ? rotation : -1;
     }
 
     /**
