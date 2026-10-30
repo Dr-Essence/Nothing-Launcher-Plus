@@ -708,10 +708,11 @@ final class LockScreenTurn {
         }
         android.graphics.Point size = new android.graphics.Point();
         display.getRealSize(size); // The turned screen.
-        new android.view.SurfaceControl.Transaction()
-                .setBufferTransform(layer, hint)
-                .setDestinationFrame(layer, new Rect(0, 0, size.x, size.y))
-                .apply();
+        android.view.SurfaceControl.Transaction t = new android.view.SurfaceControl.Transaction()
+                .setBufferTransform(layer, hint);
+        // Hidden in the SDK (public in the framework): called by name.
+        XposedHelpers.callMethod(t, "setDestinationFrame", layer, new Rect(0, 0, size.x, size.y));
+        t.apply();
         if (log) {
             Hooks.log("fingerprint " + what + ": marked turned (transform " + hint
                     + ", frame " + size.x + "x" + size.y + ", rotation " + rotation + ")");
