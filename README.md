@@ -34,7 +34,9 @@ plus your folders.
   rearranged into a wide grid automatically, while your portrait layout stays as it is — see
   *Landscape* below.
 - **Game controllers**: navigate home and the drawer with a DualSense, DualShock, Xbox, GameSir,
-  Backbone or any standard gamepad — see *Controllers* below.
+  Backbone or any standard gamepad, and type with the controller like on a PlayStation in
+  **[HeliBoard](https://github.com/Helium314/HeliBoard)**, the recommended keyboard for the best
+  experience — see *Controllers* below.
 - **Export / Import** saves folders, options and cover images to one file, so the setup survives
   a reinstall.
 - Changes apply right away through a reload broadcast. You don't need to restart the launcher.
@@ -442,6 +444,31 @@ Launcher3 moves its keyboard focus with them. The module adds:
 The focused icon or folder lifts on a spring (scale + elevation) and settles back the moment
 the screen is touched.
 
+### Typing with a controller (HeliBoard)
+
+For the best experience use **[HeliBoard](https://github.com/Helium314/HeliBoard)**
+(`helium314.keyboard`, open source; tick it in the module's LSPosed scope). With the keyboard
+up, the controller types on it the way a PlayStation's on-screen keyboard works:
+
+| Button | Keyboard |
+| --- | --- |
+| D-pad / left stick | Move the highlight over the keys; up from the top row into the suggestions and toolbar keys, down back to the keys; rows wrap left and right |
+| Cross (A) | Press the highlighted key (held on backspace or an arrow, it repeats), or pick the highlighted suggestion / toolbar key |
+| Square (X) | Backspace (held, it repeats) |
+| Triangle (Y) | Space |
+| L1 / R1 | Move the text cursor left / right |
+| L2 | Shift (twice quickly: caps lock) |
+| R2 | Done (the keyboard's enter / action key) |
+| Circle (B) | Close the keyboard |
+
+A key is pressed exactly the way a finger presses it in HeliBoard (press, the key's input,
+release: its `PointerTracker` path), so shift, caps lock, auto-capitals, suggestions, haptics
+and sound behave as with touch; a suggestion or toolbar key is clicked as a tap clicks it.
+Only controller buttons are taken, and only while the letters / symbols keyboard is up: a
+hardware keyboard's arrows stay HeliBoard's, and with the keyboard closed every button goes to
+the app. The hooks use HeliBoard's own names, kept in its release builds (`-dontobfuscate`),
+and were checked against HeliBoard 4.2's release APK.
+
 ## Requirements
 
 - Nothing Launcher **4.0.20**. Later versions will probably work too, because the hooks avoid
@@ -453,7 +480,8 @@ the screen is touched.
 1. Build the APK (`./gradlew assembleRelease`) or download it from the *Build module* GitHub
    Actions run.
 2. Install it, enable it in LSPosed and select **Nothing Launcher** as the scope (plus
-   **Nothing Widgets** and **NothingCardService** for widget cards in landscape).
+   **Nothing Widgets** and **NothingCardService** for widget cards in landscape, **HeliBoard**
+   for typing with a controller).
    The module installs on internal storage only: LSPosed reads it at boot, before a memory
    card used as internal storage (adopted storage, `/mnt/expand/…`) is mounted, and a module
    there was not loaded after a reboot ("Failed to open APK … No such file"), and Android,
@@ -488,6 +516,7 @@ The module's code is grouped by where it runs:
 | `systemui` | The status bar and quick settings: `Clock`, `Battery`, `GreenIcons`, `GreenTexts`, `QuickSettings`, `NetworkSpeed`, all in the lit look of `Led`. |
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`). |
 | `widgets` | Nothing's widget apps in landscape. |
+| `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
 | `ui` | The module's settings app. |
 

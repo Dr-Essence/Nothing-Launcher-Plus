@@ -6,5 +6,6 @@
         <item>android</item>
         <item>com.nothing.hearthstone</item>
         <item>com.nothing.cardservice</item>
+        <item>helium314.keyboard</item>
     </string-array>
 </resources>

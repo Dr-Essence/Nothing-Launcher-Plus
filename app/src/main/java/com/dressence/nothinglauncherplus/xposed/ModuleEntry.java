@@ -1,6 +1,7 @@
 package com.dressence.nothinglauncherplus.xposed;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.keyboard.HeliBoardGamepad;
 import com.dressence.nothinglauncherplus.launcher.Launcher;
 import com.dressence.nothinglauncherplus.system.SystemFonts;
 import com.dressence.nothinglauncherplus.systemui.SystemUi;
@@ -36,6 +37,8 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
             Launcher.install(cl, new ConfigStore());
         } else if (Config.SYSTEMUI_PKG.equals(pkg)) {
             SystemUi.install(cl, new ConfigStore());
+        } else if (HeliBoardGamepad.PKG.equals(pkg)) {
+            Hooks.install("heliboard gamepad", () -> HeliBoardGamepad.install(cl));
         } else if (WidgetApps.handles(pkg)) {
             Hooks.install("widget apps", () -> WidgetApps.install(new ConfigStore()));
         }
