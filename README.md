@@ -310,6 +310,13 @@ Around the home screen:
   was taller than the screen: opened in landscape it showed as a full-screen gradient with no
   corners or close button, and after a turn it filled the height with its close button cut
   off.)
+- **Nothing's system screens built for any orientation follow auto-rotate** (with Home
+  screen rotation on), where Nothing declares them portrait-only: so far SystemUI's quick
+  settings widget picker (`QSWidgetActivity`, a scrolling list). Each portrait-only screen of
+  a system app you open is written to the LSPosed log once (`portrait-only screen: …`), so
+  others (Settings pages and the like) can be checked in Nothing's code and added. Screens
+  that are only a notice (the overheating warning, the AI screenshot tip) stay as they are.
+  System framework scope and a reboot are needed for this.
 - **The lock screen and Nothing's Customisation page stay portrait** by default, as Nothing
   made them: neither has a landscape design (the lock screen left its clock in a corner and its
   notifications in a narrow column, the Customisation page fell back to its foldable layout,

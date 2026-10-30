@@ -16,6 +16,13 @@ import de.robv.android.xposed.XposedHelpers;
  * on its side. Here, in system_server, the portrait lock is taken off as the card's activity
  * record is made, on that activity's own copy of its info and nothing else. The card also
  * handles turning itself, so a rotation does not restart it.
+ *
+ * <p>The same goes for Nothing's system screens that Nothing declares portrait-only although
+ * they are built to work in any orientation (listed below, each checked in Nothing's own
+ * code): they follow auto-rotate like other apps' screens, and turning restarts them in
+ * landscape the ordinary way. Every other portrait-only screen opened while Home screen
+ * rotation is on is written to the LSPosed log once ("portrait-only screen: …"), so further
+ * ones can be checked and added from what is really opened (system apps only).
  */
 public final class CardOrientation {
 
@@ -23,6 +30,18 @@ public final class CardOrientation {
     private static final int ROTATION_CHANGES = ActivityInfo.CONFIG_ORIENTATION
             | ActivityInfo.CONFIG_SCREEN_SIZE | ActivityInfo.CONFIG_SMALLEST_SCREEN_SIZE
             | ActivityInfo.CONFIG_SCREEN_LAYOUT;
+
+    /**
+     * Nothing's portrait-locked screens that work in landscape, as package/activity:
+     * SystemUI's quick settings widget picker (QSWidgetActivity: a scrolling list of system
+     * and app widgets under a collapsing toolbar).
+     */
+    private static final java.util.Set<String> SYSTEM_SCREENS = new java.util.HashSet<>(
+            java.util.Arrays.asList(
+                    "com.android.systemui/com.nothing.systemui.qs.widget.QSWidgetActivity"));
+    /** Portrait-only screens already logged. */
+    private static final java.util.Set<String> LOGGED =
+            java.util.Collections.synchronizedSet(new java.util.HashSet<>());
 
     private CardOrientation() {
     }
@@ -47,7 +66,20 @@ public final class CardOrientation {
         if (!isPortraitLock(info.screenOrientation)) {
             return;
         }
+        String screen = info.packageName + "/" + info.name;
         if (!WidgetApps.handles(info.packageName)) {
+            store.reloadIfChanged();
+            if (!store.get().allowRotation) {
+                return;
+            }
+            if (SYSTEM_SCREENS.contains(screen)) {
+                info.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+            } else if (info.applicationInfo != null && (info.applicationInfo.flags
+                    & android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                    && LOGGED.add(screen)) {
+                // System apps only: other apps' screens are theirs to lock.
+                Hooks.log("portrait-only screen: " + screen);
+            }
             return;
         }
         store.reloadIfChanged();
