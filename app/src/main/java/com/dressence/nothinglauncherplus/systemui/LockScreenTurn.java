@@ -32,6 +32,15 @@ import de.robv.android.xposed.XposedHelpers;
  * be centered (notifications showing), Nothing's clock, date and widgets end at the middle in
  * the same layout pass, as AOSP's split layout does with its clock: they center on the left
  * half. Each landscape layout is still logged (views, where they are, which lie off screen).
+ *
+ * <p>The fingerprint sensor (under the screen) is where it is whichever way the screen turns.
+ * SystemUI's sensor overlay (UdfpsControllerOverlay, which lights the sensor and reads the
+ * finger) turns the sensor's spot with the screen ({@code RotationUtils.rotateBounds}) except
+ * on the lock screen ({@code shouldRotate()}), which AOSP assumes never turns; so in landscape
+ * it sat at the portrait spot, off the screen. That one exception is lifted while the lock
+ * screen turns (not while going to sleep, as before). The lock icon over the sensor
+ * (DefaultDeviceEntrySection) is placed from the sensor's unturned spot; it is given the spot
+ * turned the same way, in the lock screen's own coordinates.
  */
 final class LockScreenTurn {
 
@@ -43,6 +52,10 @@ final class LockScreenTurn {
             "com.android.systemui.keyguard.data.repository.KeyguardBlueprintRepository";
     private static final String CLS_CLOCK_SECTION =
             "com.android.systemui.keyguard.ui.view.layout.sections.ClockSection";
+    private static final String CLS_UDFPS_OVERLAY =
+            "com.android.systemui.biometrics.UdfpsControllerOverlay";
+    private static final String CLS_ENTRY_SECTION =
+            "com.android.systemui.keyguard.ui.view.layout.sections.DefaultDeviceEntrySection";
     private static final String CLS_WIDGET_SECTION =
             "com.nothing.systemui.keyguard.ui.view.layout.sections.NTWidgetContainerSection";
     /** Nothing's lock screen pieces kept to the left half beside the notifications. */
@@ -87,6 +100,7 @@ final class LockScreenTurn {
                     }
                 }).size();
         keepNothingLayout(cl, store);
+        turnFingerprint(cl, store);
         Class<?> window = XposedHelpers.findClassIfExists(CLS_SHADE_WINDOW, cl);
         if (window != null) {
             XposedHelpers.findAndHookMethod(window, "onAttachedToWindow", new XC_MethodHook() {
@@ -162,6 +176,116 @@ final class LockScreenTurn {
                 }
             }
         });
+    }
+
+    private static void turnFingerprint(ClassLoader cl, ConfigStore store) {
+        Class<?> overlay = XposedHelpers.findClassIfExists(CLS_UDFPS_OVERLAY, cl);
+        if (overlay != null) {
+            XposedBridge.hookAllMethods(overlay, "shouldRotate", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    if (Boolean.TRUE.equals(param.getResult()) || !store.get().lockRotation) {
+                        return;
+                    }
+                    try {
+                        Object monitor = XposedHelpers.getObjectField(param.thisObject,
+                                "keyguardUpdateMonitor");
+                        if (!(Boolean) XposedHelpers.callMethod(monitor, "isGoingToSleep")) {
+                            param.setResult(true);
+                        }
+                    } catch (Throwable t) {
+                        Hooks.log("lock screen fingerprint: " + t);
+                    }
+                }
+            });
+        }
+        Class<?> entry = XposedHelpers.findClassIfExists(CLS_ENTRY_SECTION, cl);
+        if (entry == null) {
+            Hooks.log("lock screen fingerprint: no " + CLS_ENTRY_SECTION);
+            return;
+        }
+        for (java.lang.reflect.Method m : entry.getDeclaredMethods()) {
+            if (!m.getName().startsWith("centerIcon")) {
+                continue;
+            }
+            XposedBridge.hookMethod(m, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    if (!store.get().lockRotation) {
+                        return;
+                    }
+                    try {
+                        turnIcon(param);
+                    } catch (Throwable t) {
+                        Hooks.log("lock screen fingerprint: " + t);
+                    }
+                }
+            });
+        }
+        Hooks.log("lock screen fingerprint: " + (overlay != null ? "overlay turns" : "no overlay"));
+    }
+
+    /**
+     * The lock icon over the fingerprint sensor: its spot (natural, unturned display
+     * coordinates) turned as the sensor overlay turns it, then in the lock screen's coordinates.
+     */
+    private static void turnIcon(XC_MethodHook.MethodHookParam param) {
+        Object section = param.thisObject;
+        Object model = XposedHelpers.callMethod(
+                XposedHelpers.getObjectField(section, "deviceEntryIconViewModel"), "get");
+        Object udfps = XposedHelpers.callMethod(XposedHelpers.callMethod(model,
+                "isUdfpsSupported"), "getValue");
+        if (!Boolean.TRUE.equals(udfps)) {
+            return; // No sensor: the icon is placed from the screen's own size already.
+        }
+        android.view.WindowManager wm = (android.view.WindowManager)
+                XposedHelpers.getObjectField(section, "windowManager");
+        android.view.Display display = wm.getDefaultDisplay();
+        int rotation = display.getRotation();
+        if (rotation != android.view.Surface.ROTATION_90
+                && rotation != android.view.Surface.ROTATION_270) {
+            return;
+        }
+        android.graphics.Point size = new android.graphics.Point();
+        display.getRealSize(size);
+        int naturalW = size.y; // Turned a quarter: the natural width is the height now.
+        int naturalH = size.x;
+        android.graphics.Point center = (android.graphics.Point) param.args[0];
+        int x = center.x;
+        int y = center.y;
+        // RotationUtils.rotateBounds, as the sensor overlay turns the sensor's spot.
+        int tx = rotation == android.view.Surface.ROTATION_90 ? y : naturalH - y;
+        int ty = rotation == android.view.Surface.ROTATION_90 ? naturalW - x : x;
+        int[] origin = rootOrigin(section, wm);
+        param.args[0] = new android.graphics.Point(tx - origin[0], ty - origin[1]);
+        Hooks.log("lock screen fingerprint: icon at " + tx + "," + ty + " on screen (sensor "
+                + x + "," + y + " unturned, rotation " + rotation + ", lock screen at "
+                + origin[0] + "," + origin[1] + ")");
+    }
+
+    /**
+     * Where the lock screen (the icon's ConstraintLayout) starts on the screen: as laid out if
+     * it already is for this orientation, else the window's system bar and cutout insets.
+     */
+    private static int[] rootOrigin(Object section, android.view.WindowManager wm) {
+        View panel = (View) XposedHelpers.getObjectField(section, "notificationPanelView");
+        Rect bounds = wm.getCurrentWindowMetrics().getBounds();
+        if (panel != null) {
+            int id = panel.getResources().getIdentifier("keyguard_root_view", "id",
+                    panel.getContext().getPackageName());
+            View root = id != 0 ? panel.getRootView().findViewById(id) : null;
+            if (root != null && root.getWidth() > 0
+                    && (root.getWidth() > root.getHeight())
+                            == (bounds.width() > bounds.height())) {
+                int[] at = new int[2];
+                root.getLocationOnScreen(at);
+                return at;
+            }
+        }
+        android.graphics.Insets insets = wm.getCurrentWindowMetrics().getWindowInsets()
+                .getInsets(android.view.WindowInsets.Type.systemBars()
+                        | android.view.WindowInsets.Type.displayCutout());
+        return new int[] {insets.left, 0};
     }
 
     /** Ends Nothing's clock, date and widgets at the middle of the lock screen. */

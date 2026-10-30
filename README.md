@@ -286,8 +286,16 @@ Around the home screen:
   at the middle in the same layout pass (`split_shade_guideline` at 50%, as AOSP's split
   layout does with its clock) and center on the left half; with no notifications they stay
   centered across the screen. Each landscape layout is still logged (`lock screen layout: …`).
-  Known: the lock / fingerprint icon is placed at its portrait spot, which is off the screen
-  in landscape.
+  The fingerprint sensor under the screen stays where it is however the screen turns.
+  SystemUI's sensor overlay (`UdfpsControllerOverlay`, which lights the sensor and reads the
+  finger) turns the sensor's spot with the screen (`RotationUtils.rotateBounds`) everywhere
+  except on the lock screen (`shouldRotate()`), which AOSP assumes never turns, so in landscape
+  it stayed at the portrait spot, off the screen. That one exception is lifted while the lock
+  screen turns (not while going to sleep). The lock icon over the sensor
+  (`DefaultDeviceEntrySection`) is placed from the sensor's unturned spot; it is given the spot
+  turned the same way, in the lock screen's own coordinates (logged as
+  `lock screen fingerprint: icon at …`). The bouncer's own fingerprint icon is still placed
+  for portrait.
 - **Status bar.** The clock pressed against the screen's edge, investigated in 0.29.8–0.30.0,
   came from another LSPosed module (OLED burn-in protection shifting the status bar), not from
   this one; the guard and the diagnostic hooks added for it are removed again.
