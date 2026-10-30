@@ -298,9 +298,21 @@ Around the home screen:
   every layout (twice when it shows), and after `updateOverlayParams` that Rect is the overlay
   parameters' own, so the spot was turned again and again and the scanning animation landed
   near the top left; while the lock screen turns, each layout starts from a fresh copy of the
-  unturned spot, so it is turned exactly once. The bouncer's own fingerprint icon is still
-  placed for portrait. The PIN / pattern / password screen is blacked out in screen
-  recordings (a secure window), so its landscape layout is logged too.
+  unturned spot, so it is turned exactly once. The PIN / pattern / password screen (bouncer)
+  is blacked out in screen recordings (a secure window), so its layout is logged too: in
+  landscape Nothing's portrait-only PIN layout was squeezed under its lock icon. SystemUI
+  carries AOSP's own landscape bouncer (`keyguard_*_motion_layout`, which jumps to
+  `split_constraints` in landscape: entry beside the keys), switched on by the unreleased flag
+  `lockscreen.enable_landscape` (`update_bouncer_constraints` is already on for phones). That
+  flag is answered yes only inside the bouncer's own code (choosing and setting up its layout,
+  and its turn listener), not for the shade or quick settings; so while the test switch is
+  on, the bouncer uses that layout in portrait too. Should that code ever fail, the error is
+  kept from System UI and the bouncer goes back to Nothing's layouts. The bouncer's
+  fingerprint icon is placed over the sensor as on the lock screen. Restart System UI after
+  turning the switch on, so the bouncer is built again.
+  Not from this module: "Remove anything covering this area" is Nothing's accidental-touch
+  protection, shown when its proximity sensor (top edge in portrait, a side in landscape) is
+  covered, e.g. by a hand holding the phone sideways.
 - **Status bar.** The clock pressed against the screen's edge, investigated in 0.29.8–0.30.0,
   came from another LSPosed module (OLED burn-in protection shifting the status bar), not from
   this one; the guard and the diagnostic hooks added for it are removed again.

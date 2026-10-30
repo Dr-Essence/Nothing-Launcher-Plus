@@ -47,6 +47,16 @@ import de.robv.android.xposed.XposedHelpers;
  * sensor's spot was turned again and again (the scanning animation landed near the top left).
  * While the lock screen turns, each layout starts {@code sensorBounds} from a fresh copy of the
  * unturned spot, so it is turned exactly once and the parameters stay unturned.
+ *
+ * <p>The PIN / pattern / password screen (bouncer): Nothing's layouts for it are portrait
+ * only; in landscape the PIN pad was squeezed under the lock icon. SystemUI carries AOSP's own
+ * landscape bouncer (the keyguard_*_motion_layout layouts, which jump to "split_constraints" in
+ * landscape: entry beside the keys), switched on by the unreleased flag
+ * lockscreen.enable_landscape, and update_bouncer_constraints is on for phones. That flag is
+ * answered yes only inside the bouncer's own code (choosing and setting up its layout, and its
+ * turn listener), nowhere else (not the shade or quick settings). Should that code ever fail,
+ * the error is kept from System UI and the bouncer goes back to Nothing's layouts. The
+ * bouncer's fingerprint icon is placed over the sensor as on the lock screen.
  */
 final class LockScreenTurn {
 
@@ -62,6 +72,14 @@ final class LockScreenTurn {
             "com.android.systemui.biometrics.UdfpsControllerOverlay";
     private static final String CLS_ENTRY_SECTION =
             "com.android.systemui.keyguard.ui.view.layout.sections.DefaultDeviceEntrySection";
+    private static final String CLS_FLAGS = "com.android.systemui.flags.Flags";
+    private static final String[] CLS_FEATURE_FLAGS = {
+            "com.android.systemui.flags.FeatureFlagsClassicRelease",
+            "com.android.systemui.flags.FeatureFlagsClassicDebug"};
+    private static final String CLS_FLIPPER =
+            "com.android.keyguard.KeyguardSecurityViewFlipperController";
+    private static final String CLS_SECURITY_CONTAINER =
+            "com.android.keyguard.KeyguardSecurityContainerController";
     private static final String CLS_WIDGET_SECTION =
             "com.nothing.systemui.keyguard.ui.view.layout.sections.NTWidgetContainerSection";
     /** Nothing's lock screen pieces kept to the left half beside the notifications. */
@@ -78,6 +96,13 @@ final class LockScreenTurn {
     private static final int MAX_LINES = 160;
     /** Layouts logged per System UI run at most, so the log stays readable. */
     private static final int MAX_DUMPS = 30;
+
+    /** Inside the bouncer's own code, where the landscape flag is answered yes. */
+    private static final ThreadLocal<int[]> BOUNCER = ThreadLocal.withInitial(() -> new int[1]);
+    /** Set if the bouncer's landscape code failed once: Nothing's layouts from then on. */
+    private static volatile boolean bouncerFailed;
+    /** The fingerprint spot on the screen as last turned, and the rotation it is for. */
+    private static volatile int[] turnedSpot;
 
     private static int dumps;
     private static String lastLayout;
@@ -108,6 +133,7 @@ final class LockScreenTurn {
                 }).size();
         keepNothingLayout(cl, store);
         turnFingerprint(cl, store);
+        landscapeBouncer(cl, store);
         Class<?> window = XposedHelpers.findClassIfExists(CLS_SHADE_WINDOW, cl);
         if (window != null) {
             XposedHelpers.findAndHookMethod(window, "onAttachedToWindow", new XC_MethodHook() {
@@ -285,9 +311,129 @@ final class LockScreenTurn {
         int ty = rotation == android.view.Surface.ROTATION_90 ? naturalW - x : x;
         int[] origin = rootOrigin(section, wm);
         param.args[0] = new android.graphics.Point(tx - origin[0], ty - origin[1]);
+        turnedSpot = new int[] {tx, ty, rotation};
         Hooks.log("lock screen fingerprint: icon at " + tx + "," + ty + " on screen (sensor "
                 + x + "," + y + " unturned, rotation " + rotation + ", lock screen at "
                 + origin[0] + "," + origin[1] + ")");
+    }
+
+    /**
+     * The bouncer's fingerprint icon (Nothing centers it across and sets only its top, for
+     * portrait): over the sensor's turned spot, as the lock screen's icon.
+     */
+    private static void turnBouncerIcon(Object section) {
+        int[] spot = turnedSpot;
+        android.view.WindowManager wm = (android.view.WindowManager)
+                XposedHelpers.getObjectField(section, "windowManager");
+        if (spot == null || wm.getDefaultDisplay().getRotation() != spot[2]) {
+            return;
+        }
+        View icon = (View) XposedHelpers.getObjectField(section, "bouncerUdfpsIconContainer");
+        if (icon == null || !(icon.getLayoutParams()
+                instanceof android.widget.FrameLayout.LayoutParams)) {
+            return;
+        }
+        android.widget.FrameLayout.LayoutParams lp =
+                (android.widget.FrameLayout.LayoutParams) icon.getLayoutParams();
+        int[] origin = {0, 0};
+        if (icon.getParent() instanceof View && ((View) icon.getParent()).getWidth() > 0) {
+            ((View) icon.getParent()).getLocationOnScreen(origin);
+        }
+        lp.gravity = android.view.Gravity.TOP | android.view.Gravity.LEFT;
+        lp.leftMargin = spot[0] - lp.width / 2 - origin[0];
+        lp.topMargin = spot[1] - lp.height / 2 - origin[1];
+        icon.setLayoutParams(lp);
+    }
+
+    private static void landscapeBouncer(ClassLoader cl, ConfigStore store) {
+        Class<?> flags = XposedHelpers.findClassIfExists(CLS_FLAGS, cl);
+        Class<?> flipper = XposedHelpers.findClassIfExists(CLS_FLIPPER, cl);
+        if (flags == null || flipper == null) {
+            Hooks.log("lock screen bouncer: classes not found, Nothing's layouts kept");
+            return;
+        }
+        Object flag = XposedHelpers.getStaticObjectField(flags, "LOCKSCREEN_ENABLE_LANDSCAPE");
+        int answered = 0;
+        for (String name : CLS_FEATURE_FLAGS) {
+            Class<?> impl = XposedHelpers.findClassIfExists(name, cl);
+            if (impl == null) {
+                continue;
+            }
+            answered += XposedBridge.hookAllMethods(impl, "isEnabled", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    if (param.args.length == 1 && param.args[0] == flag
+                            && BOUNCER.get()[0] > 0 && !bouncerFailed) {
+                        param.setResult(true);
+                    }
+                }
+            }).size();
+        }
+        XC_MethodHook scope = new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                if (store.get().lockRotation) {
+                    BOUNCER.get()[0]++;
+                    param.setObjectExtra("nlplus.scoped", Boolean.TRUE);
+                }
+            }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                if (param.getObjectExtra("nlplus.scoped") == null) {
+                    return;
+                }
+                BOUNCER.get()[0]--;
+                Throwable failed = param.getThrowable();
+                if (failed != null) {
+                    // Kept from System UI: the bouncer goes back to Nothing's layouts.
+                    bouncerFailed = true;
+                    param.setResult(null);
+                    Hooks.log("lock screen bouncer: landscape layout failed, Nothing's kept: "
+                            + android.util.Log.getStackTraceString(failed));
+                }
+            }
+        };
+        int scoped = 0;
+        for (java.lang.reflect.Method m : flipper.getDeclaredMethods()) {
+            if (m.getName().equals("asynchronouslyInflateView")
+                    || m.getName().startsWith("lambda$asynchronouslyInflateView")) {
+                XposedBridge.hookMethod(m, scope);
+                scoped++;
+            }
+        }
+        // The bouncer's turn listener (an inner class of the security container controller).
+        for (int i = 1; i <= 30; i++) {
+            Class<?> inner = XposedHelpers.findClassIfExists(CLS_SECURITY_CONTAINER + "$" + i, cl);
+            if (inner == null) {
+                continue;
+            }
+            for (java.lang.reflect.Method m : inner.getDeclaredMethods()) {
+                if (m.getName().equals("onOrientationChanged")) {
+                    XposedBridge.hookMethod(m, scope);
+                    scoped++;
+                }
+            }
+        }
+        Class<?> entry = XposedHelpers.findClassIfExists(CLS_ENTRY_SECTION, cl);
+        if (entry != null) {
+            XposedBridge.hookAllMethods(entry, "updateBouncerLockIconContainer",
+                    new XC_MethodHook() {
+                        @Override
+                        protected void afterHookedMethod(MethodHookParam param) {
+                            if (!store.get().lockRotation) {
+                                return;
+                            }
+                            try {
+                                turnBouncerIcon(param.thisObject);
+                            } catch (Throwable t) {
+                                Hooks.log("lock screen bouncer: " + t);
+                            }
+                        }
+                    });
+        }
+        Hooks.log("lock screen bouncer: flag answered in " + answered + ", bouncer code "
+                + scoped);
     }
 
     /**
