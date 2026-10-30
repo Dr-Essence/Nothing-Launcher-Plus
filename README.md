@@ -367,14 +367,18 @@ Around the home screen:
   always-on display stays portrait, as Nothing made it: while dozing, the shade window gets
   Nothing's own portrait answer. Fingerprint events in landscape are logged
   (`fingerprint: …`: finger down / up, the overlay window's place, what the fingerprint
-  service answers). Every landscape read ended in "Hold longer" (acquired 5) with the finger
-  still down, and every read that passed was in portrait. On MediaTek phones Nothing lights
-  the optical sensor with a white dot on a layer of its own (`NTUdfpsIlluminationController`),
-  drawn at the sensor's portrait spot; moving that layer (0.30.7) did not help, so it is left
-  as Nothing draws it. While the screen is turned the sensor is also lit the way Nothing
-  lights it on its other phones: the white dot view (`hbm_view`, in Nothing's layout but
-  unused on MediaTek) inside the sensor overlay window, which sits on the sensor, shown at
-  finger down and hidden at finger up (`fingerprint light: lit in the sensor window`).
+  service answers). Every landscape read ended in "Hold longer" (acquired 5), and every read
+  that passed was in portrait. On MediaTek phones Nothing lights the optical sensor with a
+  white dot on a top layer of its own (`NTUdfpsIlluminationController`): a buffer the size of
+  the portrait screen with the dot at the sensor's portrait spot, placed in the turned screen's
+  coordinates, where that spot is off the screen. While the screen is turned, that same layer
+  is made the size of the turned screen and the dot drawn at the sensor's turned spot (Nothing
+  still makes and draws it), back to portrait size in portrait (`fingerprint light: layer …`).
+  A finger on the sensor also pulled the shade down: Nothing's touch handling asks
+  `UdfpsUtils.isWithinSensorArea` with the touch as it is on screen against the sensor's
+  unturned bounds ("rotate to portrait" off), so in landscape the sensor window never took the
+  touch. While turned, the touch is turned to portrait first with UdfpsUtils' own
+  `getPortraitTouch`, as AOSP does by default.
   Not from this module: "Remove anything covering this area" is Nothing's accidental-touch
   protection, shown when its proximity sensor (top edge in portrait, a side in landscape) is
   covered, e.g. by a hand holding the phone sideways.
