@@ -24,12 +24,16 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
   - what works and what doesn't;
   - an LSPosed log (LSPosed → Logs → save), and a screen recording if something looks wrong;
   - for a screen that looks or turns wrong, a debug report: in the module's app, Diagnostics →
-    **Capture debug report** (root). It waits 15 seconds while you set the screen up (lock
-    the phone, turn it, hold a finger on the sensor), then takes three rounds of screenshots
-    and screen-composer and window dumps, adds logcat and the LSPosed log, and saves one
-    `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. It can hold
-    personal information (screenshots, notifications, logs), so look through it before
-    posting it publicly.
+    **Capture debug report** (root). Choose how long it waits first (10 s to 10 min: time to
+    set the problem up, such as locking the phone, turning it or opening the screen that
+    misbehaves) and how long it captures (15 s to 10 min). Meanwhile it records the screen
+    and, every few seconds, takes a screenshot, the screen composer's layers, the windows and
+    the view layout of every visible window (System UI's included); logcat runs throughout.
+    It adds System UI's state, input, display and the LSPosed log, and saves one
+    `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. **Stop
+    capture** ends it early and still saves it. It can hold personal information
+    (screenshots, the recording, notifications, logs), so look through it before posting it
+    publicly.
 
 ### Before you install: protect your phone
 

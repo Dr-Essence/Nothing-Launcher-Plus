@@ -213,10 +213,12 @@ public class MainActivity extends Activity {
                 null, v -> restartLauncher());
 
         ui.section("Diagnostics");
-        ui.row("Capture debug report", "Waits " + DebugReport.COUNTDOWN_SECONDS + " s to let you"
-                + " set the screen up (lock, turn, hold the fingerprint), then saves screenshots,"
-                + " screen and window dumps, logcat and the LSPosed log to Download · needs root"
-                + " · may hold personal info", null, null, v -> captureReport());
+        ui.row("Capture debug report", "Waits while you set the problem up, then records the"
+                + " screen and saves screenshots, layer, window and view layouts, logcat and the"
+                + " LSPosed log to Download · needs root · may hold personal info", null, null,
+                v -> chooseReportTimes());
+        ui.row("Stop capture", "Ends a running capture now; it still saves what it has", null,
+                null, v -> stopReport());
     }
 
     private void addSoundSection(Ui ui, Config config) {
@@ -533,13 +535,52 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    private void captureReport() {
+    /** Report wait and capture times to choose from, in seconds. */
+    private static final int[] REPORT_DELAYS = {10, 15, 30, 60, 120, 300, 600};
+    private static final int[] REPORT_LENGTHS = {15, 30, 60, 120, 300, 600};
+
+    private static String duration(int seconds) {
+        return seconds < 60 ? seconds + " s" : seconds / 60 + " min";
+    }
+
+    private static String[] durations(int[] seconds) {
+        String[] labels = new String[seconds.length];
+        for (int i = 0; i < seconds.length; i++) {
+            labels[i] = duration(seconds[i]);
+        }
+        return labels;
+    }
+
+    /** Asks how long to wait before capturing, then how long to capture, then starts. */
+    private void chooseReportTimes() {
+        Dialogs.builder(this)
+                .setTitle("Start capturing after")
+                .setItems(durations(REPORT_DELAYS), (d, delay) -> Dialogs.builder(this)
+                        .setTitle("Capture for")
+                        .setItems(durations(REPORT_LENGTHS), (d2, length) -> captureReport(
+                                REPORT_DELAYS[delay], REPORT_LENGTHS[length]))
+                        .setNegativeButton("Cancel", null)
+                        .show())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void captureReport(int delay, int length) {
         new Thread(() -> {
-            String failure = DebugReport.start(this);
+            String failure = DebugReport.start(this, delay, length);
             runOnUiThread(() -> Toast.makeText(this, failure == null
-                    ? "Capturing in " + DebugReport.COUNTDOWN_SECONDS + " s for about 15 s; a"
+                    ? "Capturing in " + duration(delay) + " for " + duration(length) + "; a"
                             + " notification says when the report is in Download"
                     : "Failed: " + failure, Toast.LENGTH_LONG).show());
+        }).start();
+    }
+
+    private void stopReport() {
+        new Thread(() -> {
+            String failure = DebugReport.stop();
+            runOnUiThread(() -> Toast.makeText(this, failure == null
+                    ? "Stopping; the report is saved in a few seconds" : "Failed: " + failure,
+                    Toast.LENGTH_LONG).show());
         }).start();
     }
 
