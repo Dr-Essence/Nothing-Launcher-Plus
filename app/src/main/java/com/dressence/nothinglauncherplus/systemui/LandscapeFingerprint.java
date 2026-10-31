@@ -49,6 +49,9 @@ final class LandscapeFingerprint {
     private static final ThreadLocal<Object> CURRENT = new ThreadLocal<>();
     private static final List<WeakReference<Object>> CONTROLLERS = new CopyOnWriteArrayList<>();
     private static volatile boolean listening;
+    /** The rotation each controller's layer was last placed for (for the log). */
+    private static final java.util.Map<String, String> lastPlaced =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     private LandscapeFingerprint() {
     }
@@ -116,7 +119,7 @@ final class LandscapeFingerprint {
                                 place((SurfaceControl.Transaction) param.thisObject, owner);
                             }
                         } catch (Throwable t) {
-                            // Left where Nothing puts it.
+                            Hooks.log("landscape fingerprint: placing failed: " + t);
                         }
                     }
                 });
@@ -176,8 +179,11 @@ final class LandscapeFingerprint {
     }
 
     private static void place(SurfaceControl.Transaction t, Object controller) {
-        Display display = (Display) XposedHelpers.getObjectField(controller, "mDisplay");
-        float[] m = panel(display.getRotation(),
+        // The display's rotation, fresh from DisplayManager (with Nothing's mDisplay, which
+        // Nothing uses only for the panel's size, the layers stayed unplaced when turned:
+        // bounds 0,0,1080,2400 with no transform in landscape). Each placement is logged.
+        int rotation = rotation(controller);
+        float[] m = panel(rotation,
                 XposedHelpers.getIntField(controller, "mDisplayWidth"),
                 XposedHelpers.getIntField(controller, "mDisplayHeight"));
         // As Transaction.setMatrix(sc, Matrix, float[]) passes android.graphics.Matrix values
@@ -186,6 +192,18 @@ final class LandscapeFingerprint {
         SurfaceControl sc = surface(controller);
         XposedHelpers.callMethod(t, "setMatrix", sc, m[0], m[3], m[1], m[4]);
         XposedHelpers.callMethod(t, "setPosition", sc, m[2], m[5]);
+        String key = controller.getClass().getSimpleName() + "@" + rotation;
+        if (!key.equals(lastPlaced.put(controller.getClass().getSimpleName(), key))) {
+            Hooks.log("landscape fingerprint: " + controller.getClass().getSimpleName()
+                    + " placed for rotation " + rotation);
+        }
+    }
+
+    private static int rotation(Object controller) {
+        Context context = (Context) XposedHelpers.getObjectField(controller, "mContext");
+        DisplayManager displays = context.getSystemService(DisplayManager.class);
+        Display display = displays.getDisplay(Display.DEFAULT_DISPLAY);
+        return display != null ? display.getRotation() : Surface.ROTATION_0;
     }
 
     /**
