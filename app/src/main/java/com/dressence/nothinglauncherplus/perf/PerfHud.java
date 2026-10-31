@@ -57,13 +57,14 @@ final class PerfHud extends View {
     }
 
     /** Rows of the table, for the panel's height. */
-    private static final int ROWS = 10;
+    /** FPS, GPU, CPU, two cluster headers with four cores each, RAM, DDR, SoC, BAT, PWR. */
+    private static final int ROWS = 19;
 
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
         float pad = 6 * unit;
         float rings = 40 * unit;
-        float table = text.measureText("0-3 2500MHz 100 100 100 100%");
+        float table = text.measureText("RAM 100%  swap 100% ");
         float height = Math.max(2 * rings + 4 * line, ROWS * line + 18 * unit);
         setMeasuredDimension(Math.round(pad * 3 + rings + table), Math.round(pad * 2 + height));
     }
@@ -102,15 +103,15 @@ final class PerfHud extends View {
         y += line;
         row(canvas, x, y, "CPU", CPU, percent(s.cpuLoad()) + "  " + degrees(s.cpuTemp));
         y += line;
-        cluster(canvas, x, y, "0-3", s, 0);
-        y += line;
-        cluster(canvas, x, y, "4-7", s, 4);
-        y += line;
+        y = cluster(canvas, x, y, "0-3", s, 0);
+        y = cluster(canvas, x, y, "4-7", s, 4);
         row(canvas, x, y, "RAM", RAM, percent(s.ram) + "  swap " + percent(s.swap));
         y += line;
         row(canvas, x, y, "DDR", RAM, s.ddrMhz > 0 ? s.ddrMhz + "MHz" : "—");
         y += line;
-        row(canvas, x, y, "SoC", TEMP, degrees(s.socTemp) + "  BAT " + degrees(s.batteryTemp));
+        row(canvas, x, y, "SoC", TEMP, degrees(s.socTemp));
+        y += line;
+        row(canvas, x, y, "BAT", TEMP, degrees(s.batteryTemp));
         y += line;
         row(canvas, x, y, "PWR", TEMP, s.watts < 0 ? "—"
                 : String.format(Locale.ROOT, "%.2fW", s.watts));
@@ -128,15 +129,24 @@ final class PerfHud extends View {
         centred(canvas, name, cx, cy + text.getTextSize() / 3);
     }
 
-    private void cluster(Canvas canvas, float x, float y, String name, Sample s, int first) {
-        StringBuilder loads = new StringBuilder();
+    /**
+     * As Scene lays a cluster out: a header with its clock, then each core's load and clock
+     * (the cores of a cluster share one clock policy here, so these usually match). Returns
+     * the line after it.
+     */
+    private float cluster(Canvas canvas, float x, float y, String name, Sample s, int first) {
         long khz = 0;
         for (int i = first; i < first + 4; i++) {
             khz = Math.max(khz, s.coreKhz[i]);
-            loads.append(s.coreKhz[i] == 0 ? " off" : String.format(Locale.ROOT, " %d",
-                    Math.round(s.coreLoad[i] * 100)));
         }
-        row(canvas, x, y, name, CPU, (khz > 0 ? mhz(khz) : "off") + loads + "%");
+        row(canvas, x, y, name, CPU, khz > 0 ? mhz(khz) : "off");
+        for (int i = first; i < first + 4; i++) {
+            y += line;
+            row(canvas, x, y, "  " + i, DIM, s.coreKhz[i] == 0 ? "off"
+                    : String.format(Locale.ROOT, "%3d%%  %dM",
+                            Math.round(s.coreLoad[i] * 100), s.coreKhz[i] / 1000));
+        }
+        return y + line;
     }
 
     private void row(Canvas canvas, float x, float y, String name, int color, String value) {

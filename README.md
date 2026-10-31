@@ -647,9 +647,12 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   - FPS and frame time with a graph of the last frames (SurfaceFlinger's present times for
     the game's layer);
   - GPU load, clock and temperature; CPU load and hottest core;
-  - each cluster's clock with every core's load ("off" when a core is parked);
+  - each cluster's clock, then every core's load and clock, as Scene lists them ("off" when
+    a core is parked; the four cores of a cluster share one clock policy on this chip, so
+    their clocks usually match);
   - RAM and swap use, DDR clock;
-  - SoC and battery temperature, and the power drawn from the battery.
+  - SoC temperature, battery temperature and the power drawn from the battery, each on its
+    own row.
 
   Sensors that report a value below −40 °C are off (a powered-down GPU reports −274 °C) and
   show "—". The files are root-only, so one root shell reads them. The panel takes no
