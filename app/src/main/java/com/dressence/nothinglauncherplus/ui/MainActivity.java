@@ -481,6 +481,84 @@ public class MainActivity extends Activity {
                 v -> chooseReportTimes());
         ui.row("Stop capture", "Ends a running capture now; it still saves what it has", null,
                 null, v -> stopReport());
+
+        ui.section("Test notifications");
+        ui.row("Post test notifications", "Short, long, conversation, progress, picture and"
+                + " reminder notifications, to check how the lock screen lays them out", null,
+                null, v -> chooseTestNotifications());
+        ui.row("Clear test notifications", "Removes the ones posted here", null, null, v -> {
+            TestNotifications.clear(this);
+            Toast.makeText(this, "Test notifications cleared", Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private static final int[] TEST_COUNTS = {1, 3, TestNotifications.KINDS, 12};
+    private static final int[] TEST_DELAYS = {0, 10};
+    private static final int NOTIFICATION_REQUEST = 7100;
+    /** The test notifications waiting for the notification permission: {count, delay}. */
+    private int[] pendingTest;
+
+    private void chooseTestNotifications() {
+        String[] counts = new String[TEST_COUNTS.length];
+        for (int i = 0; i < counts.length; i++) {
+            counts[i] = TEST_COUNTS[i] + (TEST_COUNTS[i] == 1 ? " notification" : " notifications");
+        }
+        Dialogs.builder(this)
+                .setTitle("Post")
+                .setItems(counts, (d, count) -> Dialogs.builder(this)
+                        .setTitle("When")
+                        .setItems(new String[] {"Now", "In 10 seconds (lock the phone first)"},
+                                (d2, when) -> postTestNotifications(TEST_COUNTS[count],
+                                        TEST_DELAYS[when]))
+                        .setNegativeButton("Cancel", null)
+                        .show())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void postTestNotifications(int count, int delay) {
+        if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            pendingTest = new int[] {count, delay};
+            requestPermissions(new String[] {android.Manifest.permission.POST_NOTIFICATIONS},
+                    NOTIFICATION_REQUEST);
+            return;
+        }
+        android.content.Context app = getApplicationContext();
+        Runnable post = () -> {
+            if (!TestNotifications.post(app, count)) {
+                Toast.makeText(app, "Notifications are off for Nothing Launcher+",
+                        Toast.LENGTH_LONG).show();
+            }
+        };
+        if (delay == 0) {
+            post.run();
+            Toast.makeText(this, "Posted " + count + " test notifications",
+                    Toast.LENGTH_SHORT).show();
+        } else {
+            new android.os.Handler(android.os.Looper.getMainLooper())
+                    .postDelayed(post, delay * 1000L);
+            Toast.makeText(this, "Posting in " + delay + " seconds: lock the phone now",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != NOTIFICATION_REQUEST || pendingTest == null) {
+            return;
+        }
+        int[] test = pendingTest;
+        pendingTest = null;
+        if (grantResults.length > 0
+                && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            postTestNotifications(test[0], test[1]);
+        } else {
+            Toast.makeText(this, "Allow notifications for Nothing Launcher+ to post test ones",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private void addSoundSection(Ui ui, Config config) {

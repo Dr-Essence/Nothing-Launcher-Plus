@@ -44,6 +44,10 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     publicly. The **Diagnostic logging** switch on the same page (on for now) writes the
     module's diagnostic lines to the LSPosed log: orientation changes, lock screen layout,
     fingerprint events and portrait-only system screens.
+    **Test notifications** on the same page posts 1, 3, 6 or 12 sample notifications (short,
+    long, conversation, progress, picture and reminder), now or in 10 seconds so the phone can
+    be locked first, to check how the lock screen lays them out; **Clear test notifications**
+    removes them. It asks for the notification permission the first time.
 
 ### Before you install: protect your phone
 
