@@ -658,8 +658,9 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   not MangoHud's code: MangoHud is a Linux Vulkan / OpenGL layer drawn inside the game, which
   Android only loads into debuggable apps):
   - CPU and GPU load rings with their clocks;
-  - FPS and frame time in any app (the focused window found on whichever display has one): the
-    frames presented in the last second up to now, and each new frame's time on a Nothing dot
+  - FPS and frame time in any app (the focused window found on whichever display has one), read
+    four times a second on their own: the frames presented in the last half second up to now
+    (MangoHud's default sampling period), and each new frame's time on a Nothing dot
     screen that scrolls as frames come (an empty column for a read with none, or a rest of
     200 ms or more) (SurfaceFlinger's present times for the focused window's layer: its
     SurfaceView in a game or video, else the window itself; with no focused window, as on the

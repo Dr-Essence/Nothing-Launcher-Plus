@@ -39,10 +39,10 @@ public final class OverlayService extends Service {
     private static final float NO_READING_C = -40f;
 
     /**
-     * Every half second prints: "F f0..f7 (each core's cluster clock, kHz, 0 when offline) | G opp kHz | U load | T cpu zones (m°C) | X gpu soc
+     * Prints, four times a second, "P" + the focused layer's last present times (ns); and every
+     * half second: "F f0..f7 (each core's cluster clock, kHz, 0 when offline) | G opp kHz | U load | T cpu zones (m°C) | X gpu soc
      * (m°C) | D ddr Hz | B µA µV | C the two clusters' set clocks (kHz)", then "S" + the per-core /proc/stat lines,
-     * "M" + MemTotal MemAvailable SwapTotal SwapFree (kB), "P" + the focused layer's last
-     * present times (ns), "Y" + simpleperf's per-core cpu-cycles lines over half a second, and
+     * "M" + MemTotal MemAvailable SwapTotal SwapFree (kB), "Y" + simpleperf's per-core cpu-cycles lines over half a second, and
      * "E" to end the round.
      */
     private static final String SENSORS = ""
@@ -54,7 +54,26 @@ public final class OverlayService extends Service {
             + "GPU=$(Z gpu); SOC=$(Z soc_max)\n"
             + "PS=/sys/class/power_supply/battery\n"
             + "SP=$(command -v simpleperf)\n"
-            + "L=\"\"; n=0\n"
+            // Frames, in a loop of their own four times a second, so FPS follows the screen
+            // without waiting for the slower readings: every 2 s, the focused window (the first
+            // display with one: the others list "mCurrentFocus=null", often first; with none,
+            // as on the lock screen, System UI's NotificationShade, which draws it), and the
+            // layer it draws into: its SurfaceView (a game, a video) if it has one, else its own
+            // ("pkg/activity#N", or a system window's title, such as NotificationShade#N). It
+            // ends with the main shell ($$).
+            + "( L=\"\"; m=0; while kill -0 $$ 2>/dev/null; do\n"
+            + "  if [ $((m % 8)) = 0 ]; then W=$(dumpsys window | grep mCurrentFocus"
+            + " | grep -v =null | head -1 | sed 's/.* u0 //; s/}.*//');"
+            + " [ -z \"$W\" ] && W=NotificationShade; P=${W%%/*};"
+            + " LS=$(dumpsys SurfaceFlinger --list);"
+            + " L=$(echo \"$LS\" | grep -m1 \"SurfaceView\\\\[$P/.*(BLAST)\");"
+            + " [ -z \"$L\" ] && L=$(echo \"$LS\" | awk -v w=\"$W#\""
+            + " 'index($0,w)==1{print;exit}'); fi\n"
+            + "  [ -n \"$L\" ] && echo \"P $(dumpsys SurfaceFlinger --latency \"$L\""
+            + " | awk 'NR>1 && $2>0 && $2<9000000000000000000 {print $2}' | tail -120"
+            + " | tr '\\n' ' ')\"\n"
+            + "  m=$((m+1)); sleep 0.25\n"
+            + "done ) &\n"
             + "while :; do\n"
             + "  f=\"\"; for c in 0 1 2 3 4 5 6 7; do d=/sys/devices/system/cpu/cpu$c;"
             + " if [ \"$(cat $d/online 2>/dev/null)\" = 0 ]; then f=\"$f 0\";"
@@ -70,28 +89,12 @@ public final class OverlayService extends Service {
             + "  echo \"S $(grep '^cpu[0-7] ' /proc/stat | tr '\\n' ',')\"\n"
             + "  echo \"M $(grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo"
             + " | awk '{print $2}' | tr '\\n' ' ')\"\n"
-            // Every 2 s: the focused window (the first display with one: the others list
-            // "mCurrentFocus=null", often first; with none, as on the lock screen, System UI's
-            // NotificationShade, which draws it), and the layer it draws into: its SurfaceView (a
-            // game, a video) if it has one, else its own ("pkg/activity#N", or a system
-            // window's title, such as NotificationShade#N).
-            + "  if [ $((n % 4)) = 0 ]; then W=$(dumpsys window | grep mCurrentFocus"
-            + " | grep -v =null | head -1 | sed 's/.* u0 //; s/}.*//');"
-            + " [ -z \"$W\" ] && W=NotificationShade; P=${W%%/*};"
-            + " LS=$(dumpsys SurfaceFlinger --list);"
-            + " L=$(echo \"$LS\" | grep -m1 \"SurfaceView\\[$P/.*(BLAST)\");"
-            + " [ -z \"$L\" ] && L=$(echo \"$LS\" | awk -v w=\"$W#\""
-            + " 'index($0,w)==1{print;exit}'); fi\n"
-            + "  [ -n \"$L\" ] && echo \"P $(dumpsys SurfaceFlinger --latency \"$L\""
-            + " | awk 'NR>1 && $2>0 && $2<9000000000000000000 {print $2}' | tail -120"
-            + " | tr '\\n' ' ')\"\n"
             // Each core's real clock: its CPU cycles over half a second (the hardware counters,
             // as Scene measures them); this also paces the loop. Without simpleperf, a pause.
             + "  if [ -n \"$SP\" ]; then echo \"Y $($SP stat -a --per-core -e cpu-cycles"
             + " --duration 0.5 2>&1 | grep cpu-cycles | sed 's/cpu-cycles.*//' | tr '\\n' ';')\";"
             + " else sleep 0.5; fi\n"
             + "  echo E\n"
-            + "  n=$((n+1))\n"
             + "done\n";
 
     private Process reader;
@@ -205,14 +208,25 @@ public final class OverlayService extends Service {
     static final class Reader {
         private final long[] lastBusy = new long[8];
         private final long[] lastTotal = new long[8];
+        /** FPS counts the frames of this last stretch of time (ns). */
+        private static final long WINDOW_NS = 500_000_000L;
         private long lastFrame;
         /** The frame time graph's columns, oldest first (ms; -1 for none). */
         private final float[] graph = filled(PerfHud.GRAPH_COLUMNS);
         /** The GPU's last real temperature: its sensor goes off with it (-274 °C). */
         private float lastGpuTemp = Float.NaN;
         private PerfHud.Sample next = new PerfHud.Sample();
+        /** The last finished round's sample, shown again with each new FPS reading. */
+        private PerfHud.Sample shown;
+        private float fps = -1;
+        private float frameMs;
+        private float[] frameTimes = new float[0];
 
-        /** The finished second's sample on its "E" line, else null. */
+        /**
+         * The sample to show: the finished round's on its "E" line, and the last one with the
+         * new frames on each "P" line (four times a second, so FPS follows the screen); else
+         * null.
+         */
         PerfHud.Sample line(String line, float battery) {
             if (line.startsWith("F")) {
                 main(line);
@@ -228,11 +242,12 @@ public final class OverlayService extends Service {
                 cycles(line.substring(2));
             } else if (line.startsWith("P ")) {
                 frames(numbers(line.substring(2)));
+                return shown != null ? withFrames(shown) : null;
             } else if (line.equals("E")) {
-                PerfHud.Sample done = next;
-                done.batteryTemp = battery;
+                shown = next;
+                shown.batteryTemp = battery;
                 next = new PerfHud.Sample();
-                return done;
+                return withFrames(shown);
             }
             return null;
         }
@@ -345,12 +360,20 @@ public final class OverlayService extends Service {
             }
         }
 
+        private PerfHud.Sample withFrames(PerfHud.Sample sample) {
+            sample.fps = fps;
+            sample.frameMs = frameMs;
+            sample.frameTimes = frameTimes;
+            return sample;
+        }
+
         /**
          * FPS and frame times from the focused layer's last present times (ns, on
          * SurfaceFlinger's clock: CLOCK_MONOTONIC, as {@link SystemClock#uptimeMillis}). FPS
-         * counts the frames presented in the second up to now, so it falls to 0 when nothing
-         * draws; the graph takes each newly presented frame's time, and an empty column for a
-         * read with none, so it moves with what is on screen rather than repeating old frames.
+         * counts the frames presented in the half second up to now (MangoHud's default
+         * sampling period), so it follows the screen and falls to 0 when nothing draws; the
+         * graph takes each newly presented frame's time, and an empty column for a read with
+         * none, so it moves with what is on screen rather than repeating old frames.
          */
         private void frames(long[] times) {
             frames(times, SystemClock.uptimeMillis() * 1_000_000L);
@@ -361,7 +384,7 @@ public final class OverlayService extends Service {
             long first = 0;
             long last = 0;
             for (long time : times) {
-                if (time > now - 1_000_000_000L && time <= now) {
+                if (time > now - WINDOW_NS && time <= now) {
                     if (count == 0) {
                         first = time;
                     }
@@ -369,8 +392,8 @@ public final class OverlayService extends Service {
                     count++;
                 }
             }
-            next.fps = count;
-            next.frameMs = count > 1 ? (last - first) / 1_000_000f / (count - 1) : 0;
+            fps = count * (1_000_000_000f / WINDOW_NS);
+            frameMs = count > 1 ? (last - first) / 1_000_000f / (count - 1) : 0;
             int added = 0;
             long previous = lastFrame;
             for (long time : times) {
@@ -390,7 +413,7 @@ public final class OverlayService extends Service {
             if (added == 0) {
                 graph(-1);
             }
-            next.frameTimes = graph.clone();
+            frameTimes = graph.clone();
         }
 
         /** Scrolls the graph by one frame time (ms; -1 for none). */

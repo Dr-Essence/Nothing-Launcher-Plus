@@ -56,13 +56,19 @@ public final class HudWindows {
     private HudWindows() {
     }
 
-    /** In System UI: listens once its application has started. */
+    /**
+     * In System UI: listens once its application has started, in its main process only. System
+     * UI also starts other processes from the same application class (its screenshot process,
+     * "com.android.systemui:screenshot"), which would each listen and draw a second panel.
+     */
     public static void install(ClassLoader cl) {
         XposedHelpers.findAndHookMethod("com.android.systemui.SystemUIApplication", cl,
                 "onCreate", new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) {
-                        listen((Application) param.thisObject);
+                        if (Config.SYSTEMUI_PKG.equals(Application.getProcessName())) {
+                            listen((Application) param.thisObject);
+                        }
                     }
                 });
     }
