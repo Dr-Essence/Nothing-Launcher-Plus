@@ -849,19 +849,30 @@ public class MainActivity extends Activity {
     private void captureReport(int delay, int length) {
         new Thread(() -> {
             String failure = DebugReport.start(this, delay, length);
-            runOnUiThread(() -> Toast.makeText(this, failure == null
-                    ? "Capturing in " + duration(delay) + " for " + duration(length) + "; a"
-                            + " notification says when the report is in Download"
-                    : "Failed: " + failure, Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> {
+                if (failure == null) {
+                    CaptureIndicator.start(this, delay, length);
+                }
+                Toast.makeText(this, failure == null
+                        ? "Capturing in " + duration(delay) + " for " + duration(length)
+                                + ": one buzz when it starts, two when the report is saved"
+                        : "Failed: " + failure, Toast.LENGTH_LONG).show();
+            });
         }).start();
     }
 
     private void stopReport() {
         new Thread(() -> {
             String failure = DebugReport.stop();
-            runOnUiThread(() -> Toast.makeText(this, failure == null
-                    ? "Stopping; the report is saved in a few seconds" : "Failed: " + failure,
-                    Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> {
+                if (failure == null) {
+                    // Straight to "saving": it ends when the report is saved.
+                    CaptureIndicator.start(this, 0, 0);
+                }
+                Toast.makeText(this, failure == null
+                        ? "Stopping; the report is saved in a few seconds"
+                        : "Failed: " + failure, Toast.LENGTH_LONG).show();
+            });
         }).start();
     }
 

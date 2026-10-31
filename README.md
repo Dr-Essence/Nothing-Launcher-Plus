@@ -34,7 +34,11 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     PerfMTK module's scripts, settings and `--help` (if installed), SurfaceFlinger and the
     composer libraries it has loaded and an 8-second SurfaceFlinger layer trace (Perfetto;
     for the landscape fingerprint) and the LSPosed log, and saves one
-    `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. **Stop
+    `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. While it
+    runs you can tell what it is doing: one buzz when capturing starts and two when the
+    report is saved (felt on the lock screen too), an ongoing notification counting down
+    ("Capture starts in…", "Capturing…", "Saving the report…"), and, where an overlay can
+    show (not over the lock screen), a small "● REC" pill with the seconds left. **Stop
     capture** ends it early and still saves it. It can hold personal information
     (screenshots, the recording, notifications, logs), so look through it before posting it
     publicly. The **Diagnostic logging** switch on the same page (on for now) writes the

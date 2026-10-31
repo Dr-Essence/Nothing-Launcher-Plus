@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The debug report's buzzes when capturing starts and when it is saved. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <queries>
         <intent>
@@ -58,6 +60,16 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Performance overlay: CPU / GPU clocks and temperatures over games" />
+        </service>
+
+        <!-- Shows while a debug report runs (buzzes, a countdown notification, a REC pill). -->
+        <service
+            android:name=".ui.CaptureIndicator"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Shows when a debug report the user started is capturing" />
         </service>
 
         <!-- The module's options in Nothing's Game Bar ask this; it listens to the system only. -->

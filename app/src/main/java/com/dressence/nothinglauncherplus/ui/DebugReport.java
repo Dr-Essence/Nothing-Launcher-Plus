@@ -21,12 +21,14 @@ final class DebugReport {
 
     /** Created to end a running capture early; the script removes it. */
     private static final String STOP_FILE = "/data/local/tmp/nlplus-report.stop";
+    /** Left by the script once the report is saved ({@link CaptureIndicator} waits for it). */
+    static final String DONE_FILE = "/data/local/tmp/nlplus-report.done";
 
     private static final String SCRIPT = ""
             + "DELAY=%1$d\n"
             + "DUR=%2$d\n"
             + "STOP=" + STOP_FILE + "\n"
-            + "rm -f $STOP\n"
+            + "rm -f $STOP " + DONE_FILE + "\n"
             + "T=$(date +%%Y%%m%%d-%%H%%M%%S)\n"
             + "N=NLPlus-report-$T\n"
             + "D=/sdcard/Download/$N\n"
@@ -159,6 +161,7 @@ final class DebugReport {
             + "cp -r /data/adb/lspd/log $D/lsposed 2>/dev/null\n"
             + "rm -f $STOP\n"
             + "cd /sdcard/Download && tar -czf $N.tar.gz $N && rm -rf $N && N=$N.tar.gz\n"
+            + "touch " + DONE_FILE + "\n"
             + "cmd notification post -S bigtext -t 'Nothing Launcher+' nlplus_report"
             + " \"Debug report saved: Download/$N\" >/dev/null 2>&1\n";
 
