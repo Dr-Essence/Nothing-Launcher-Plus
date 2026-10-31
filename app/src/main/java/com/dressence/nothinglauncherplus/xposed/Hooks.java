@@ -26,7 +26,12 @@ public final class Hooks {
     }
 
     public static void log(String message) {
-        XposedBridge.log(TAG + message);
+        try {
+            XposedBridge.log(TAG + message);
+        } catch (Throwable notHooked) {
+            // In the module's own app (the overlay) there is no Xposed: Android's log.
+            android.util.Log.i("NothingLauncher+", message);
+        }
     }
 
     /** Installs one feature; if it fails it is logged and skipped, the others still work. */

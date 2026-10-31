@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
     private static final String PAGE_SOUND = "sound";
     private static final String PAGE_BACKUP = "backup";
     private static final String PAGE_DIAGNOSTICS = "diagnostics";
+    private static final String PAGE_PERFORMANCE = "performance";
 
     private void render() {
         String page = getIntent().getStringExtra(Config.EXTRA_SETTINGS_PAGE);
@@ -87,6 +88,9 @@ public class MainActivity extends Activity {
                 break;
             case PAGE_SOUND:
                 addSoundSection(Ui.page(this, "Sound", true), config);
+                break;
+            case PAGE_PERFORMANCE:
+                renderPerformance(Ui.page(this, "Performance", true), config);
                 break;
             case PAGE_BACKUP:
                 renderBackup(Ui.page(this, "Backup", true));
@@ -140,6 +144,12 @@ public class MainActivity extends Activity {
                 v -> openPage(PAGE_LOCK));
         ui.row("System font", "Use one of Nothing's fonts on this phone · no reboot", null,
                 ui.chevron(), v -> chooseSystemFont());
+
+        if (com.dressence.nothinglauncherplus.perf.Device.isCmfPhone1()) {
+            ui.section("CMF Phone 1");
+            ui.row("Performance", "Ndot overlay, PerfMTK profile, 120 fps unlock for games",
+                    null, ui.chevron(), v -> openPage(PAGE_PERFORMANCE));
+        }
 
         ui.section("Module");
         ui.row("Backup", "Export or import folders, options and covers", null, ui.chevron(),
@@ -321,6 +331,129 @@ public class MainActivity extends Activity {
                 v -> startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT)
                         .addCategory(Intent.CATEGORY_OPENABLE)
                         .setType("*/*"), REQUEST_IMPORT));
+    }
+
+    private void renderPerformance(Ui ui, Config config) {
+        ui.note("Experimental, CMF Phone 1 only, needs root.");
+        if (config.perfOverlay && android.provider.Settings.canDrawOverlays(this)) {
+            // After a reboot the overlay comes back when this page is opened.
+            com.dressence.nothinglauncherplus.perf.OverlayService.start(this);
+        }
+        ui.section("Overlay");
+        ui.switchRow("Ndot performance overlay", "Each CPU core's clock, GPU clock and load, CPU,"
+                + " GPU, SoC and battery temperatures, over every app", config.perfOverlay,
+                checked -> {
+                    config.perfOverlay = checked;
+                    store.save(this);
+                    if (checked) {
+                        startOverlay();
+                    } else {
+                        com.dressence.nothinglauncherplus.perf.OverlayService.stop(this);
+                    }
+                });
+
+        ui.section("PerfMTK");
+        ui.row("Profile", "Performance, Balanced, Powersave or Powersave+ now · PerfMTK's own"
+                + " app profiles still switch it when apps change", null, ui.chevron(),
+                v -> choosePerfMtkProfile());
+
+        ui.section("Games");
+        int n = config.unlockGames.size();
+        ui.row("120 fps unlock", (n == 0 ? "No games" : n == 1 ? "1 game" : n + " games")
+                + " · the game sees a Galaxy S24 Ultra · read the warning", null, ui.chevron(),
+                v -> warnBeforeUnlock(config));
+    }
+
+    /** The overlay needs "display over other apps": granted through root, else asked for. */
+    private void startOverlay() {
+        new Thread(() -> {
+            if (!android.provider.Settings.canDrawOverlays(this)) {
+                com.dressence.nothinglauncherplus.perf.Device.su("appops set "
+                        + getPackageName() + " SYSTEM_ALERT_WINDOW allow");
+            }
+            runOnUiThread(() -> {
+                if (android.provider.Settings.canDrawOverlays(this)) {
+                    com.dressence.nothinglauncherplus.perf.OverlayService.start(this);
+                } else {
+                    Toast.makeText(this, "Allow \"Display over other apps\", then switch it"
+                            + " on again", Toast.LENGTH_LONG).show();
+                    startActivity(new Intent(
+                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:" + getPackageName())));
+                }
+            });
+        }).start();
+    }
+
+    private static final String[] PERFMTK_PROFILES =
+            {"performance", "balanced", "powersave", "powersave+"};
+
+    private void choosePerfMtkProfile() {
+        Dialogs.builder(this)
+                .setTitle("PerfMTK profile")
+                .setItems(new String[] {"Performance", "Balanced", "Powersave", "Powersave+"},
+                        (d, which) -> new Thread(() -> {
+                            String profile = PERFMTK_PROFILES[which];
+                            String failure = com.dressence.nothinglauncherplus.perf.Device
+                                    .hasPerfMtk() ? com.dressence.nothinglauncherplus.perf
+                                            .Device.su("perfmtk " + profile)
+                                    : "PerfMTK is not installed";
+                            runOnUiThread(() -> Toast.makeText(this, failure == null
+                                    ? "PerfMTK: " + profile : "Failed: " + failure,
+                                    Toast.LENGTH_LONG).show());
+                        }).start())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void warnBeforeUnlock(Config config) {
+        Dialogs.builder(this)
+                .setTitle("120 fps unlock")
+                .setMessage("Inside each game you pick, the phone presents itself as a Samsung"
+                        + " Galaxy S24 Ultra, so games that choose their frame rate by phone"
+                        + " offer 120 fps. Nothing outside those games changes.\n\n"
+                        + "Use it only for offline or single-player games. Games with online"
+                        + " play or anti-cheat can treat a changed device as cheating and ban"
+                        + " the account; there is no way to rule that out.\n\n"
+                        + "It does not help games that choose by their graphics chip. Tick each"
+                        + " game in the module's LSPosed scope too, then restart the game.")
+                .setPositiveButton("Pick games", (d, w) -> pickUnlockGames(config))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void pickUnlockGames(Config config) {
+        java.util.List<Apps.App> all = Apps.all(this);
+        java.util.List<String> packages = new ArrayList<>();
+        java.util.List<String> labels = new ArrayList<>();
+        for (Apps.App app : all) {
+            String pkg = android.content.ComponentName.unflattenFromString(app.component)
+                    .getPackageName();
+            if (!packages.contains(pkg) && !pkg.equals(getPackageName())) {
+                packages.add(pkg);
+                labels.add(app.label);
+            }
+        }
+        boolean[] checked = new boolean[packages.size()];
+        for (int i = 0; i < packages.size(); i++) {
+            checked[i] = config.unlockGames.contains(packages.get(i));
+        }
+        Dialogs.builder(this)
+                .setTitle("Games to unlock")
+                .setMultiChoiceItems(labels.toArray(new String[0]), checked,
+                        (d, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton("Save", (d, w) -> {
+                    config.unlockGames.clear();
+                    for (int i = 0; i < packages.size(); i++) {
+                        if (checked[i]) {
+                            config.unlockGames.add(packages.get(i));
+                        }
+                    }
+                    store.save(this);
+                    render();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void renderDiagnostics(Ui ui, Config config) {

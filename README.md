@@ -31,7 +31,7 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     the view layout of every visible window (System UI's included); logcat runs throughout.
     It adds System UI's state, input, display, the system settings, the game service, battery,
     where the phone keeps its CPU / GPU clocks and temperatures, Nothing's Game Bar app, the
-    PerfMTK module's scripts and settings (if installed) and the LSPosed log, and saves one
+    PerfMTK module's scripts, settings and `--help` (if installed) and the LSPosed log, and saves one
     `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. **Stop
     capture** ends it early and still saves it. It can hold personal information
     (screenshots, the recording, notifications, logs), so look through it before posting it
@@ -632,6 +632,38 @@ and only while the keyboard is up: a hardware keyboard's arrows stay HeliBoard's
 keyboard closed every button goes to the app. The hooks use HeliBoard's own names, kept in its
 release builds (`-dontobfuscate`), and were checked against HeliBoard 4.2's release APK.
 
+## Performance (CMF Phone 1 only, experimental, root)
+
+A **Performance** page appears in the module's menu on a CMF Phone 1 (`ro.product.device`
+Tetris) and nowhere else. Everything on it was built from what this phone reports (its
+clock, GPU and thermal files, Android's display and game services, PerfMTK's own files).
+
+- **Ndot performance overlay**: a small panel over every app, once a second: each CPU core's
+  clock (cores 0–3 up to 2.0 GHz, 4–7 up to 2.5 GHz; "off" when a core is parked), the GPU's
+  clock and load (MediaTek's GED HAL), and the CPU (hottest core), GPU, SoC (`soc_max`) and
+  battery temperatures. The files are root-only, so one root shell reads them. The panel
+  takes no touches and is drawn at 80% opacity, the most Android lets touches pass through
+  an app's overlay, so games play as usual. It needs "Display over other apps", granted
+  through root when it can be. After a reboot it comes back when the Performance page is
+  opened.
+- **PerfMTK profile**: switches [PerfMTK](https://github.com/JUANIMAN/PerfMTK) to Performance,
+  Balanced, Powersave or Powersave+ (`perfmtk <profile>`). PerfMTK's own per-app profiles
+  still switch it as apps change. PerfMTK also sets the refresh rate with each profile, so
+  the module leaves the refresh rate to it.
+- **120 fps unlock (per game, off by default)**: some games pick their frame rate from a list
+  of known phones (the reports showed two Unreal games asking the display for 60 Hz
+  themselves, while Android, MediaTek and PerfMTK all allowed 120). Inside each game you pick,
+  and nowhere else, the phone presents itself as a Samsung Galaxy S24 Ultra (Snapdragon 8
+  Gen 3): Android's `Build` fields and the matching `ro.product.*` / `ro.soc.*` properties
+  read through Java. The hardware and board names stay the phone's own. Tick each game in
+  the module's LSPosed scope too, then restart the game. **Use it only for offline or
+  single-player games:** games with online play or anti-cheat can treat a changed device as
+  cheating and ban the account, and nothing can rule that out. It does not help games that
+  choose by their graphics chip, which the driver still reports as Mali.
+
+Planned next: PerfMTK's thermal switch and refresh rate options (once `perfmtk --help` from
+the phone is read) and a page for these in Nothing's Game Bar.
+
 ## Roadmap
 
 - **Nothing Dot Matrix Display**: a new engine for the emoji covers, which are a beta until
@@ -691,6 +723,7 @@ The module's code is grouped by where it runs:
 | `xposed` | The entry point (`ModuleEntry`, named in `assets/xposed_init`), hook helpers (`Hooks`: installing a feature so its failure is its own, guarding code the apps call back into), the settings as hooked apps read them (`ConfigStore`) and Nothing's NDot font (`NdotFont`). |
 | `launcher` | Everything in Nothing Launcher: the Smart drawer's folders and covers, the folder menu, landscape, controllers, sounds, dot-matrix icons (`DotIcons`, `IconScreen`) and scrolling names. |
 | `systemui` | The status bar and quick settings: `Clock`, `Battery`, `GreenIcons`, `GreenTexts`, `QuickSettings`, `NetworkSpeed`, all in the lit look of `Led`. |
+| `perf` | CMF Phone 1 only: the device check and root helper (`Device`), the Ndot performance overlay (`OverlayService`) and the per-game 120 fps unlock (`GameUnlock`). |
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |

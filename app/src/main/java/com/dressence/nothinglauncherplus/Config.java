@@ -57,6 +57,8 @@ public final class Config {
     public static final String KEY_HELIBOARD_CONTROLLER = "heliboard_controller";
     public static final String KEY_DIAGNOSTIC_LOGGING = "diagnostic_logging";
     public static final String KEY_SYSTEM_SCREENS = "system_screens";
+    public static final String KEY_PERF_OVERLAY = "perf_overlay";
+    public static final String KEY_UNLOCK_GAMES = "unlock_games";
 
     /** Broadcast sent to the launcher after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
@@ -155,6 +157,10 @@ public final class Config {
     public boolean diagnosticLogging = true;
     /** Nothing's portrait-only system screens that work in landscape follow auto-rotate. */
     public boolean systemScreens = false;
+    /** The Ndot performance overlay is on (CMF Phone 1). */
+    public boolean perfOverlay = false;
+    /** Packages of games shown a Galaxy S24 Ultra, to unlock their 120 fps (CMF Phone 1). */
+    public final java.util.Set<String> unlockGames = new java.util.LinkedHashSet<>();
 
     private final Map<String, Folder> byComponent = new HashMap<>();
     private final Map<String, Folder> byKey = new HashMap<>();
@@ -306,6 +312,13 @@ public final class Config {
         diagnosticLogging = in.bool(KEY_DIAGNOSTIC_LOGGING, true);
         // Before this switch, system screens followed Home screen rotation.
         systemScreens = in.bool(KEY_SYSTEM_SCREENS, allowRotation);
+        perfOverlay = in.bool(KEY_PERF_OVERLAY, false);
+        unlockGames.clear();
+        for (String pkg : in.text(KEY_UNLOCK_GAMES, "").split(",")) {
+            if (!pkg.isEmpty()) {
+                unlockGames.add(pkg);
+            }
+        }
     }
 
     private void writeSettings(Sink out) {
@@ -333,6 +346,8 @@ public final class Config {
         out.bool(KEY_HELIBOARD_CONTROLLER, heliboardController);
         out.bool(KEY_DIAGNOSTIC_LOGGING, diagnosticLogging);
         out.bool(KEY_SYSTEM_SCREENS, systemScreens);
+        out.bool(KEY_PERF_OVERLAY, perfOverlay);
+        out.text(KEY_UNLOCK_GAMES, String.join(",", unlockGames));
     }
 
     private void readFolders(JSONArray array) throws JSONException {
