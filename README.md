@@ -28,7 +28,9 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     set the problem up, such as locking the phone, turning it or opening the screen that
     misbehaves) and how long it captures (15 s to 10 min). Meanwhile it records the screen
     and, every few seconds, takes a screenshot, the screen composer's layers, the windows and
-    the view layout of every visible window (System UI's included); logcat runs throughout.
+    the view layout of every visible window (System UI's included) and how System UI draws
+    what is behind the lock screen, PIN page and shade (scrims and blur); logcat runs
+    throughout.
     It adds System UI's state, input, display, the system settings, the game service, battery,
     where the phone keeps its CPU / GPU clocks and temperatures, Nothing's Game Bar app, the
     PerfMTK module's scripts, settings and `--help` (if installed), SurfaceFlinger and the

@@ -80,6 +80,11 @@ final class DebugReport {
             + "  dumpsys SurfaceFlinger --frontend > $D/sf_frontend$i.txt 2>&1\n"
             + "  dumpsys window displays > $D/window_displays$i.txt 2>&1\n"
             + "  dumpsys window windows > $D/window_windows$i.txt 2>&1\n"
+            // How System UI draws what is behind the lock screen, bouncer and shade at this
+            // moment (its dump at the end is taken unlocked): the scrims and the blur.
+            + "  timeout 15 dumpsys activity service com.android.systemui 2>/dev/null"
+            + " | sed -n '/^ *ScrimController: /,/StatusBarKeyguardViewManager:/p;"
+            + " /NotificationShadeDepthController:/,/CRITICAL dump/p' > $D/scrim$i.txt\n"
             // Every view on screen with its bounds, the lock screen and always-on display too
             // (cmd window dump-visible-window-views failed here: "Failed transaction").
             // One view dump at a time: two at once (this and the always-on display's) end one
