@@ -31,7 +31,8 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     the view layout of every visible window (System UI's included); logcat runs throughout.
     It adds System UI's state, input, display, the system settings, the game service, battery,
     where the phone keeps its CPU / GPU clocks and temperatures, Nothing's Game Bar app, the
-    PerfMTK module's scripts, settings and `--help` (if installed) and the LSPosed log, and saves one
+    PerfMTK module's scripts, settings and `--help` (if installed), SurfaceFlinger and the
+    composer libraries it has loaded (for the landscape fingerprint) and the LSPosed log, and saves one
     `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. **Stop
     capture** ends it early and still saves it. It can hold personal information
     (screenshots, the recording, notifications, logs), so look through it before posting it

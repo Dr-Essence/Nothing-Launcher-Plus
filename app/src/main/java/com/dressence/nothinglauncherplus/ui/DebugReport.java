@@ -105,6 +105,16 @@ final class DebugReport {
             // Scene (com.omarea.vtools), to see where its overlay reads each core's clock.
             + "for a in $(pm path com.omarea.vtools | sed 's/^package://'); do"
             + " cp $a $D/scene-$(basename $a); done 2>/dev/null\n"
+            // SurfaceFlinger and the libraries it loads (from its memory map), to find why
+            // it leaves Nothing's fingerprint dim layer out of the composer's list in
+            // landscape.
+            + "mkdir -p $D/surfaceflinger; cp /system/bin/surfaceflinger $D/surfaceflinger/;"
+            + " for l in $(grep -o '/[^ ]*\\.so' /proc/$(pidof surfaceflinger)/maps | sort -u);"
+            + " do case $l in *surfaceflinger*|*renderengine*|*compositionengine*|*gui*|*ui.so*"
+            + "|*hwc*|*composer*|*mtk*|*libnt*|*nothing*) cp $l $D/surfaceflinger/ 2>/dev/null;;"
+            + " esac; done\n"
+            + "grep -o '/[^ ]*\\.so' /proc/$(pidof surfaceflinger)/maps | sort -u >"
+            + " $D/surfaceflinger/maps.txt 2>&1\n"
             // Nothing's Game Bar, to fit the module's game options into it.
             + "for a in $(pm path com.nothing.ntgamedashboard | sed 's/^package://'); do"
             + " cp $a $D/ntgamedashboard-$(basename $a); done 2>/dev/null\n"
