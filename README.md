@@ -674,8 +674,8 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   the lock screen (its layer, 111000, is below the lock screen's, 171000, and the keyguard
   policy hides windows below it), while a System UI panel window above it shows, as Nothing's
   fingerprint overlay does. Drag the panel to move it; it stays where it is left and takes
-  only the touches on itself. No "Display over other apps" permission is needed. It needs "Display over other apps", granted through root
-  when it can be. After a reboot it comes back when the Performance page is opened.
+  only the touches on itself. No "Display over other apps" permission is needed. After a
+  reboot it comes back when the Performance page is opened.
 - **PerfMTK profile**: switches [PerfMTK](https://github.com/JUANIMAN/PerfMTK) to Performance,
   Balanced, Powersave or Powersave+ (`perfmtk <profile>`). PerfMTK's own per-app profiles
   still switch it as apps change. PerfMTK also sets the refresh rate with each profile, so
