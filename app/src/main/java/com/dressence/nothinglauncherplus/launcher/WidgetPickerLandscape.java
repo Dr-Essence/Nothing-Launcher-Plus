@@ -27,7 +27,8 @@ import de.robv.android.xposed.XposedHelpers;
  * constructor for that orientation, and turned, the options sheet takes the screen's height
  * under the status bar, as the picker's list does. The list's page indicator sits over the
  * gesture bar plus 16dp (Nothing's), 87 px up turned, over the list's second row (928..993 of
- * 1080); turned it sits as near the sheet's bottom as in portrait (16 px).
+ * 1080); turned it sits 16 px above the screen's bottom, as in portrait (the sheet runs past
+ * the bottom turned, so the gesture bar's room is its margin).
  */
 final class WidgetPickerLandscape {
 
@@ -157,9 +158,10 @@ final class WidgetPickerLandscape {
                             }
                             ViewGroup.MarginLayoutParams lp =
                                     (ViewGroup.MarginLayoutParams) indicator.getLayoutParams();
-                            // As far from the sheet's bottom as in portrait (16 px there).
-                            int bottom = Math.round(16 * sheet.getResources().getDisplayMetrics()
-                                    .density / 3f);
+                            // Turned the sheet runs ~34 px past the screen's bottom: the gesture
+                            // bar's room keeps the dots on it, 16 px up as in portrait (DebuG
+                            // report: 16 px from the sheet put them at 1033..1098 of 1080).
+                            int bottom = XposedHelpers.getIntField(sheet, "mBottomPadding");
                             if (lp.bottomMargin == bottom) {
                                 return;
                             }
@@ -169,6 +171,36 @@ final class WidgetPickerLandscape {
                             indicator.setLayoutParams(lp);
                         } catch (Throwable t) {
                             Hooks.log("widget picker indicator: " + t);
+                        }
+                    }
+                });
+        // Turned while open: Launcher3 rebuilds its widget sheet when the device profile changes
+        // in a way its layout cannot follow (WidgetsFullSheet.onDeviceProfileChanged, closing it
+        // and showing it again with its state), but only between one and two panels; the open
+        // sheet kept the other orientation's sizes (the recording: opened in portrait, turned,
+        // the options sheet a quarter of the screen high, previews off it). With rotation on, a
+        // change of orientation rebuilds it too, and the new sheet takes this one's sizes.
+        XposedHelpers.findAndHookMethod(XposedHelpers.findClass(
+                "com.android.launcher3.widget.picker.WidgetsFullSheet", cl), "shouldRecreateLayout",
+                XposedHelpers.findClass("com.android.launcher3.DeviceProfile", cl),
+                XposedHelpers.findClass("com.android.launcher3.DeviceProfile", cl),
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        try {
+                            if (Boolean.TRUE.equals(param.getResult())
+                                    || !store.get().allowRotation) {
+                                return;
+                            }
+                            boolean was = XposedHelpers.getBooleanField(param.args[0],
+                                    "isLandscape");
+                            boolean is = XposedHelpers.getBooleanField(param.args[1],
+                                    "isLandscape");
+                            if (was != is) {
+                                param.setResult(true);
+                            }
+                        } catch (Throwable t) {
+                            // Launcher3's answer stands.
                         }
                     }
                 });
