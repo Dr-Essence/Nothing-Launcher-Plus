@@ -1,6 +1,7 @@
 package com.dressence.nothinglauncherplus.systemui;
 
 import android.content.Context;
+import android.graphics.Matrix;
 import android.hardware.display.DisplayManager;
 import android.os.Handler;
 import android.os.Looper;
@@ -180,10 +181,9 @@ final class LandscapeFingerprint {
         float[] m = panel(display.getRotation(),
                 XposedHelpers.getIntField(controller, "mDisplayWidth"),
                 XposedHelpers.getIntField(controller, "mDisplayHeight"));
-        // As Transaction.setMatrix(sc, Matrix, float[]) passes android.graphics.Matrix values.
-        SurfaceControl sc = surface(controller);
-        t.setMatrix(sc, m[0], m[3], m[1], m[4]);
-        t.setPosition(sc, m[2], m[5]);
+        Matrix matrix = new Matrix();
+        matrix.setValues(m);
+        t.setMatrix(surface(controller), matrix, new float[9]);
     }
 
     /**
