@@ -80,7 +80,8 @@ plus your folders.
 - **Drawer background opacity** slider, so the wallpaper shows through behind the folders.
 - Show custom folders before or after Nothing's categories, or hide the automatic categories.
 - A **Custom folders** row in *Nothing Launcher settings → App drawer & Search → Drawer layout*
-  opens the module.
+  opens the module's App drawer page. A **Nothing Launcher+** row at the end of *Nothing
+  Launcher settings* opens the module's main menu.
 - Long-press a drawer folder for the launcher's own popup: **Add to home screen** creates a real
   home-screen folder with the same name and apps; **Edit** (custom folders) opens the folder editor.
 - **Landscape (beta)**: the home screen and app drawer follow auto-rotate. Each home page is

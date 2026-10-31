@@ -56,9 +56,8 @@ public class MainActivity extends Activity {
         render();
     }
 
-    /** The page this screen shows (a {@link #EXTRA_PAGE} value), or null for the menu. */
-    private static final String EXTRA_PAGE = "page";
-    private static final String PAGE_DRAWER = "drawer";
+    /** Pages this screen shows (its {@link Config#EXTRA_SETTINGS_PAGE}); none: the menu. */
+    private static final String PAGE_DRAWER = Config.PAGE_DRAWER;
     private static final String PAGE_HOME = "home";
     private static final String PAGE_SYSTEM_UI = "systemui";
     private static final String PAGE_LOCK = "lock";
@@ -67,7 +66,7 @@ public class MainActivity extends Activity {
     private static final String PAGE_DIAGNOSTICS = "diagnostics";
 
     private void render() {
-        String page = getIntent().getStringExtra(EXTRA_PAGE);
+        String page = getIntent().getStringExtra(Config.EXTRA_SETTINGS_PAGE);
         if (page == null) {
             renderMenu();
             return;
@@ -99,7 +98,7 @@ public class MainActivity extends Activity {
     }
 
     private void openPage(String page) {
-        startActivity(new Intent(this, MainActivity.class).putExtra(EXTRA_PAGE, page));
+        startActivity(new Intent(this, MainActivity.class).putExtra(Config.EXTRA_SETTINGS_PAGE, page));
     }
 
     private void renderMenu() {

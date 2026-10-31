@@ -24,6 +24,9 @@ public final class Config {
     public static final String LAUNCHER_PKG = "com.nothing.launcher";
     public static final String SYSTEMUI_PKG = "com.android.systemui";
     public static final String SETTINGS_ACTIVITY = MODULE_PKG + ".ui.MainActivity";
+    /** Settings page to open (an extra of {@link #SETTINGS_ACTIVITY}); without it, the menu. */
+    public static final String EXTRA_SETTINGS_PAGE = "page";
+    public static final String PAGE_DRAWER = "drawer";
     public static final String FOLDER_ACTIVITY = MODULE_PKG + ".ui.FolderActivity";
     /** String extra naming the folder to edit in {@link #FOLDER_ACTIVITY}. */
     public static final String EXTRA_FOLDER_ID = "folder_id";

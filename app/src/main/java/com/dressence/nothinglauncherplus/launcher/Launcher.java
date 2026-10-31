@@ -32,6 +32,7 @@ public final class Launcher {
         new SmartDrawer(cl, store, new FolderCovers()).install();
         Hooks.install("folder menu", () -> new FolderMenu(cl, store));
         Hooks.install("settings entry", () -> SettingsEntry.install(cl, store));
+        Hooks.install("settings module row", () -> SettingsEntry.installModuleRow(cl));
         Hooks.install("drawer background", () -> DrawerBackground.install(cl, store));
         new Landscape(cl, store).install();
         new LandscapeGrid(cl).install();
