@@ -22,6 +22,9 @@ final class DebugReport {
     /** Created to end a running capture early; the script removes it. */
     private static final String STOP_FILE = "/data/local/tmp/nlplus-report.stop";
     /** Left by the script once the report is saved ({@link CaptureIndicator} waits for it). */
+    /** The CMF Phone 1 SurfaceFlinger build the report's uprobe offsets were read from. */
+    private static final String SF_SHA256 =
+            "825285c27d7eae599f9bc955a8fd228a44f4b902325bad1182b22e5a8a06815a";
     static final String DONE_FILE = "/data/local/tmp/nlplus-report.done";
 
     private static final String SCRIPT = ""
@@ -59,6 +62,38 @@ final class DebugReport {
             + " -o /data/misc/perfetto-traces/nlplus.pftrace > $D/perfetto.txt 2>&1;"
             + " cp /data/misc/perfetto-traces/nlplus.pftrace $D/layers.pftrace 2>/dev/null ) &\n"
             + "TRACE=$!\n"
+            // Fingerprint (landscape): kernel uprobes, read-only breakpoints that let
+            // SurfaceFlinger run unchanged, at each check of CompositionEngine's
+            // ensureOutputLayerIfVisible in this phone's build (its SHA-256 must match, as the
+            // offsets are this build's): which check drops Nothing's dim layer. Only layers drawn
+            // with alpha under 1 (the dim layer) are recorded, by their alpha.
+            + "UP=$D/uprobes.txt; SFB=/system/bin/surfaceflinger\n"
+            + "TR=/sys/kernel/tracing; [ -e $TR/uprobe_events ] || TR=/sys/kernel/debug/tracing\n"
+            + "UI=$TR/instances/nlplus; UE=\"inc pass vis rect open draw\"\n"
+            + "up_off() { { echo 0 > $UI/tracing_on; for e in $UE; do"
+            + " echo 0 > $UI/events/nlplus/$e/enable; done; rmdir $UI; for e in $UE; do"
+            + " echo \"-:nlplus/$e\" >> $TR/uprobe_events; done; } 2>/dev/null; }\n"
+            + "up_off\n"
+            + "if [ \"$(sha256sum $SFB 2>/dev/null | cut -d' ' -f1)\" = \"" + SF_SHA256 + "\" ]"
+            + " && [ -w $TR/uprobe_events ]; then\n"
+            + "  S=\"a=+664(%%x22):x16\"\n"
+            + "  for d in \"inc $SFB:0x4fd844 out=%%x19 a=+664(%%x0):x16 ls=+12(%%x0):u32"
+            + " ti=+16(%%x0):u8 ra=+8(%%sp):x64\""
+            + " \"pass $SFB:0x4032b4 out=%%x21 a=+664(%%x0):x16 vis=+20(%%x0):u8 opq=+21(%%x0):u8\""
+            + " \"vis $SFB:0x4032c4 out=%%x21 $S l=+220(%%x22):x32 t=+224(%%x22):x32"
+            + " r=+228(%%x22):x32 b=+232(%%x22):x32 m0=+32(%%x22):x32 m1=+36(%%x22):x32"
+            + " m3=+44(%%x22):x32 m4=+48(%%x22):x32 m6=+56(%%x22):x32 m7=+60(%%x22):x32"
+            + " sh=+316(%%x22):x32\""
+            + " \"rect $SFB:0x4033f0 out=%%x21 $S\" \"open $SFB:0x4034e8 out=%%x21 $S\""
+            + " \"draw $SFB:0x4038d0 out=%%x21 $S\"; do echo \"p:nlplus/$d\" >>"
+            + " $TR/uprobe_events 2>>$UP || echo \"define failed: $d\" >> $UP; done\n"
+            + "  mkdir $UI 2>>$UP; echo 4096 > $UI/buffer_size_kb\n"
+            + "  for e in $UE; do echo 'a != 0x3c00' > $UI/events/nlplus/$e/filter 2>>$UP;"
+            + " echo 1 > $UI/events/nlplus/$e/enable 2>>$UP; done\n"
+            + "  echo 1 > $UI/tracing_on; echo \"probes on\" >> $UP\n"
+            + "  grep surfaceflinger /proc/$(pidof surfaceflinger)/maps >> $UP\n"
+            + "else echo \"probes off: uprobes unavailable or another surfaceflinger build\" >> $UP;"
+            + " fi\n"
             + "STEP=5; [ $DUR -gt 60 ] && STEP=10; [ $DUR -gt 300 ] && STEP=30\n"
             + "END=$(( $(date +%%s) + DUR ))\n"
             + "i=1\n"
@@ -70,7 +105,9 @@ final class DebugReport {
             + "  dumpsys SurfaceFlinger --frontend > $D/sf_frontend$i.txt 2>&1\n"
             + "  dumpsys window displays > $D/window_displays$i.txt 2>&1\n"
             + "  dumpsys window windows > $D/window_windows$i.txt 2>&1\n"
-            + "  timeout 20 cmd window dump-visible-window-views > $D/views$i.zip 2>/dev/null\n"
+            // Every view on screen with its bounds, the lock screen and always-on display too
+            // (cmd window dump-visible-window-views failed here: "Failed transaction").
+            + "  timeout 20 uiautomator dump $D/ui$i.xml >/dev/null 2>&1\n"
             // What the overlay times for FPS: the focused window, the layer picked for it (as
             // OverlayService picks it) and that layer's frame times, raw.
             + "  { W=$(dumpsys window | grep mCurrentFocus | grep -v =null | head -1"
@@ -87,6 +124,8 @@ final class DebugReport {
             + "done\n"
             // Ends a recording still running (stopped early) so its file is finished.
             + "pkill -INT screenrecord 2>/dev/null\n"
+            + "[ -d $UI ] && { echo 0 > $UI/tracing_on; cat $UI/trace >> $UP; }\n"
+            + "up_off\n"
             + "wait $TRACE 2>/dev/null\n"
             + "wait $REC 2>/dev/null\n"
             + "dumpsys activity activities > $D/activities.txt 2>&1\n"
