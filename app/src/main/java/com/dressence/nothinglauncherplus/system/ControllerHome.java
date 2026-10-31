@@ -45,6 +45,8 @@ public final class ControllerHome {
     private static final String SAVED = "nlplus_home_before_controller";
     /** A controller's connection settles (Bluetooth controllers can drop and come back). */
     private static final long SETTLE_MS = 1500;
+    /** Uids per user (UserHandle.PER_USER_RANGE). */
+    private static final int PER_USER_RANGE = 100000;
 
     private static Context context;
     private static Handler handler;
@@ -131,7 +133,7 @@ public final class ControllerHome {
         IntentFilter settings = new IntentFilter(Config.ACTION_RELOAD);
         context.registerReceiver(receiver, settings, null, handler, Context.RECEIVER_EXPORTED);
         IntentFilter boot = new IntentFilter(Intent.ACTION_BOOT_COMPLETED);
-        boot.addAction(Intent.ACTION_USER_SWITCHED);
+        boot.addAction("android.intent.action.USER_SWITCHED"); // Intent.ACTION_USER_SWITCHED
         context.registerReceiver(receiver, boot, null, handler, Context.RECEIVER_NOT_EXPORTED);
     }
 
@@ -146,8 +148,9 @@ public final class ControllerHome {
         String gaming = config.controllerHomeApp;
         boolean want = config.controllerHome && !gaming.isEmpty() && controllerConnected();
         active = want;
-        UserHandle user = UserHandle.of((Integer) XposedHelpers.callStaticMethod(
-                ActivityManager.class, "getCurrentUser"));
+        int userId = (Integer) XposedHelpers.callStaticMethod(ActivityManager.class,
+                "getCurrentUser");
+        UserHandle user = UserHandle.getUserHandleForUid(userId * PER_USER_RANGE);
         Object roles = context.getSystemService("role");
         String home = holder(roles, user);
         // "previous home/gaming launcher set in its place", while the gaming launcher is home.
