@@ -96,7 +96,10 @@ plus your folders.
 
 ## Emoji animations
 
-- **Emoji covers** (on by default; App drawer page): off, every folder shows its apps as
+> **Beta.** Emoji covers are a beta. They will be replaced by the **Nothing Dot Matrix
+> Display** engine (see [Roadmap](#roadmap)).
+
+- **Emoji covers (beta)** (on by default; App drawer page): off, every folder shows its apps as
   Nothing draws them, and the emoji chosen for each folder stays saved for when it is switched
   back on (image covers stay). **No emoji covers in battery saver** (off by default) does the
   same only while battery saver is on: the tiles change as it turns on and back off. Hidden
@@ -596,6 +599,17 @@ overlay, above all of HeliBoard's views, and stays on what it is on when the key
 and only while the keyboard is up: a hardware keyboard's arrows stay HeliBoard's, and with the
 keyboard closed every button goes to the app. The hooks use HeliBoard's own names, kept in its
 release builds (`-dontobfuscate`), and were checked against HeliBoard 4.2's release APK.
+
+## Roadmap
+
+- **Nothing Dot Matrix Display**: a new engine for the emoji covers, which are a beta until
+  it lands. It is planned as:
+  - **Built for Nothing Launcher:** it works directly with Nothing Launcher.
+  - **Very low power:** heavily optimized to render every emoji with as little power as
+    possible.
+  - **Understands each emoji:** its emotion, reflections, particles and 3D shape.
+  - **Every emoji reworked one by one:** each one rendered in 3D, with several animations made
+    for that emoji alone.
 
 ## Requirements
 

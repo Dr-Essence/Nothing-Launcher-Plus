@@ -18,3 +18,14 @@
   diagnostics that served their purpose) in the same change.
 - The module must never crash or stall what it hooks: guard everything handed to the host,
   never block the main thread, and never make the launcher delete or lose the user's items.
+
+# Project direction
+
+- **Emoji covers are a beta.** They will be replaced by **Nothing Dot Matrix Display**:
+  - a super-optimized engine that works directly with Nothing Launcher;
+  - it understands each emoji's emotion, reflections, particles and 3D shape;
+  - it renders every emoji with as little power as possible;
+  - every individual emoji is reworked and rendered in 3D, with multiple animations made for
+    each one.
+
+  Keep the README's Roadmap and the beta notes in line with this.

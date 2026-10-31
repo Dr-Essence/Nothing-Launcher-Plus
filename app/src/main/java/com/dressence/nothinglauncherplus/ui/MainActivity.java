@@ -169,7 +169,7 @@ public class MainActivity extends Activity {
         addOpacityRow(ui, config);
 
         ui.section("Covers");
-        ui.switchRow("Emoji covers", "Off: folders show their apps as Nothing does; your emoji"
+        ui.switchRow("Emoji covers (beta)", "Off: folders show their apps as Nothing does; your emoji"
                 + " stay saved for later · image covers stay", config.emojiCovers, checked -> {
                     config.emojiCovers = checked;
                     store.save(this);
