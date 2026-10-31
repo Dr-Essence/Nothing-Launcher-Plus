@@ -29,7 +29,9 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     misbehaves) and how long it captures (15 s to 10 min). Meanwhile it records the screen
     and, every few seconds, takes a screenshot, the screen composer's layers, the windows and
     the view layout of every visible window (System UI's included); logcat runs throughout.
-    It adds System UI's state, input, display and the LSPosed log, and saves one
+    It adds System UI's state, input, display, the system settings, the game service, battery,
+    where the phone keeps its CPU / GPU clocks and temperatures, Nothing's Game Bar app and the
+    LSPosed log, and saves one
     `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. **Stop
     capture** ends it early and still saves it. It can hold personal information
     (screenshots, the recording, notifications, logs), so look through it before posting it
