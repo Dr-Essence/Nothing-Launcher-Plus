@@ -44,6 +44,19 @@ final class DebugReport {
             + " screenrecord --bit-rate 2000000 --time-limit $t $D/video$n.mp4"
             + " >/dev/null 2>&1; left=$((left-t)); n=$((n+1)); done ) &\n"
             + "REC=$!\n"
+            // SurfaceFlinger's layer trace for the first 8 s of the capture: each layer's
+            // visible region, composition and HWC type per display, frame by frame (to see
+            // where the fingerprint dim layer leaves the composer's list in landscape).
+            + "printf '%%s\\n' 'buffers { size_kb: 65536 fill_policy: RING_BUFFER }'"
+            + " 'data_sources { config { name: \"android.surfaceflinger.layers\"'"
+            + " 'surfaceflinger_layers_config { mode: MODE_ACTIVE trace_flags: TRACE_FLAG_INPUT'"
+            + " 'trace_flags: TRACE_FLAG_COMPOSITION trace_flags: TRACE_FLAG_HWC'"
+            + " 'trace_flags: TRACE_FLAG_BUFFERS trace_flags: TRACE_FLAG_VIRTUAL_DISPLAYS } } }'"
+            + " 'duration_ms: 8000' > /data/misc/perfetto-configs/nlplus.pbtxt\n"
+            + "( perfetto --txt -c /data/misc/perfetto-configs/nlplus.pbtxt"
+            + " -o /data/misc/perfetto-traces/nlplus.pftrace > $D/perfetto.txt 2>&1;"
+            + " cp /data/misc/perfetto-traces/nlplus.pftrace $D/layers.pftrace 2>/dev/null ) &\n"
+            + "TRACE=$!\n"
             + "STEP=5; [ $DUR -gt 60 ] && STEP=10; [ $DUR -gt 300 ] && STEP=30\n"
             + "END=$(( $(date +%%s) + DUR ))\n"
             + "i=1\n"
@@ -72,6 +85,7 @@ final class DebugReport {
             + "done\n"
             // Ends a recording still running (stopped early) so its file is finished.
             + "pkill -INT screenrecord 2>/dev/null\n"
+            + "wait $TRACE 2>/dev/null\n"
             + "wait $REC 2>/dev/null\n"
             + "dumpsys activity activities > $D/activities.txt 2>&1\n"
             + "dumpsys activity service com.android.systemui > $D/systemui.txt 2>&1\n"
