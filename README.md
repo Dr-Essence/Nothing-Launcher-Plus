@@ -718,15 +718,32 @@ Launcher3 moves its keyboard focus with them. The module adds:
 
 | Button | Home screen | App drawer |
 | --- | --- | --- |
-| Y | Open drawer | Close drawer |
+| Start | Open drawer | Close drawer |
+| Y (triangle) / X (square) | Shortcuts / menu of the focused item | same |
 | L1 / R1 | Previous / next page | Scroll up / down |
 | L2 / R2 | First / last page | Top / bottom |
-| X | Shortcuts / menu of the focused item | same |
-| Start | Home options (wallpaper, widgets, settings) | Close drawer |
+| L3 / R3 (stick click) | Home options (wallpaper, widgets, settings) | Close drawer |
 | Select | Notifications | Notifications |
 
 The focused icon or folder lifts on a spring (scale + elevation) and settles back the moment
 the screen is touched.
+
+### Gaming launcher with a controller
+
+*Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any
+installed home app). While a game controller is connected, by USB or Bluetooth, Android's home
+app is the gaming launcher: the module changes the home choice itself (the HOME role, from
+system_server), as picking a home app in Android's settings does, so the home button, the home
+gesture (Launcher3's Quickstep follows the default home and hands over to it) and everything
+else that opens home go there. The controller's own home button (PS, Xbox, Guide:
+`KEYCODE_BUTTON_MODE`, which Android passes to the app in front) opens home too.
+
+When the last controller disconnects, or the switch is turned off, the home app it replaced
+comes back, only if the gaming launcher is still home (a home app picked meanwhile stays). The
+replaced app is kept in a global setting (`nlplus_home_before_controller`), so a restart with
+no controller connected puts it back as well. A controller counts when it is an external,
+non-virtual input device with a gamepad or joystick source; changes wait 1.5 s to settle, so a
+Bluetooth controller dropping and coming back does not switch home twice.
 
 ### Typing with a controller (HeliBoard)
 
@@ -882,7 +899,7 @@ The module's code is grouped by where it runs:
 | `launcher` | Everything in Nothing Launcher: the Smart drawer's folders and covers, the folder menu, landscape, controllers, sounds, dot-matrix icons (`DotIcons`, `IconScreen`) and scrolling names. |
 | `systemui` | The status bar and quick settings: `Clock`, `Battery`, `GreenIcons`, `GreenTexts`, `QuickSettings`, `NetworkSpeed`, all in the lit look of `Led`. |
 | `perf` | CMF Phone 1 only: the device check and root helper (`Device`), the Ndot performance overlay (`OverlayService` reads, `PerfHud` draws) and the per-game 120 fps unlock (`GameUnlock`), the Game Bar's buttons (`GameBar`, in the Game Bar; `GameBarReceiver`, in the module app). |
-| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
+| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |

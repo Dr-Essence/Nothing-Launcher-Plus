@@ -28,11 +28,12 @@ import de.robv.android.xposed.XposedHelpers;
  * Nothing runs until a controller button is pressed or focus moves without touch.
  *
  * <ul>
- *   <li>Y: open / close the app drawer</li>
+ *   <li>Y (triangle) and X (square): menu of the focused item (app shortcuts, folder
+ *   options)</li>
  *   <li>L1 / R1: previous / next home page; scroll the drawer up / down</li>
  *   <li>L2 / R2: first / last home page; top / bottom of the drawer</li>
- *   <li>X: menu of the focused item (app shortcuts, folder options)</li>
- *   <li>Start: home options (wallpaper, widgets, settings); closes the drawer</li>
+ *   <li>Start: open / close the app drawer</li>
+ *   <li>L3 / R3 (stick click): home options (wallpaper, widgets, settings)</li>
  *   <li>Select: notifications</li>
  * </ul>
  */
@@ -124,6 +125,8 @@ final class Gamepad {
             case KeyEvent.KEYCODE_BUTTON_R2:
             case KeyEvent.KEYCODE_BUTTON_START:
             case KeyEvent.KEYCODE_BUTTON_SELECT:
+            case KeyEvent.KEYCODE_BUTTON_THUMBL:
+            case KeyEvent.KEYCODE_BUTTON_THUMBR:
                 return true;
             default:
                 return false;
@@ -141,7 +144,7 @@ final class Gamepad {
         boolean inDrawer = XposedHelpers.callMethod(
                 XposedHelpers.callMethod(launcher, "getStateManager"), "getState") == allAppsState;
         switch (keyCode) {
-            case KeyEvent.KEYCODE_BUTTON_Y:
+            case KeyEvent.KEYCODE_BUTTON_START:
                 goTo(launcher, inDrawer ? normalState : allAppsState);
                 break;
             case KeyEvent.KEYCODE_BUTTON_L1:
@@ -177,17 +180,19 @@ final class Gamepad {
                 }
                 break;
             }
+            case KeyEvent.KEYCODE_BUTTON_Y:
             case KeyEvent.KEYCODE_BUTTON_X:
                 openMenu(launcher);
                 break;
-            case KeyEvent.KEYCODE_BUTTON_START:
+            case KeyEvent.KEYCODE_BUTTON_THUMBL:
+            case KeyEvent.KEYCODE_BUTTON_THUMBR:
                 if (inDrawer) {
                     goTo(launcher, normalState);
-                } else {
-                    View root = launcher.getWindow().getDecorView();
-                    XposedHelpers.callMethod(launcher, "showDefaultOptions",
-                            root.getWidth() / 2f, root.getHeight() / 2f);
+                    break;
                 }
+                View root = launcher.getWindow().getDecorView();
+                XposedHelpers.callMethod(launcher, "showDefaultOptions",
+                        root.getWidth() / 2f, root.getHeight() / 2f);
                 break;
             case KeyEvent.KEYCODE_BUTTON_SELECT:
                 Object statusBar = launcher.getSystemService("statusbar");

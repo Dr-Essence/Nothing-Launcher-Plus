@@ -256,11 +256,24 @@ public class MainActivity extends Activity {
                     store.save(this);
                 });
         ui.switchRow("Game controller navigation",
-                "Y app drawer · L1/R1 pages · L2/R2 first/last · X menu · Start options",
+                "Start app drawer · Y/X menu · L1/R1 pages · L2/R2 first/last · L3/R3 options",
                 config.controllerNav, checked -> {
                     config.controllerNav = checked;
                     store.save(this);
                 });
+        ui.switchRow("Gaming launcher with a controller",
+                "While a controller is connected (USB or Bluetooth), home and the controller's"
+                        + " PS/Guide button open your gaming launcher; your home comes back"
+                        + " when it disconnects",
+                config.controllerHome, checked -> {
+                    config.controllerHome = checked;
+                    store.save(this);
+                    if (checked && config.controllerHomeApp.isEmpty()) {
+                        chooseGamingLauncher(config);
+                    }
+                });
+        ui.row("Gaming launcher", gamingLauncherLabel(config.controllerHomeApp), null,
+                ui.chevron(), v -> chooseGamingLauncher(config));
         ui.switchRow("Controller typing in HeliBoard", "Move over HeliBoard's keys, suggestions"
                 + " and panels with the controller · HeliBoard in the module's LSPosed scope",
                 config.heliboardController, checked -> {
@@ -271,6 +284,57 @@ public class MainActivity extends Activity {
         ui.section("Launcher");
         ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,
                 null, v -> restartLauncher());
+    }
+
+    /** The installed home apps, other than Nothing Launcher: package to name. */
+    private java.util.Map<String, String> homeApps() {
+        java.util.Map<String, String> apps = new java.util.LinkedHashMap<>();
+        android.content.pm.PackageManager pm = getPackageManager();
+        for (android.content.pm.ResolveInfo info : pm.queryIntentActivities(
+                new android.content.Intent(android.content.Intent.ACTION_MAIN)
+                        .addCategory(android.content.Intent.CATEGORY_HOME), 0)) {
+            String pkg = info.activityInfo.packageName;
+            if (!pkg.equals(Config.LAUNCHER_PKG) && !pkg.equals("com.android.settings")
+                    && !apps.containsKey(pkg)) {
+                apps.put(pkg, String.valueOf(info.loadLabel(pm)));
+            }
+        }
+        return apps;
+    }
+
+    private String gamingLauncherLabel(String pkg) {
+        if (pkg.isEmpty()) {
+            return "None picked";
+        }
+        String label = homeApps().get(pkg);
+        return label != null ? label : pkg + " (not installed)";
+    }
+
+    private void chooseGamingLauncher(Config config) {
+        java.util.Map<String, String> apps = homeApps();
+        if (apps.isEmpty()) {
+            Dialogs.builder(this)
+                    .setTitle("Gaming launcher")
+                    .setMessage("No other home app is installed. Install a launcher made for"
+                            + " controllers (one that can be set as the home app), then pick"
+                            + " it here.")
+                    .setPositiveButton("OK", null)
+                    .show();
+            return;
+        }
+        String[] packages = apps.keySet().toArray(new String[0]);
+        String[] names = apps.values().toArray(new String[0]);
+        int checked = java.util.Arrays.asList(packages).indexOf(config.controllerHomeApp);
+        Dialogs.builder(this)
+                .setTitle("Gaming launcher")
+                .setSingleChoiceItems(names, checked, (dialog, which) -> {
+                    config.controllerHomeApp = packages[which];
+                    store.save(this);
+                    dialog.dismiss();
+                    render();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void renderSystemUi(Ui ui, Config config) {

@@ -40,5 +40,6 @@ public final class SettingsStore {
         config.write(editor);
         editor.commit();
         context.sendBroadcast(new Intent(Config.ACTION_RELOAD).setPackage(Config.LAUNCHER_PKG));
+        context.sendBroadcast(new Intent(Config.ACTION_RELOAD).setPackage("android"));
     }
 }

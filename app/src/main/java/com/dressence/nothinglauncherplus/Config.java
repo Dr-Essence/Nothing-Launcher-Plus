@@ -53,6 +53,8 @@ public final class Config {
     public static final String KEY_MUSIC_VOLUME = "music_volume";
     public static final String KEY_ALLOW_ROTATION = "allow_rotation";
     public static final String KEY_CONTROLLER_NAV = "controller_nav";
+    public static final String KEY_CONTROLLER_HOME = "controller_home";
+    public static final String KEY_CONTROLLER_HOME_APP = "controller_home_app";
     public static final String KEY_LOCK_ROTATION = "lock_rotation";
     public static final String KEY_AOD_ROTATION = "aod_rotation";
     public static final String KEY_HELIBOARD_CONTROLLER = "heliboard_controller";
@@ -63,7 +65,7 @@ public final class Config {
     public static final String KEY_PERF_PROFILE = "perf_profile";
     public static final String KEY_THERMAL_OFF = "thermal_off";
 
-    /** Broadcast sent to the launcher after the configuration changes. */
+    /** Broadcast sent to the launcher and system_server after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
     /** Sent when the system font choice changes, for system_server to rebuild its font map. */
     public static final String ACTION_FONT = MODULE_PKG + ".SYSTEM_FONT";
@@ -152,6 +154,10 @@ public final class Config {
     public boolean allowRotation = false;
     /** Game controller buttons (Y, L1/R1, X, Start) and focus animations. */
     public boolean controllerNav = true;
+    /** While a game controller is connected, home is the gaming launcher below. */
+    public boolean controllerHome = false;
+    /** Package of the gaming launcher ("" none picked). */
+    public String controllerHomeApp = "";
     /** Test: the lock screen follows auto-rotate too, and its landscape layout is logged. */
     public boolean lockRotation = false;
     /** The always-on display follows how the phone is held too (the rotation sensor stays on). */
@@ -316,6 +322,8 @@ public final class Config {
         musicVolume = Math.max(0, Math.min(100, in.number(KEY_MUSIC_VOLUME, 45)));
         allowRotation = in.bool(KEY_ALLOW_ROTATION, false);
         controllerNav = in.bool(KEY_CONTROLLER_NAV, true);
+        controllerHome = in.bool(KEY_CONTROLLER_HOME, false);
+        controllerHomeApp = in.text(KEY_CONTROLLER_HOME_APP, "");
         lockRotation = in.bool(KEY_LOCK_ROTATION, false);
         aodRotation = in.bool(KEY_AOD_ROTATION, true);
         heliboardController = in.bool(KEY_HELIBOARD_CONTROLLER, true);
@@ -354,6 +362,8 @@ public final class Config {
         out.number(KEY_MUSIC_VOLUME, musicVolume);
         out.bool(KEY_ALLOW_ROTATION, allowRotation);
         out.bool(KEY_CONTROLLER_NAV, controllerNav);
+        out.bool(KEY_CONTROLLER_HOME, controllerHome);
+        out.text(KEY_CONTROLLER_HOME_APP, controllerHomeApp);
         out.bool(KEY_LOCK_ROTATION, lockRotation);
         out.bool(KEY_AOD_ROTATION, aodRotation);
         out.bool(KEY_HELIBOARD_CONTROLLER, heliboardController);
