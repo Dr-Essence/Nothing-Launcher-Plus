@@ -49,9 +49,12 @@ final class LandscapeFingerprint {
     private static final ThreadLocal<Object> CURRENT = new ThreadLocal<>();
     private static final List<WeakReference<Object>> CONTROLLERS = new CopyOnWriteArrayList<>();
     private static volatile boolean listening;
-    /** The rotation each controller's layer was last placed for (for the log). */
-    private static final java.util.Map<String, String> lastPlaced =
-            new java.util.concurrent.ConcurrentHashMap<>();
+    /** Nothing's two sensor layers' parent, turned with the display (see place). */
+    private static volatile SurfaceControl container;
+    private static final String PANEL_NAME = "NLPlus fingerprint panel";
+    /** Nothing's dim layer's z (its NTUdfpsDimLayerController; the dot is one above). */
+    private static final int DIM_Z = 1073741827;
+    private static volatile int lastRotation = -1;
 
     private LandscapeFingerprint() {
     }
@@ -156,7 +159,7 @@ final class LandscapeFingerprint {
         }, new Handler(Looper.getMainLooper()));
     }
 
-    /** After a turn: the layers that exist now, placed for the new rotation. */
+    /** After a turn: the panel container, placed for the new rotation. */
     private static void placeAll() {
         for (WeakReference<Object> ref : CONTROLLERS) {
             Object controller = ref.get();
@@ -164,13 +167,13 @@ final class LandscapeFingerprint {
                 CONTROLLERS.remove(ref);
                 continue;
             }
-            SurfaceControl sc = surface(controller);
-            if (sc == null || !sc.isValid()) {
-                continue;
+            if (container == null) {
+                return; // No layer shown yet: placed when Nothing first shows one.
             }
             SurfaceControl.Transaction t = new SurfaceControl.Transaction();
-            place(t, controller);
+            placePanel(t, controller);
             t.apply();
+            return;
         }
     }
 
@@ -178,24 +181,52 @@ final class LandscapeFingerprint {
         return (SurfaceControl) XposedHelpers.getObjectField(controller, "mSurfaceControl");
     }
 
+    /**
+     * Nothing's layer moves into the panel container in Nothing's own show transaction. Its
+     * own matrix and position cannot place it: Nothing's BLASTBufferQueue sets a destination
+     * frame (updateDestinationFrame), and SurfaceFlinger then takes the layer's geometry from
+     * that frame alone (DebuG6: transform stayed identity after placing). The container has
+     * none, so its transform turns both layers, which keep Nothing's geometry inside it, at
+     * the z of the dim layer (the dot stays above the dim inside it).
+     */
     private static void place(SurfaceControl.Transaction t, Object controller) {
-        // The display's rotation, fresh from DisplayManager (with Nothing's mDisplay, which
-        // Nothing uses only for the panel's size, the layers stayed unplaced when turned:
-        // bounds 0,0,1080,2400 with no transform in landscape). Each placement is logged.
+        SurfaceControl container = container();
+        XposedHelpers.callMethod(t, "reparent", surface(controller), container);
+        placePanel(t, controller);
+    }
+
+    /** The container, made once (hidden setContainerLayer when there is one: draws nothing). */
+    private static synchronized SurfaceControl container() {
+        if (container == null || !container.isValid()) {
+            Object builder = XposedHelpers.newInstance(SurfaceControl.Builder.class);
+            XposedHelpers.callMethod(builder, "setName", PANEL_NAME);
+            try {
+                XposedHelpers.callMethod(builder, "setContainerLayer");
+            } catch (Throwable t) {
+                // A layer without a buffer draws nothing either.
+            }
+            container = (SurfaceControl) XposedHelpers.callMethod(builder, "build");
+        }
+        return container;
+    }
+
+    private static void placePanel(SurfaceControl.Transaction t, Object controller) {
+        // The display's rotation, fresh from DisplayManager. Each placement is logged.
         int rotation = rotation(controller);
         float[] m = panel(rotation,
                 XposedHelpers.getIntField(controller, "mDisplayWidth"),
                 XposedHelpers.getIntField(controller, "mDisplayHeight"));
+        SurfaceControl container = container();
+        XposedHelpers.callMethod(t, "setLayer", container, DIM_Z);
+        XposedHelpers.callMethod(t, "setVisibility", container, true);
         // As Transaction.setMatrix(sc, Matrix, float[]) passes android.graphics.Matrix values
-        // (both setMatrix forms are hidden from the public SDK: called by reflection, which
+        // (the setMatrix forms are hidden from the public SDK: called by reflection, which
         // System UI, a platform app, may use).
-        SurfaceControl sc = surface(controller);
-        XposedHelpers.callMethod(t, "setMatrix", sc, m[0], m[3], m[1], m[4]);
-        XposedHelpers.callMethod(t, "setPosition", sc, m[2], m[5]);
-        String key = controller.getClass().getSimpleName() + "@" + rotation;
-        if (!key.equals(lastPlaced.put(controller.getClass().getSimpleName(), key))) {
-            Hooks.log("landscape fingerprint: " + controller.getClass().getSimpleName()
-                    + " placed for rotation " + rotation);
+        XposedHelpers.callMethod(t, "setMatrix", container, m[0], m[3], m[1], m[4]);
+        XposedHelpers.callMethod(t, "setPosition", container, m[2], m[5]);
+        if (lastRotation != rotation) {
+            lastRotation = rotation;
+            Hooks.log("landscape fingerprint: sensor layers placed for rotation " + rotation);
         }
     }
 

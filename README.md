@@ -452,8 +452,10 @@ Around the home screen:
   keeps Nothing's mechanism and makes it work turned (logged as `landscape fingerprint: …`):
   the dim layer's layer name leaves out the tag (its buffer, which the composer reads, keeps
   Nothing's name), and both layers are placed in the panel's portrait coordinates in every
-  rotation (AOSP's `rotateBounds`; identity in portrait), in Nothing's own show transactions and
-  again after a turn. With colour inversion on, the dim keeps Nothing's name, as SurfaceFlinger
+  rotation (AOSP's `rotateBounds`; identity in portrait) through a parent container layer they
+  move into in Nothing's own show transactions, turned again after each turn: their own matrix
+  cannot place them, as Nothing's `BLASTBufferQueue` gives them a destination frame, and
+  SurfaceFlinger then takes their geometry from that frame alone. With colour inversion on, the dim keeps Nothing's name, as SurfaceFlinger
   exempts the tagged layer from colour transforms.
   A finger on the sensor also pulled the shade down: Nothing's touch handling asks
   `UdfpsUtils.isWithinSensorArea` with the touch as it is on screen against the sensor's
