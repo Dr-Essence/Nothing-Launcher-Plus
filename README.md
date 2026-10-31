@@ -76,6 +76,12 @@ instructions first.
   profile, the thermal limits and per-app profiles. PerfMTK's README also describes its optional
   **PerfMTK-Hook** LSPosed module, for switching profiles automatically per app.
 
+- **Shout-out: [NothingTweaks](https://github.com/RevealedSoulEven/NothingTweaks)** (LSPosed
+  module, root): system tweaks for Nothing OS, such as status bar and clock options, a network
+  speed indicator, navigation bar options, lock screen extras (double tap to sleep, scrambled
+  PIN), screenshot and screen recording options, in-display fingerprint colours and a charging
+  limit. It goes well with this module.
+
 ## Features
 
 Everything new is opt-in: with the defaults the drawer looks exactly like stock Smart (Beta)
