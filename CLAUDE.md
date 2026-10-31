@@ -5,6 +5,9 @@
   evidence. A change that rests on an untested idea of how Android or the vendor stack behaves
   is a guess: get the evidence first (ask for the exact dump or log that settles it) instead
   of shipping a build to find out.
+- **Watch everything the user sends.** Every video, screenshot and report recording is looked
+  at, frame by frame where it matters, before anything is said about what it shows. Layout
+  numbers from dumps never stand in for looking: judge how a screen looks from the pictures.
 - **Test before each build.** Compile and check every change against the code it touches
   before giving a build; say plainly what was and was not verified, and never present a guess
   as a fix.
