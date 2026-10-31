@@ -668,7 +668,10 @@ second), and the loader waits for idle at most three seconds per step.
   portrait screen, so cards, previews and preview cells are their portrait size, and only what
   places them is worked out for the turned screen: its size, the options sheet (the height under
   the status bar), the heights' positions and the side margins that center the content. The
-  list's page indicator sits as near the sheet's bottom as in portrait.
+  list's page indicator sits 16 px above the screen's bottom, as in portrait. Turned while
+  open, the sheet is rebuilt for the new orientation by Launcher3's own rebuild
+  (`WidgetsFullSheet.onDeviceProfileChanged`, which on its own rebuilds only between one and
+  two panels), so it takes the new orientation's sizes.
 - **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
   many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
   sheet gives the list at least four rows, which squeezed the name off a landscape screen).
