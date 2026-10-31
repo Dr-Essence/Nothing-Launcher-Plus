@@ -23,6 +23,7 @@ public final class SystemUi {
         Hooks.install("lock screen rotation", () -> LockScreenTurn.install(cl, store));
         Hooks.install("landscape fingerprint", () -> LandscapeFingerprint.install(cl, store));
         Hooks.install("always-on display", () -> AodLandscape.install(cl, store));
+        Hooks.install("lock screen widgets fit", () -> LockScreenFit.install(cl, store));
         Hooks.install("landscape shade", () -> LandscapeShade.install(cl, store));
         if (com.dressence.nothinglauncherplus.perf.Device.isCmfPhone1()) {
             Hooks.install("module panels", () ->

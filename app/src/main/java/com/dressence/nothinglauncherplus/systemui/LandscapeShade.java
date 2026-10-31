@@ -87,7 +87,7 @@ final class LandscapeShade {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
                 try {
-                    thresholds(param.thisObject);
+                    thresholds(param.thisObject, store.get().lockRotation);
                 } catch (Throwable t) {
                     // The thresholds System UI made stand.
                 }
@@ -216,20 +216,30 @@ final class LandscapeShade {
     }
 
     /** DistanceClassifier's thresholds, from the screen as it is now (its constructor's sums). */
-    static void thresholds(Object classifier) {
+    static void thresholds(Object classifier, boolean lockRotation) {
         float[] f = factors();
         float width = (Integer) XposedHelpers.callMethod(classifier, "getWidthPixels");
         float height = (Integer) XposedHelpers.callMethod(classifier, "getHeightPixels");
         float xdpi = (Float) XposedHelpers.callMethod(classifier, "getXdpi");
         float ydpi = (Float) XposedHelpers.callMethod(classifier, "getYdpi");
+        float verticalFling = Math.min(height * f[4], f[1] * ydpi);
+        float verticalSwipe = Math.min(height * f[4], f[3] * ydpi);
+        if (lockRotation && width > height) {
+            // Turned, the screen is short: the same inches are almost half of it (496 px of
+            // 1080, against 617 of 2400 in portrait), so a pull down from its middle was
+            // rejected (DebuG report: 327 and 339 px pulls, 423 and 451 with their fling).
+            // The vertical thresholds take the share of the screen's height they take in
+            // portrait (the portrait height runs along the turned width, at the turned xdpi).
+            float share = height / width;
+            verticalFling = Math.min(width * f[4], f[1] * xdpi) * share;
+            verticalSwipe = Math.min(width * f[4], f[3] * xdpi) * share;
+        }
         XposedHelpers.setFloatField(classifier, "mHorizontalFlingThresholdPx",
                 Math.min(width * f[4], f[0] * xdpi));
-        XposedHelpers.setFloatField(classifier, "mVerticalFlingThresholdPx",
-                Math.min(height * f[4], f[1] * ydpi));
+        XposedHelpers.setFloatField(classifier, "mVerticalFlingThresholdPx", verticalFling);
         XposedHelpers.setFloatField(classifier, "mHorizontalSwipeThresholdPx",
                 Math.min(width * f[4], f[2] * xdpi));
-        XposedHelpers.setFloatField(classifier, "mVerticalSwipeThresholdPx",
-                Math.min(height * f[4], f[3] * ydpi));
+        XposedHelpers.setFloatField(classifier, "mVerticalSwipeThresholdPx", verticalSwipe);
     }
 
     /** The settings DistanceClassifier reads (its defaults when they cannot be read). */

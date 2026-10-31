@@ -481,6 +481,12 @@ Around the home screen:
   scrim's opaque black, and with an opaque scrim System UI drew no blur. While the lock screen
   turns, the PIN page's backdrop goes on the behind scrim with the portrait values, and the
   blur comes back.
+  **Widgets, turned**: Nothing stacks its date, clock and widgets down from the top, sized for
+  portrait; with the clock set to its normal size the widgets ran off the bottom of the turned
+  lock screen and always-on display (to y 1114 of 1080). Whatever the clock's size and the
+  widgets, the widget container is drawn as large as fits above the bottom edge (scaled on its
+  top, its place and Nothing's layout unchanged), full size when it fits; the always-on
+  display's burn-in movement counts the widgets as drawn.
   **Charging line, turned**: Nothing centers the lock screen's charging / status line across
   the screen; turned, it ran over the bottom of Nothing's widgets (charging text at y 952, the
   widgets to 999), on the lock screen and the always-on display. With the halves, it is
@@ -494,7 +500,10 @@ Around the home screen:
   `closeQsIfPossible` leaves them open in split shade, so a swipe up opened the bouncer and,
   once it was put away, the lock screen came back with them still open. While the lock screen
   turns, the falsing check's size and dpi follow the rotation (its thresholds worked out from
-  them with System UI's own settings and sums). Its proximity check took the hand holding the
+  them with System UI's own settings and sums). Its distance check works in inches (1.5"), which
+  turned is almost half the screen's height (496 of 1080 px, against 617 of 2400 in portrait),
+  so a pull down from the middle of the lock screen was rejected; turned, the vertical
+  thresholds take the share of the height they take in portrait (278 px). Its proximity check took the hand holding the
   turned phone (over the sensor at the top edge in portrait) for a pocket and threw away every
   swipe shorter than 80% of the screen (`percentInProximity=1.0` on full swipes down and up to
   the PIN page); while turned that check passes. Quick settings over the lock screen close

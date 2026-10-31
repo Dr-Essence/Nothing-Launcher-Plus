@@ -99,7 +99,9 @@ final class AodLandscape {
                 continue;
             }
             top = Math.min(top, v.getTop());
-            bottom = Math.max(bottom, v.getBottom());
+            // As drawn: the widgets may be drawn smaller to fit (LockScreenFit, top pivot).
+            bottom = Math.max(bottom, v.getTop()
+                    + Math.round(v.getPivotY() + (v.getHeight() - v.getPivotY()) * v.getScaleY()));
         }
         if (top == Integer.MAX_VALUE) {
             return null;
