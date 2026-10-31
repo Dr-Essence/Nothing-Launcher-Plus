@@ -67,9 +67,11 @@ final class DebugReport {
             + "dumpsys activity service com.android.systemui > $D/systemui.txt 2>&1\n"
             + "dumpsys input > $D/input.txt 2>&1\n"
             + "dumpsys display > $D/display.txt 2>&1\n"
-            + "settings list system > $D/settings_system.txt 2>&1\n"
-            + "settings list secure > $D/settings_secure.txt 2>&1\n"
-            + "settings list global > $D/settings_global.txt 2>&1\n"
+            // `settings list` failed here ("Failed transaction"): the settings files are read
+            // as well, through Android's own binary-XML converter.
+            + "for t in system secure global; do settings list $t > $D/settings_$t.txt 2>&1;"
+            + " f=/data/system/users/0/settings_$t.xml; abx2xml $f - >"
+            + " $D/settings_$t.xml 2>&1 || cp $f $D/settings_$t.xml; done\n"
             + "dumpsys game > $D/game.txt 2>&1\n"
             + "dumpsys battery > $D/battery.txt 2>&1\n"
             // Where this phone keeps its clocks and temperatures, and who may read them.
