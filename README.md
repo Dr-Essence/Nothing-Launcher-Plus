@@ -660,15 +660,15 @@ second), and the loader waits for idle at most three seconds per step.
   portrait page: the launcher deletes items that overlap or leave the grid when it next loads,
   so every landscape write is checked against the portrait page. The page is then arranged
   again in place, without reloading the launcher.
-- **Widget picker** in landscape: Nothing sizes it from one profile of fractions of the
-  screen, made the first time the picker opens and kept from then on, so a portrait profile was
-  used turned and the other way round. Each orientation now gets its own, made by Nothing for
-  it; turned, a widget's options sheet takes the screen's height under the status bar (Nothing
-  gives it half the height: 568 px turned, so its previews and sizes ran off the screen), and
-  the list's page indicator sits as near the sheet's bottom as in portrait instead of over its
-  second row. Nothing makes the profile from the application's window size, which just after a
-  turn can still be the other orientation's; a profile that does not match the picker's screen
-  is made again by Nothing's constructor from that screen.
+- **Widget picker** in landscape: Nothing sizes its cards and previews as fractions of the
+  screen's width and height (a card is 45% of the width), so on the turned screen a profile made
+  for it drew every card and preview about 1090 px wide on a 1080 px high screen, cut off at the
+  sheet's edges; the profile was also made once and kept, so one orientation's sizes reached the
+  other. Each orientation keeps its own profile. Turned, Nothing's constructor works on the
+  portrait screen, so cards, previews and preview cells are their portrait size, and only what
+  places them is worked out for the turned screen: its size, the options sheet (the height under
+  the status bar), the heights' positions and the side margins that center the content. The
+  list's page indicator sits as near the sheet's bottom as in portrait.
 - **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
   many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
   sheet gives the list at least four rows, which squeezed the name off a landscape screen).
