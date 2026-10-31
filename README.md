@@ -472,6 +472,18 @@ Around the home screen:
   sensor's side (`SharedNotificationContainer.updateConstraints`) is widened to end the column
   16dp short of the turned icon, so no notification, however many or however tall, reaches
   the circle; placed again whenever the icon's spot changes.
+  **Shade over the turned lock screen**: System UI's falsing check (BrightLine) keeps the
+  screen's size and dpi from when it started (portrait: 1080 x 2400) and its distance check
+  sets its thresholds from them once, so turned, vertical swipes were measured against the
+  wrong axis (a swipe of 530 or 606 px rejected against 617 px; the turned screen's own
+  threshold is 496). The pull down on the lock screen was aborted as a false touch, System UI
+  opened quick settings over the lock screen instead, and they were hard to leave: Nothing's
+  `closeQsIfPossible` leaves them open in split shade, so a swipe up opened the bouncer and,
+  once it was put away, the lock screen came back with them still open. While the lock screen
+  turns, the falsing check's size and dpi follow the rotation (its thresholds worked out from
+  them with System UI's own settings and sums), and quick settings over the lock screen close
+  on back or when the panel closes, as Nothing closes them when split shade returns to the
+  lock screen.
   **Always-on display, turned**: its burn-in movement (`AodBurnInViewModel`, applied as
   translationY to the clock, date, AOD notification icons and Nothing's widget container) moves
   them within Nothing's `burn_in_prevention_offset_y` (100dp), sized for portrait; turned, the
