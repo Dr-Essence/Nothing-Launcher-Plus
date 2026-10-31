@@ -437,26 +437,24 @@ Around the home screen:
   (logged as `lock screen flip: …`). The always-on display follows the
   screen's turn like the lock screen (its landscape layout is logged for fitting it). Fingerprint events in landscape are logged
   (`fingerprint: …`: finger down / up, the overlay window's place, what the fingerprint
-  service answers). Known limit: the fingerprint does not read in landscape yet. The Goodix
-  driver reads only with the panel's high-brightness mode (HBM) on, and MediaTek's display
-  composer (`hwcomposer.mtk_common.so`) switches HBM on for a frame only when SurfaceFlinger
-  hands it a layer whose buffer is named `NTFingerprintDimLayer` (`HWCLayer::setupPrivateHandle`
-  finds the name, `HWCDisplay::validate` sets the display's flag, `HWCDispatcher::setJob` puts
-  it in the frame's job; nothing else is checked). `dumpsys SurfaceFlinger` shows that layer
-  in the composer's list in portrait and not in landscape, although SurfaceFlinger itself
-  counts it as visible there (`--frontend` dumps), and the layer trace shows it never reaches
-  the composer in either landscape direction, so the driver times out every touch
-  (`GF_ERROR_UI_READY_TIMEOUT`) while portrait switches HBM on as the lock screen shows. The
-  pass that drops it is Android's own (CompositionEngine's `ensureOutputLayerIfVisible`, the
-  same in Nothing's build); which of its checks drops it in landscape is being looked into.
-  Ruled out by test (0.33.3): the skip-screenshot flag Nothing sets on the dim layer; with it
-  off the layer still never reaches the composer in landscape, and HBM still follows only the
-  rotation (on about 0.5 s after turning to portrait, off about 0.5 s after turning to
-  landscape). The debug report now places kernel uprobes, read-only breakpoints that leave
-  SurfaceFlinger running unchanged, after each check of CompositionEngine's
-  `ensureOutputLayerIfVisible` in this phone's SurfaceFlinger build (checked by its SHA-256),
-  recording only layers drawn with alpha under 1, to show which check drops the dim layer
-  (`uprobes.txt`). Nothing's sensor layers are left as Nothing makes them.
+  service answers). **Fingerprint in landscape**: the Goodix driver reads only with the
+  panel's high-brightness mode (HBM) on, and MediaTek's display composer
+  (`hwcomposer.mtk_common.so`) switches HBM on for a frame only when it holds a buffer named
+  `NTFingerprintDimLayer` (`HWCLayer::setupPrivateHandle` finds the name). Nothing's
+  SurfaceFlinger leaves the layer *named* `NTFingerprintDimLayer` out of composition whenever
+  the display's transform hint is ROT_90 or ROT_270: its Layer constructor tags the layer by
+  name, and the per-layer step that builds the composition list returns early for the tag when
+  `mActiveDisplayTransformHint` is 4 or 7. (Found with kernel uprobes on CompositionEngine's
+  checks: in landscape the layer never reached them, while other layers did.) So in landscape
+  HBM never came on and every touch timed out (`GF_ERROR_UI_READY_TIMEOUT`). Nothing's two
+  sensor layers, the dim and the illumination dot, are also drawn in the panel's portrait
+  coordinates, so the dot fell off screen when turned. With the lock screen turning, the module
+  keeps Nothing's mechanism and makes it work turned (logged as `landscape fingerprint: …`):
+  the dim layer's layer name leaves out the tag (its buffer, which the composer reads, keeps
+  Nothing's name), and both layers are placed in the panel's portrait coordinates in every
+  rotation (AOSP's `rotateBounds`; identity in portrait), in Nothing's own show transactions and
+  again after a turn. With colour inversion on, the dim keeps Nothing's name, as SurfaceFlinger
+  exempts the tagged layer from colour transforms.
   A finger on the sensor also pulled the shade down: Nothing's touch handling asks
   `UdfpsUtils.isWithinSensorArea` with the touch as it is on screen against the sensor's
   unturned bounds ("rotate to portrait" off), so in landscape the sensor window never took the
