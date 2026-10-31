@@ -638,14 +638,15 @@ A **Performance** page appears in the module's menu on a CMF Phone 1 (`ro.produc
 Tetris) and nowhere else. Everything on it was built from what this phone reports (its
 clock, GPU and thermal files, Android's display and game services, PerfMTK's own files).
 
-- **Ndot performance overlay**: a small panel in the top corner of every app, once a second,
+- **Ndot performance overlay**: a small panel over every app, updated twice a second,
   in MangoHud's style (its row colours and a frame time graph) with
   Scene's contents and size, drawn by the module (it is
   not MangoHud's code: MangoHud is a Linux Vulkan / OpenGL layer drawn inside the game, which
   Android only loads into debuggable apps):
   - CPU and GPU load rings with their clocks;
-  - FPS and frame time with a graph of the last frames (SurfaceFlinger's present times for
-    the game's layer);
+  - FPS and frame time in any app, with the last 40 frames on a Nothing dot screen
+    (SurfaceFlinger's present times for the focused window's layer: its SurfaceView in a game
+    or video, else the window itself; a still screen shows 0);
   - GPU load, clock and temperature; CPU load and hottest core;
   - each cluster's clock, then every core's load and clock, as Scene lists them ("off" when
     a core is parked; the four cores of a cluster share one clock policy on this chip, so
@@ -655,9 +656,8 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
     own row.
 
   Sensors that report a value below −40 °C are off (a powered-down GPU reports −274 °C) and
-  show "—". The files are root-only, so one root shell reads them. The panel takes no
-  touches and is drawn at 80% opacity, the most Android lets touches pass through an app's
-  overlay, so games play as usual. It needs "Display over other apps", granted through root
+  show "—". The files are root-only, so one root shell reads them. Drag the panel to move
+  it; it stays where it is left and takes only the touches on itself. It needs "Display over other apps", granted through root
   when it can be. After a reboot it comes back when the Performance page is opened.
 - **PerfMTK profile**: switches [PerfMTK](https://github.com/JUANIMAN/PerfMTK) to Performance,
   Balanced, Powersave or Powersave+ (`perfmtk <profile>`). PerfMTK's own per-app profiles

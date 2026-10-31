@@ -3,7 +3,6 @@ package com.dressence.nothinglauncherplus.perf;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.util.TypedValue;
@@ -13,8 +12,9 @@ import java.util.Locale;
 
 /**
  * The performance overlay's panel, drawn by hand: MangoHud's look (coloured row names, a frame
- * time graph under the FPS) with Scene's contents and size (CPU and GPU load rings, each
- * cluster's clock with every core's load, RAM and swap, DDR, temperatures), in the Ndot font.
+ * time graph under the FPS, here on a Nothing dot screen) with Scene's contents and size (CPU
+ * and GPU load rings, each cluster's clock with every core's load and clock, RAM and swap,
+ * DDR, temperatures), in the Ndot font.
  */
 final class PerfHud extends View {
 
@@ -32,7 +32,6 @@ final class PerfHud extends View {
     private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF box = new RectF();
-    private final Path graph = new Path();
     private final float unit;
     private final float line;
     private Sample sample;
@@ -156,30 +155,32 @@ final class PerfHud extends View {
         canvas.drawText(value, x + text.measureText("FPS "), y, text);
     }
 
-    /** The last frames' times, 0–50 ms tall, newest on the right. */
+    /** Columns and rows of the frame time dot screen. */
+    private static final int GRAPH_COLUMNS = 40;
+    private static final int GRAPH_ROWS = 8;
+
+    /**
+     * The last frames' times on a Nothing dot screen: a column of dots per frame, newest on
+     * the right, lit from the bottom up to its time (a full column is 50 ms or more), the
+     * rest of the dots faintly lit, as on Nothing's own dot-matrix displays.
+     */
     private void drawGraph(Canvas canvas, float x, float y, float[] times) {
         float width = getWidth() - x - 6 * unit;
         float height = 16 * unit;
-        fill.setColor(0x33FFFFFF);
-        box.set(x, y, x + width, y + height);
-        canvas.drawRect(box, fill);
-        if (times.length < 2) {
-            return;
-        }
-        graph.reset();
-        for (int i = 0; i < times.length; i++) {
-            float px = x + width * i / (times.length - 1);
-            float py = y + height - height * Math.min(1, times[i] / 50f);
-            if (i == 0) {
-                graph.moveTo(px, py);
-            } else {
-                graph.lineTo(px, py);
+        float pitch = Math.min(width / GRAPH_COLUMNS, height / GRAPH_ROWS);
+        float radius = pitch * 0.38f;
+        for (int c = 0; c < GRAPH_COLUMNS; c++) {
+            // Right-aligned: the newest frame is the last column; earlier columns stay unlit.
+            int frame = times.length - GRAPH_COLUMNS + c;
+            float ms = frame >= 0 ? times[frame] : -1;
+            // A frame that drew lights at least its bottom dot.
+            int lit = ms < 0 ? 0 : Math.max(1, Math.round(GRAPH_ROWS * Math.min(1, ms / 50f)));
+            for (int r = 0; r < GRAPH_ROWS; r++) {
+                fill.setColor(r >= lit ? 0x26FFFFFF : ms > 34 ? TEMP : GRAPH);
+                canvas.drawCircle(x + pitch * (c + 0.5f), y + height - pitch * (r + 0.5f),
+                        radius, fill);
             }
         }
-        ring.setColor(GRAPH);
-        ring.setStrokeWidth(unit);
-        canvas.drawPath(graph, ring);
-        ring.setStrokeWidth(3 * unit);
     }
 
     private void centred(Canvas canvas, String value, float cx, float y) {

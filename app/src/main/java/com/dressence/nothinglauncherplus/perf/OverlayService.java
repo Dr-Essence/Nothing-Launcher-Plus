@@ -27,14 +27,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The performance overlay (CMF Phone 1): {@link PerfHud} over everything, once a second. The
+ * The performance overlay (CMF Phone 1): {@link PerfHud} over everything, twice a second. The
  * clocks, loads and temperatures are root-only on this phone, so one root shell reads them in
  * a loop (the files as found on the phone: cpufreq, /proc/stat, /proc/meminfo, MediaTek's GED
- * HAL and DVFSRC, the thermal zones by name, the battery's current and voltage) and SurfaceFlinger's
- * frame times for the game's layer (the first SurfaceView layer drawn through BLAST). The
- * battery's temperature comes from Android. The panel takes no touches and is drawn at 80%
- * opacity, the most Android lets touches pass through an app's overlay, so games underneath
- * play as usual.
+ * HAL and DVFSRC, the thermal zones by name, the battery's current and voltage), with
+ * SurfaceFlinger's frame times for the focused window's layer (its SurfaceView if it has one,
+ * else its own), so FPS shows in any app. The battery's temperature comes from Android. The
+ * panel can be dragged anywhere and stays where it is left; it takes only the touches on
+ * itself.
  */
 public final class OverlayService extends Service {
 
@@ -42,12 +42,16 @@ public final class OverlayService extends Service {
     private static final int NOTIFICATION = 1;
     /** Readings below this are a sensor's "off" value (a powered-down GPU says -274 °C). */
     private static final float NO_READING_C = -40f;
+    /** Where the panel was dragged to. */
+    private static final String PLACE = "overlay";
+    private static final String PLACE_X = "x";
+    private static final String PLACE_Y = "y";
 
     /**
-     * Each second prints: "F f0..f7 (kHz, 0 when offline) | G opp kHz | U load | T cpu zones
+     * Every half second prints: "F f0..f7 (kHz, 0 when offline) | G opp kHz | U load | T cpu zones
      * (m°C) | X gpu soc (m°C) | D ddr Hz | B µA µV", then "S" + the per-core /proc/stat lines,
      * "M" + MemTotal MemAvailable SwapTotal SwapFree (kB), "P" + the game layer's last present
-     * times (ns), and "E" to end the second.
+     * times (ns), and "E" to end the round.
      */
     private static final String SENSORS = ""
             + "Z(){ for z in /sys/class/thermal/thermal_zone*; do"
@@ -71,13 +75,20 @@ public final class OverlayService extends Service {
             + "  echo \"S $(grep '^cpu[0-7] ' /proc/stat | tr '\\n' ',')\"\n"
             + "  echo \"M $(grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo"
             + " | awk '{print $2}' | tr '\\n' ' ')\"\n"
-            + "  [ $((n % 3)) = 0 ] && L=$(dumpsys SurfaceFlinger --list"
-            + " | grep -m1 'SurfaceView\\[.*(BLAST)')\n"
+            // Every 2 s: the focused window, and the layer it draws into: its SurfaceView (a
+            // game, a video) if it has one, else its own ("pkg/activity#N", or a system
+            // window's title, such as NotificationShade#N).
+            + "  if [ $((n % 4)) = 0 ]; then W=$(dumpsys window | grep -m1 mCurrentFocus"
+            + " | sed 's/.* u0 //; s/}.*//'); P=${W%%/*};"
+            + " LS=$(dumpsys SurfaceFlinger --list);"
+            + " L=$(echo \"$LS\" | grep -m1 \"SurfaceView\\[$P/.*(BLAST)\");"
+            + " [ -z \"$L\" ] && L=$(echo \"$LS\" | awk -v w=\"$W#\""
+            + " 'index($0,w)==1{print;exit}'); fi\n"
             + "  [ -n \"$L\" ] && echo \"P $(dumpsys SurfaceFlinger --latency \"$L\""
             + " | awk 'NR>1 && $2>0 && $2<9000000000000000000 {print $2}' | tail -120"
             + " | tr '\\n' ' ')\"\n"
             + "  echo E\n"
-            + "  n=$((n+1)); sleep 1\n"
+            + "  n=$((n+1)); sleep 0.5\n"
             + "done\n";
 
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -151,20 +162,47 @@ public final class OverlayService extends Service {
                 WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT);
-        lp.gravity = Gravity.TOP | Gravity.END;
+        lp.gravity = Gravity.TOP | Gravity.START;
+        android.content.SharedPreferences place = getSharedPreferences(PLACE, MODE_PRIVATE);
         int margin = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8,
                 getResources().getDisplayMetrics()));
-        lp.x = margin;
-        lp.y = margin * 4;
-        // Touches only pass through an app's overlay up to this opacity (Android 12+).
-        lp.alpha = 0.8f;
-        getSystemService(WindowManager.class).addView(panel, lp);
+        lp.x = place.getInt(PLACE_X, getResources().getDisplayMetrics().widthPixels / 2);
+        lp.y = place.getInt(PLACE_Y, margin * 4);
+        lp.alpha = 0.9f;
+        WindowManager windows = getSystemService(WindowManager.class);
+        windows.addView(panel, lp);
+        // Dragged to where it is wanted, and kept there. It takes the touches on itself only;
+        // everything around it reaches the app as usual.
+        float[] grab = new float[4];
+        panel.setOnTouchListener((view, event) -> {
+            try {
+                switch (event.getActionMasked()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        grab[0] = event.getRawX();
+                        grab[1] = event.getRawY();
+                        grab[2] = lp.x;
+                        grab[3] = lp.y;
+                        return true;
+                    case android.view.MotionEvent.ACTION_MOVE:
+                        lp.x = Math.round(grab[2] + event.getRawX() - grab[0]);
+                        lp.y = Math.round(grab[3] + event.getRawY() - grab[1]);
+                        windows.updateViewLayout(panel, lp);
+                        return true;
+                    case android.view.MotionEvent.ACTION_UP:
+                        place.edit().putInt(PLACE_X, lp.x).putInt(PLACE_Y, lp.y).apply();
+                        return true;
+                    default:
+                        return true;
+                }
+            } catch (Exception e) {
+                return false; // The window went away mid-drag.
+            }
+        });
     }
 
-    /** One root shell prints the readings every second; each second updates the panel. */
+    /** One root shell prints the readings twice a second; each round updates the panel. */
     private void readSensors() {
         running = true;
         new Thread(() -> {
