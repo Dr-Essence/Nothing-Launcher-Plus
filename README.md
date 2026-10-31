@@ -68,13 +68,15 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
 These are separate projects, not part of this module. Each has its own risks, so read its
 instructions first.
 
-- **[PerfMTK](https://github.com/JUANIMAN/PerfMTK)** (Magisk / KernelSU module, MediaTek phones
-  with a Mali GPU, such as the CMF Phone 1): Powersave / Balanced / Performance profiles, CPU
+- **[PerfMTK](https://github.com/JUANIMAN/PerfMTK)** (Magisk / KernelSU module; **only for
+  Nothing phones with a MediaTek chip**, such as the CMF Phone 1 and CMF Phone 2 Pro, not for
+  Snapdragon ones): Powersave / Balanced / Performance profiles, CPU
   and GPU frequency tuning and thermal limits. The module's planned game options will set CPU
   speeds through PerfMTK rather than on their own.
-- **[PerfMTK Manager](https://github.com/JUANIMAN/PerfMTK-Manager)**: PerfMTK's app, for picking a
-  profile, the thermal limits and per-app profiles. PerfMTK's README also describes its optional
-  **PerfMTK-Hook** LSPosed module, for switching profiles automatically per app.
+- **[PerfMTK Manager](https://github.com/JUANIMAN/PerfMTK-Manager)** (same phones): PerfMTK's
+  app, for picking a profile, the thermal limits and per-app profiles. PerfMTK's README also
+  describes its optional **PerfMTK-Hook** LSPosed module, for switching profiles automatically
+  per app.
 
 - **Shout-out: [NothingTweaks](https://github.com/RevealedSoulEven/NothingTweaks)** (LSPosed
   module, root): system tweaks for Nothing OS, such as status bar and clock options, a network
