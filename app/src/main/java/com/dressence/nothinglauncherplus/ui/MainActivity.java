@@ -357,6 +357,10 @@ public class MainActivity extends Activity {
                 + " app profiles still switch it when apps change", null, ui.chevron(),
                 v -> choosePerfMtkProfile());
 
+        ui.row("Thermal limits", "Switch PerfMTK's thermal throttling on or off · off runs"
+                + " hotter, for short gaming sessions", null, ui.chevron(),
+                v -> chooseThermal());
+
         ui.section("Games");
         int n = config.unlockGames.size();
         ui.row("120 fps unlock", (n == 0 ? "No games" : n == 1 ? "1 game" : n + " games")
@@ -392,18 +396,34 @@ public class MainActivity extends Activity {
         Dialogs.builder(this)
                 .setTitle("PerfMTK profile")
                 .setItems(new String[] {"Performance", "Balanced", "Powersave", "Powersave+"},
-                        (d, which) -> new Thread(() -> {
-                            String profile = PERFMTK_PROFILES[which];
-                            String failure = com.dressence.nothinglauncherplus.perf.Device
-                                    .hasPerfMtk() ? com.dressence.nothinglauncherplus.perf
-                                            .Device.su("perfmtk " + profile)
-                                    : "PerfMTK is not installed";
-                            runOnUiThread(() -> Toast.makeText(this, failure == null
-                                    ? "PerfMTK: " + profile : "Failed: " + failure,
-                                    Toast.LENGTH_LONG).show());
-                        }).start())
+                        (d, which) -> perfMtk(PERFMTK_PROFILES[which],
+                                "PerfMTK: " + PERFMTK_PROFILES[which]))
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    /** PerfMTK's thermal switch (`perfmtk --thermal enable|disable`, from its own help). */
+    private void chooseThermal() {
+        Dialogs.builder(this)
+                .setTitle("Thermal limits")
+                .setMessage("Off lets the phone run hotter before it slows down. Use it for"
+                        + " short sessions, and switch it back on after.")
+                .setPositiveButton("On", (d, w) -> perfMtk("--thermal enable",
+                        "Thermal limits on"))
+                .setNegativeButton("Off", (d, w) -> perfMtk("--thermal disable",
+                        "Thermal limits off"))
+                .setNeutralButton("Cancel", null)
+                .show();
+    }
+
+    private void perfMtk(String arguments, String done) {
+        new Thread(() -> {
+            String failure = com.dressence.nothinglauncherplus.perf.Device.hasPerfMtk()
+                    ? com.dressence.nothinglauncherplus.perf.Device.su("perfmtk " + arguments)
+                    : "PerfMTK is not installed";
+            runOnUiThread(() -> Toast.makeText(this, failure == null ? done
+                    : "Failed: " + failure, Toast.LENGTH_LONG).show());
+        }).start();
     }
 
     private void warnBeforeUnlock(Config config) {

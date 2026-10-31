@@ -648,9 +648,9 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
     (SurfaceFlinger's present times for the focused window's layer: its SurfaceView in a game
     or video, else the window itself; a still screen shows 0);
   - GPU load, clock and temperature; CPU load and hottest core;
-  - each cluster's clock, then every core's load and clock, as Scene lists them ("off" when
-    a core is parked; the four cores of a cluster share one clock policy on this chip, so
-    their clocks usually match);
+  - each cluster's set clock, then every core's load and measured clock, as Scene lists them
+    ("off" when a core is parked; the core's own clock is its root-only `cpuinfo_cur_freq`,
+    else its cluster's);
   - RAM and swap use, DDR clock;
   - SoC temperature, battery temperature and the power drawn from the battery, each on its
     own row.
@@ -663,6 +663,8 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   Balanced, Powersave or Powersave+ (`perfmtk <profile>`). PerfMTK's own per-app profiles
   still switch it as apps change. PerfMTK also sets the refresh rate with each profile, so
   the module leaves the refresh rate to it.
+- **Thermal limits**: PerfMTK's thermal throttling on or off (`perfmtk --thermal
+  enable|disable`, from its own help). Off runs hotter: for short sessions.
 - **120 fps unlock (per game, off by default)**: some games pick their frame rate from a list
   of known phones (the reports showed two Unreal games asking the display for 60 Hz
   themselves, while Android, MediaTek and PerfMTK all allowed 120). Inside each game you pick,
@@ -674,8 +676,8 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   cheating and ban the account, and nothing can rule that out. It does not help games that
   choose by their graphics chip, which the driver still reports as Mali.
 
-Planned next: PerfMTK's thermal switch and refresh rate options (once `perfmtk --help` from
-the phone is read) and a page for these in Nothing's Game Bar.
+Planned next: refresh rate options through PerfMTK's profiles (`--reload`) and a page for
+these in Nothing's Game Bar.
 
 ## Roadmap
 

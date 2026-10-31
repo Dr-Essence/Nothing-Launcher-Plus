@@ -48,8 +48,9 @@ public final class OverlayService extends Service {
     private static final String PLACE_Y = "y";
 
     /**
-     * Every half second prints: "F f0..f7 (kHz, 0 when offline) | G opp kHz | U load | T cpu zones
-     * (m°C) | X gpu soc (m°C) | D ddr Hz | B µA µV", then "S" + the per-core /proc/stat lines,
+     * Every half second prints: "F f0..f7 (each core's measured clock, cpuinfo_cur_freq, else
+     * its cluster's; kHz, 0 when offline) | G opp kHz | U load | T cpu zones (m°C) | X gpu soc
+     * (m°C) | D ddr Hz | B µA µV | C the two clusters' set clocks (kHz)", then "S" + the per-core /proc/stat lines,
      * "M" + MemTotal MemAvailable SwapTotal SwapFree (kB), "P" + the game layer's last present
      * times (ns), and "E" to end the round.
      */
@@ -65,13 +66,15 @@ public final class OverlayService extends Service {
             + "while :; do\n"
             + "  f=\"\"; for c in 0 1 2 3 4 5 6 7; do d=/sys/devices/system/cpu/cpu$c;"
             + " if [ \"$(cat $d/online 2>/dev/null)\" = 0 ]; then f=\"$f 0\";"
-            + " else f=\"$f $(cat $d/cpufreq/scaling_cur_freq 2>/dev/null || echo 0)\"; fi;"
-            + " done\n"
+            + " else f=\"$f $(cat $d/cpufreq/cpuinfo_cur_freq 2>/dev/null"
+            + " || cat $d/cpufreq/scaling_cur_freq 2>/dev/null || echo 0)\"; fi; done\n"
             + "  t=\"\"; for z in $CPU; do t=\"$t $(cat $z)\"; done\n"
             + "  echo \"F$f|G $(cat /sys/kernel/ged/hal/current_freqency)"
             + "|U $(cat /sys/kernel/ged/hal/gpu_utilization)|T$t|X $(cat $GPU) $(cat $SOC)"
             + "|D $(cat /sys/class/devfreq/mtk-dvfsrc-devfreq/cur_freq)"
-            + "|B $(cat $PS/current_now) $(cat $PS/voltage_now)\"\n"
+            + "|B $(cat $PS/current_now) $(cat $PS/voltage_now)"
+            + "|C $(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq)"
+            + " $(cat /sys/devices/system/cpu/cpufreq/policy4/scaling_cur_freq)\"\n"
             + "  echo \"S $(grep '^cpu[0-7] ' /proc/stat | tr '\\n' ',')\"\n"
             + "  echo \"M $(grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo"
             + " | awk '{print $2}' | tr '\\n' ' ')\"\n"
@@ -295,6 +298,10 @@ public final class OverlayService extends Service {
             if (parts.length > 5) {
                 long[] ddr = numbers(parts[5].substring(1));
                 next.ddrMhz = ddr.length > 0 ? ddr[0] / 1_000_000 : 0;
+            }
+            if (parts.length > 7) {
+                long[] clusters = numbers(parts[7].substring(1));
+                System.arraycopy(clusters, 0, next.clusterKhz, 0, Math.min(2, clusters.length));
             }
             if (parts.length > 6) {
                 long[] power = numbers(parts[6].substring(1));

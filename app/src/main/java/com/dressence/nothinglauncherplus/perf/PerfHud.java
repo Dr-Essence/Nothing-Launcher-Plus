@@ -129,13 +129,12 @@ final class PerfHud extends View {
     }
 
     /**
-     * As Scene lays a cluster out: a header with its clock, then each core's load and clock
-     * (the cores of a cluster share one clock policy here, so these usually match). Returns
-     * the line after it.
+     * As Scene lays a cluster out: a header with the cluster's set clock, then each core's
+     * load and measured clock. Returns the line after it.
      */
     private float cluster(Canvas canvas, float x, float y, String name, Sample s, int first) {
-        long khz = 0;
-        for (int i = first; i < first + 4; i++) {
+        long khz = s.clusterKhz[first / 4];
+        for (int i = first; i < first + 4 && khz == 0; i++) {
             khz = Math.max(khz, s.coreKhz[i]);
         }
         row(canvas, x, y, name, CPU, khz > 0 ? mhz(khz) : "off");
@@ -202,6 +201,8 @@ final class PerfHud extends View {
     /** One second's readings. */
     static final class Sample {
         final long[] coreKhz = new long[8];
+        /** The clusters' set clocks (cores 0-3, 4-7); each core's own is its measured one. */
+        final long[] clusterKhz = new long[2];
         final float[] coreLoad = new float[8];
         long gpuKhz;
         float gpuLoad = -1;
@@ -230,7 +231,7 @@ final class PerfHud extends View {
         }
 
         long maxCpuKhz() {
-            long max = 0;
+            long max = Math.max(clusterKhz[0], clusterKhz[1]);
             for (long khz : coreKhz) {
                 max = Math.max(max, khz);
             }
