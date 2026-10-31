@@ -28,10 +28,10 @@ import de.robv.android.xposed.XposedHelpers;
  * Nothing added its pieces (date, widgets, depth-effect wallpaper) to its default layout only,
  * so the swapped one showed just a clock across the top with the notifications over it (seen
  * in the logged layout). That swap is switched off: Nothing's layout stays. SystemUI still
- * puts the notifications on the right half in landscape, so while it says the clock is not to
- * be centered (notifications showing), Nothing's clock, date and widgets end at the middle in
- * the same layout pass, as AOSP's split layout does with its clock: they center on the left
- * half. Each landscape layout is still logged (views, where they are, which lie off screen).
+ * puts the notifications on the right half in landscape, so turned, Nothing's clock, date and
+ * widgets end at the middle in the same layout pass, as AOSP's split layout does with its
+ * clock: they center on one half, with notifications or without, and the charging line on the
+ * other. Each landscape layout is still logged (views, where they are, which lie off screen).
  *
  * <p>The fingerprint sensor (under the screen) is where it is whichever way the screen turns.
  * SystemUI's sensor overlay (UdfpsControllerOverlay, which lights the sensor and reads the
@@ -246,17 +246,19 @@ final class LockScreenTurn {
                     Resources res = context.getResources();
                     int split = res.getIdentifier("config_use_split_notification_shade", "bool",
                             context.getPackageName());
-                    // Halves with notifications showing (Nothing would center the clock
-                    // otherwise), and always with the sensor on the left: without
-                    // notifications Nothing's clock sat on the left over the sensor's icon
-                    // (report at rotation 3), so its pieces go to the right half then.
+                    // Halves whenever turned, with notifications or not: Nothing's own
+                    // centered layout put its clock on the left over the sensor's icon with
+                    // the sensor on the left (report at rotation 3), and with the sensor on
+                    // the right it spread the widgets across the middle (718..1650), where
+                    // the charging line under them ran into them (DebuG report: always-on
+                    // display, widgets moved down to the bottom over "57% • Charging"). The
+                    // halves keep Nothing's pieces on one side and the charging line on the
+                    // other, the same in both turns.
                     boolean landscape = res.getConfiguration().orientation
                             == Configuration.ORIENTATION_LANDSCAPE;
                     boolean splitShade = split != 0 && res.getBoolean(split);
                     boolean left = sensorOnLeft(context);
-                    boolean half = store.get().lockRotation
-                            && (Boolean.FALSE.equals(centered) || left) && landscape
-                            && splitShade;
+                    boolean half = store.get().lockRotation && landscape && splitShade;
                     if (store.get().diagnosticLogging) {
                         logHalves("lock screen halves: centered " + centered + ", sensor "
                                 + (left ? "left" : "right") + ", landscape " + landscape
@@ -272,7 +274,7 @@ final class LockScreenTurn {
                         leftHalf(context, param.args[0]);
                         halfApplied = true;
                     } else if (halfApplied) {
-                        // Back to centered (no notifications, or portrait): the clock's edges
+                        // Back to Nothing's (portrait): the clock's edges
                         // back on the screen's, as Nothing has them. SystemUI's clock-only
                         // pass copies the lock screen's constraints, so the half's end stayed
                         // and the full-width clock sat half off the screen (-461..1727).

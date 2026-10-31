@@ -80,6 +80,8 @@ final class DebugReport {
             + "  dumpsys SurfaceFlinger --frontend > $D/sf_frontend$i.txt 2>&1\n"
             + "  dumpsys window displays > $D/window_displays$i.txt 2>&1\n"
             + "  dumpsys window windows > $D/window_windows$i.txt 2>&1\n"
+            // What runs and how much it takes at this moment: the busiest processes.
+            + "  top -b -n 1 -m 15 > $D/top$i.txt 2>&1\n"
             // How System UI draws what is behind the lock screen, bouncer and shade at this
             // moment (its dump at the end is taken unlocked): the scrims and the blur.
             + "  timeout 15 dumpsys activity service com.android.systemui 2>/dev/null"
@@ -112,6 +114,10 @@ final class DebugReport {
             + "wait $AOD 2>/dev/null\n"
             + "dumpsys activity activities > $D/activities.txt 2>&1\n"
             + "dumpsys activity service com.android.systemui > $D/systemui.txt 2>&1\n"
+            // The memory of what the module runs in: its own app (settings, overlay), Nothing
+            // Launcher and System UI, each in detail.
+            + "for P in com.dressence.nothinglauncherplus com.nothing.launcher com.android.systemui;"
+            + " do echo \"=== $P\"; dumpsys meminfo $P; done > $D/memory.txt 2>&1\n"
             + "dumpsys input > $D/input.txt 2>&1\n"
             + "dumpsys display > $D/display.txt 2>&1\n"
             // `settings list` failed here ("Failed transaction"): the settings files are read

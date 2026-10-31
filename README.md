@@ -29,8 +29,9 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     misbehaves) and how long it captures (15 s to 10 min). Meanwhile it records the screen
     and, every few seconds, takes a screenshot, the screen composer's layers, the windows and
     the view layout of every visible window (System UI's included) and how System UI draws
-    what is behind the lock screen, PIN page and shade (scrims and blur); logcat runs
-    throughout.
+    what is behind the lock screen, PIN page and shade (scrims and blur) and the busiest
+    processes (`top`); logcat runs throughout. At the end it adds the memory of the module's
+    app, Nothing Launcher and System UI (`dumpsys meminfo`).
     It adds System UI's state, input, display, the system settings, the game service, battery,
     where the phone keeps its CPU / GPU clocks and temperatures, Nothing's Game Bar app, the
     PerfMTK module's scripts, settings and `--help` (if installed), SurfaceFlinger and the
@@ -396,11 +397,11 @@ Around the home screen:
   (date, widgets, depth-effect wallpaper) to its default layout only, so the logged landscape
   layout showed just the clock across the top with the notifications over it. That swap
   (`KeyguardBlueprintRepository.applyBlueprint`) is switched off, so Nothing's layout stays.
-  SystemUI still puts the notifications on the right half in landscape, so while it says the
-  clock is not to be centered (notifications showing), Nothing's clock, date and widgets end
-  at the middle in the same layout pass (`split_shade_guideline` at 50%, as AOSP's split
-  layout does with its clock) and center on the left half; with no notifications they stay
-  centered across the screen. Each landscape layout is still logged (`lock screen layout: …`).
+  SystemUI still puts the notifications on the right half in landscape, so turned, Nothing's
+  clock, date and widgets end at the middle in the same layout pass (`split_shade_guideline`
+  at 50%, as AOSP's split layout does with its clock) and center on one half, with or without
+  notifications (Nothing's centered layout spread its widgets across the middle, where the
+  charging line under them ran into them). Each landscape layout is still logged (`lock screen layout: …`).
   The fingerprint sensor under the screen stays where it is however the screen turns.
   SystemUI's sensor overlay (`UdfpsControllerOverlay`, which lights the sensor and reads the
   finger) turns the sensor's spot with the screen (`RotationUtils.rotateBounds`) everywhere
@@ -431,9 +432,8 @@ Around the home screen:
   back as Nothing made them in portrait. Nothing's clock, measured as wide as the screen, gets
   the half's width, also in the pass where SystemUI lays out the clock alone (kept at full
   width it stuck out past the screen's edge and vanished). With the fingerprint sensor on the
-  left (the screen turned 270°), Nothing's clock, date and widgets go to the right half, with
-  or without notifications (without them Nothing's clock sat on the left over the sensor's
-  icon), and the lock screen's notifications to the left half (only while the lock screen itself shows;
+  left (the screen turned 270°), Nothing's clock, date and widgets go to the right half
+  (Nothing's own layout put its clock on the left over the sensor's icon), and the lock screen's notifications to the left half (only while the lock screen itself shows;
   pulled down, the shade is laid out as SystemUI makes it). Turning straight from one
   landscape side to the other keeps the screen's size and orientation, so Android tells System
   UI of no configuration change and Nothing never laid its lock screen out again: the lock
