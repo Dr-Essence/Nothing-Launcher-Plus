@@ -242,7 +242,7 @@ based on Unicode CLDR.
 
 ## Sound
 
-Both off by default; switch them on in the module's **Sound** section.
+Both off by default; switch them on in the module's **Sound** page.
 
 - **Background music**, generated live (never a loop, never a recording) and tuned to
   A = 432 Hz, in stereo. Seven original styles in the manner of classic console menus. The
@@ -617,7 +617,7 @@ release builds (`-dontobfuscate`), and were checked against HeliBoard 4.2's rele
    the card), so after an update, and whenever its page is opened, the module moves itself
    back to the phone's storage (root; `pm move-package com.dressence.nothinglauncherplus
    internal`), and its page says so.
-3. Force-stop Nothing Launcher, or use the "Restart Nothing Launcher (root)" button in the app.
+3. Force-stop Nothing Launcher, or use "Restart Nothing Launcher" (root) on the app's Home screen page.
 4. In Nothing Launcher settings, set *Drawer layout* to **Smart (Beta)** and tap **Custom folders**.
 
 ## Updates and signing
@@ -644,7 +644,7 @@ The module's code is grouped by where it runs:
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
-| `ui` | The module's settings app. |
+| `ui` | The module's settings app: a menu of pages (App drawer, Home screen, Sound, Status bar & quick settings, Lock screen, System font, Backup, Diagnostics). |
 
 Code the module hands to an app (a posted runnable, a listener, a view or drawable it draws)
 runs as that app's own, so it is guarded: a fault costs that one feature, never the app. A

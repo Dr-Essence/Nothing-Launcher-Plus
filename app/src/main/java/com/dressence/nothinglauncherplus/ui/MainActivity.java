@@ -26,7 +26,10 @@ import com.dressence.nothinglauncherplus.sound.Style;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Module settings: drawer options and the list of custom folders. */
+/**
+ * Module settings: a menu of pages (app drawer, home screen, sound, status bar and quick
+ * settings, lock screen, backup, diagnostics), each the same screen opened with its page.
+ */
 public class MainActivity extends Activity {
 
     /** Replaced with {@code true} by the module's own hook when LSPosed has it enabled. */
@@ -53,9 +56,54 @@ public class MainActivity extends Activity {
         render();
     }
 
+    /** The page this screen shows (a {@link #EXTRA_PAGE} value), or null for the menu. */
+    private static final String EXTRA_PAGE = "page";
+    private static final String PAGE_DRAWER = "drawer";
+    private static final String PAGE_HOME = "home";
+    private static final String PAGE_SYSTEM_UI = "systemui";
+    private static final String PAGE_LOCK = "lock";
+    private static final String PAGE_SOUND = "sound";
+    private static final String PAGE_BACKUP = "backup";
+    private static final String PAGE_DIAGNOSTICS = "diagnostics";
+
     private void render() {
+        String page = getIntent().getStringExtra(EXTRA_PAGE);
+        if (page == null) {
+            renderMenu();
+            return;
+        }
         Config config = store.config;
-        Ui ui = Ui.page(this, "Custom folders", false);
+        switch (page) {
+            case PAGE_DRAWER:
+                renderDrawer(Ui.page(this, "App drawer", true), config);
+                break;
+            case PAGE_HOME:
+                renderHome(Ui.page(this, "Home screen", true), config);
+                break;
+            case PAGE_SYSTEM_UI:
+                renderSystemUi(Ui.page(this, "Status bar & quick settings", true), config);
+                break;
+            case PAGE_LOCK:
+                renderLock(Ui.page(this, "Lock screen", true), config);
+                break;
+            case PAGE_SOUND:
+                addSoundSection(Ui.page(this, "Sound", true), config);
+                break;
+            case PAGE_BACKUP:
+                renderBackup(Ui.page(this, "Backup", true));
+                break;
+            default:
+                renderDiagnostics(Ui.page(this, "Diagnostics", true));
+                break;
+        }
+    }
+
+    private void openPage(String page) {
+        startActivity(new Intent(this, MainActivity.class).putExtra(EXTRA_PAGE, page));
+    }
+
+    private void renderMenu() {
+        Ui ui = Ui.page(this, "Nothing Launcher+", false);
         if (com.dressence.nothinglauncherplus.UpdateReceiver.externalForced(this)) {
             ui.note("Developer options → \"Force allow apps on external\" is on: Android then"
                     + " installs updates of this module on the memory card, which LSPosed cannot"
@@ -78,6 +126,30 @@ public class MainActivity extends Activity {
                     + " restart the launcher. Changes made now will not reach the launcher.");
         }
 
+        ui.section("Nothing Launcher");
+        ui.row("App drawer", "Custom folders, covers and emoji, background", null, ui.chevron(),
+                v -> openPage(PAGE_DRAWER));
+        ui.row("Home screen", "Icons, rotation, game controller, restart", null, ui.chevron(),
+                v -> openPage(PAGE_HOME));
+        ui.row("Sound", "Interface sounds and background music", null, ui.chevron(),
+                v -> openPage(PAGE_SOUND));
+
+        ui.section("System");
+        ui.row("Status bar & quick settings", "Ndot clock and date, green and amber glow", null,
+                ui.chevron(), v -> openPage(PAGE_SYSTEM_UI));
+        ui.row("Lock screen", "Landscape lock screen (test)", null, ui.chevron(),
+                v -> openPage(PAGE_LOCK));
+        ui.row("System font", "Use one of Nothing's fonts on this phone · no reboot", null,
+                ui.chevron(), v -> chooseSystemFont());
+
+        ui.section("Module");
+        ui.row("Backup", "Export or import folders, options and covers", null, ui.chevron(),
+                v -> openPage(PAGE_BACKUP));
+        ui.row("Diagnostics", "Debug report for fixing problems", null, ui.chevron(),
+                v -> openPage(PAGE_DIAGNOSTICS));
+    }
+
+    private void renderDrawer(Ui ui, Config config) {
         ui.section("Drawer");
         ui.switchRow("Custom folders first", "Show your folders before Nothing's categories",
                 config.customFirst, checked -> {
@@ -95,6 +167,8 @@ public class MainActivity extends Activity {
                     store.save(this);
                 });
         addOpacityRow(ui, config);
+
+        ui.section("Covers");
         ui.switchRow("Animate emoji covers", frameRateSummary(), config.animateCovers, checked -> {
             config.animateCovers = checked;
             store.save(this);
@@ -106,59 +180,8 @@ public class MainActivity extends Activity {
                     store.save(this);
                     render();
                 });
-        ui.switchRow("Dot-matrix app icons",
-                "Every app icon a little dot screen in its own shape; long names scroll",
-                config.dotIcons, checked -> {
-                    config.dotIcons = checked;
-                    store.save(this);
-                });
-        ui.switchRow("Ndot status bar",
-                "Ndot clock and date, every status icon in glowing green",
-                config.ndotStatusBar, checked -> {
-                    config.ndotStatusBar = checked;
-                    store.save(this);
-                });
-        ui.switchRow("Green quick settings", "Quick settings icons in glowing green",
-                config.ndotQuickSettings, checked -> {
-                    config.ndotQuickSettings = checked;
-                    store.save(this);
-                });
-        ui.switchRow("Amber dashboard tiles",
-                "Tiles that are on glow amber like a retro car dashboard, not green",
-                config.qsAmber, checked -> {
-                    config.qsAmber = checked;
-                    store.save(this);
-                });
-        ui.switchRow("Date in status bar", "The date before the clock · restart System UI",
-                config.statusBarDate, checked -> {
-                    config.statusBarDate = checked;
-                    store.save(this);
-                });
-        ui.row("System font", "Use one of Nothing's fonts on this phone · no reboot", null,
-                ui.chevron(), v -> chooseSystemFont());
         ui.row("Animation test", "Play any emoji's animation on a big dot screen", null,
                 ui.chevron(), v -> startActivity(EmojiPickerActivity.testIntent(this)));
-
-        addSoundSection(ui, config);
-
-        ui.section("Landscape & controllers");
-        ui.switchRow("Home screen rotation", "Home and app drawer follow auto-rotate (beta)",
-                config.allowRotation, checked -> {
-                    config.allowRotation = checked;
-                    store.save(this);
-                });
-        ui.switchRow("Lock screen rotation (test)",
-                "Lock screen follows auto-rotate and logs its landscape layout, for fixing it",
-                config.lockRotation, checked -> {
-                    config.lockRotation = checked;
-                    store.save(this);
-                });
-        ui.switchRow("Game controller navigation",
-                "Y app drawer · L1/R1 pages · L2/R2 first/last · X menu · Start options",
-                config.controllerNav, checked -> {
-                    config.controllerNav = checked;
-                    store.save(this);
-                });
 
         ui.section("Folders · " + config.folders.size());
         if (config.folders.isEmpty()) {
@@ -195,7 +218,74 @@ public class MainActivity extends Activity {
                     store.save(this);
                     FolderActivity.open(this, folder.id, true);
                 }));
+    }
 
+    private void renderHome(Ui ui, Config config) {
+        ui.section("Icons");
+        ui.switchRow("Dot-matrix app icons",
+                "Every app icon a little dot screen in its own shape; long names scroll",
+                config.dotIcons, checked -> {
+                    config.dotIcons = checked;
+                    store.save(this);
+                });
+
+        ui.section("Landscape & controllers");
+        ui.switchRow("Home screen rotation", "Home and app drawer follow auto-rotate (beta)",
+                config.allowRotation, checked -> {
+                    config.allowRotation = checked;
+                    store.save(this);
+                });
+        ui.switchRow("Game controller navigation",
+                "Y app drawer · L1/R1 pages · L2/R2 first/last · X menu · Start options",
+                config.controllerNav, checked -> {
+                    config.controllerNav = checked;
+                    store.save(this);
+                });
+
+        ui.section("Launcher");
+        ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,
+                null, v -> restartLauncher());
+    }
+
+    private void renderSystemUi(Ui ui, Config config) {
+        ui.section("Status bar");
+        ui.switchRow("Ndot status bar",
+                "Ndot clock and date, every status icon in glowing green",
+                config.ndotStatusBar, checked -> {
+                    config.ndotStatusBar = checked;
+                    store.save(this);
+                });
+        ui.switchRow("Date in status bar", "The date before the clock · restart System UI",
+                config.statusBarDate, checked -> {
+                    config.statusBarDate = checked;
+                    store.save(this);
+                });
+
+        ui.section("Quick settings");
+        ui.switchRow("Green quick settings", "Quick settings icons in glowing green",
+                config.ndotQuickSettings, checked -> {
+                    config.ndotQuickSettings = checked;
+                    store.save(this);
+                });
+        ui.switchRow("Amber dashboard tiles",
+                "Tiles that are on glow amber like a retro car dashboard, not green",
+                config.qsAmber, checked -> {
+                    config.qsAmber = checked;
+                    store.save(this);
+                });
+    }
+
+    private void renderLock(Ui ui, Config config) {
+        ui.section("Landscape");
+        ui.switchRow("Lock screen rotation (test)",
+                "Lock screen follows auto-rotate and logs its landscape layout, for fixing it",
+                config.lockRotation, checked -> {
+                    config.lockRotation = checked;
+                    store.save(this);
+                });
+    }
+
+    private void renderBackup(Ui ui) {
         ui.section("Backup");
         ui.row("Export", "Save folders, options and covers to a file", null, null,
                 v -> startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT)
@@ -207,11 +297,9 @@ public class MainActivity extends Activity {
                 v -> startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT)
                         .addCategory(Intent.CATEGORY_OPENABLE)
                         .setType("*/*"), REQUEST_IMPORT));
+    }
 
-        ui.section("Launcher");
-        ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,
-                null, v -> restartLauncher());
-
+    private void renderDiagnostics(Ui ui) {
         ui.section("Diagnostics");
         ui.row("Capture debug report", "Waits while you set the problem up, then records the"
                 + " screen and saves screenshots, layer, window and view layouts, logcat and the"
