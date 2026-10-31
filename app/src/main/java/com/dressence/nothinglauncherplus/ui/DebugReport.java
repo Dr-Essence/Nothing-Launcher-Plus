@@ -66,11 +66,22 @@ final class DebugReport {
             + "( k=0; dz=0; while [ $(date +%%s) -lt $END ] && [ ! -e $STOP ]; do"
             + " if dumpsys power | grep -q 'mWakefulness=Dozing'; then"
             + " if [ $dz = 0 ]; then dz=1; k=$((k+1)); sleep 1; screencap -p $D/aod$k.png;"
+            + " dumpsys window displays > $D/aod$k-rotation.txt 2>&1;"
             + " until mkdir $D/.ui 2>/dev/null; do sleep 0.2; done;"
             + " timeout 10 uiautomator dump $D/aod$k.xml >/dev/null 2>&1; rmdir $D/.ui; fi;"
             + " else dz=0; fi;"
             + " sleep 0.5; done ) &\n"
             + "AOD=$!\n"
+            // Each time the screen wakes (unlocking included): the rotation and its sensor
+            // (WindowOrientationListener) a second and three seconds after, to see whether the
+            // screen follows how the phone is held without being turned.
+            + "( w=0; aw=1; while [ $(date +%%s) -lt $END ] && [ ! -e $STOP ]; do"
+            + " if dumpsys power | grep -q 'mWakefulness=Awake'; then"
+            + " if [ $aw = 0 ]; then aw=1; w=$((w+1)); sleep 1;"
+            + " dumpsys window displays > $D/wake$w-1s.txt 2>&1; sleep 2;"
+            + " dumpsys window displays > $D/wake$w-3s.txt 2>&1; fi; else aw=0; fi;"
+            + " sleep 0.3; done ) &\n"
+            + "WAKE=$!\n"
             + "i=1\n"
             + "while :; do\n"
             + "  date > $D/time$i.txt\n"
@@ -112,6 +123,7 @@ final class DebugReport {
             + "wait $TRACE 2>/dev/null\n"
             + "wait $REC 2>/dev/null\n"
             + "wait $AOD 2>/dev/null\n"
+            + "wait $WAKE 2>/dev/null\n"
             + "dumpsys activity activities > $D/activities.txt 2>&1\n"
             + "dumpsys activity service com.android.systemui > $D/systemui.txt 2>&1\n"
             // The memory of what the module runs in: its own app (settings, overlay), Nothing
@@ -163,6 +175,8 @@ final class DebugReport {
             // SurfaceFlinger and the libraries it loads (from its memory map), to find why
             // it leaves Nothing's fingerprint dim layer out of the composer's list in
             // landscape.
+            // The window manager (rotation, its sensor, the lock screen's orientation).
+            + "mkdir -p $D/framework; cp /system/framework/services.jar $D/framework/ 2>/dev/null\n"
             + "mkdir -p $D/surfaceflinger; cp /system/bin/surfaceflinger $D/surfaceflinger/;"
             + " for l in $(grep -o '/[^ ]*\\.so' /proc/$(pidof surfaceflinger)/maps | sort -u);"
             + " do case $l in *surfaceflinger*|*renderengine*|*compositionengine*|*gui*|*ui.so*"

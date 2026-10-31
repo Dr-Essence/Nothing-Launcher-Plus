@@ -30,7 +30,8 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     and, every few seconds, takes a screenshot, the screen composer's layers, the windows and
     the view layout of every visible window (System UI's included) and how System UI draws
     what is behind the lock screen, PIN page and shade (scrims and blur) and the busiest
-    processes (`top`); logcat runs throughout. At the end it adds the memory of the module's
+    processes (`top`); each time the screen wakes it records the rotation and its sensor a
+    second and three seconds after (and on the always-on display); logcat runs throughout. At the end it adds the memory of the module's
     app, Nothing Launcher and System UI (`dumpsys meminfo`).
     It adds System UI's state, input, display, the system settings, the game service, battery,
     where the phone keeps its CPU / GPU clocks and temperatures, Nothing's Game Bar app, the
