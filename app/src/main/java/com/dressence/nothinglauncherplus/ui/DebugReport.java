@@ -89,6 +89,15 @@ final class DebugReport {
             // Nothing's Game Bar, to fit the module's game options into it.
             + "for a in $(pm path com.nothing.ntgamedashboard | sed 's/^package://'); do"
             + " cp $a $D/ntgamedashboard-$(basename $a); done 2>/dev/null\n"
+            // PerfMTK (a Magisk module) and its settings, to set CPU speeds through it: its
+            // scripts and configs (files under 1 MB), its files' list, and its data folder.
+            + "for m in /data/adb/modules/*; do grep -qi perfmtk $m/module.prop 2>/dev/null"
+            + " || continue; mkdir -p $D/perfmtk; ls -laR $m > $D/perfmtk/files.txt 2>&1;"
+            + " (cd $m && find . -type f -size -1024k | while read f; do"
+            + " mkdir -p \"$D/perfmtk/$(dirname \"$f\")\"; cp \"$f\" \"$D/perfmtk/$f\"; done);"
+            + " done 2>/dev/null\n"
+            + "ls -laR /data/adb/perfmtk* /sdcard/PerfMTK* /data/local/tmp/*perf* >"
+            + " $D/perfmtk_data.txt 2>&1\n"
             + "getprop ro.build.fingerprint > $D/build.txt 2>&1\n"
             + "kill $LOG 2>/dev/null\n"
             + "cp -r /data/adb/lspd/log $D/lsposed 2>/dev/null\n"
