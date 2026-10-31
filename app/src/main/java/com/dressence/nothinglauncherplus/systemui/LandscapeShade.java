@@ -38,6 +38,7 @@ final class LandscapeShade {
     private static final String PROVIDER = "com.android.systemui.classifier.FalsingDataProvider";
     private static final String DISTANCE = "com.android.systemui.classifier.DistanceClassifier";
     private static final String PANEL = "com.android.systemui.shade.NotificationPanelViewController";
+    private static final String SCRIM_STATE = "com.android.systemui.statusbar.phone.ScrimState";
     private static final int KEYGUARD = 1;
     private static final int PANEL_CLOSED = 0;
 
@@ -113,7 +114,46 @@ final class LandscapeShade {
                         }
                     }
                 });
+        pinPage(cl, store);
         Hooks.log("landscape shade: ready");
+    }
+
+    /**
+     * The PIN page's backdrop. Nothing draws it on the scrim that covers the screen: in portrait
+     * (full width, mClipQsScrim) that is the notifications scrim, at Nothing's see-through
+     * alpha (0.54, ScrimController's TRANSPARENT_BOUNCER_SCRIM_ALPHA) in its bouncer colour,
+     * with the blur behind it, while the behind scrim is clipped to quick settings (none on the
+     * PIN page). Turned (split shade, not full width) the behind scrim covers the screen and the
+     * notifications scrim only the notification column, so the PIN page's backdrop was the
+     * behind scrim's: opaque black (DebuG report: BOUNCER, behind alpha 1.0 tint 0xff000000,
+     * notifications 0.54 in 419..1180, blur 0, as the scrims counted as opaque). While the lock
+     * screen turns, BOUNCER puts the backdrop on the scrim that covers the screen there: the
+     * behind scrim gets the notifications scrim's alpha and colour, and the notifications
+     * scrim, which would cover only the column, none. System UI then blurs behind it as it
+     * does in portrait.
+     */
+    private static void pinPage(ClassLoader cl, ConfigStore store) {
+        Class<?> states = XposedHelpers.findClass(SCRIM_STATE, cl);
+        Object bouncer = XposedHelpers.getStaticObjectField(states, "BOUNCER");
+        XposedBridge.hookAllMethods(bouncer.getClass(), "prepare", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                try {
+                    Object state = param.thisObject;
+                    if (!store.get().lockRotation
+                            || XposedHelpers.getBooleanField(state, "mClipQsScrim")) {
+                        return;
+                    }
+                    XposedHelpers.setFloatField(state, "mBehindAlpha",
+                            XposedHelpers.getFloatField(state, "mNotifAlpha"));
+                    XposedHelpers.setIntField(state, "mBehindTint",
+                            XposedHelpers.getIntField(state, "mNotifTint"));
+                    XposedHelpers.setFloatField(state, "mNotifAlpha", 0f);
+                } catch (Throwable t) {
+                    // Nothing's backdrop stands.
+                }
+            }
+        });
     }
 
     /**

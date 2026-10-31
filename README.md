@@ -474,6 +474,13 @@ Around the home screen:
   sensor's side (`SharedNotificationContainer.updateConstraints`) is widened to end the column
   16dp short of the turned icon, so no notification, however many or however tall, reaches
   the circle; placed again whenever the icon's spot changes.
+  **PIN page, turned**: Nothing draws the PIN page's backdrop on the scrim that covers the
+  screen. In portrait that is the notifications scrim, see-through (0.54) in Nothing's bouncer
+  colour with the blur behind it; turned (split shade) the behind scrim covers the screen and
+  the notifications scrim only the notification column, so the backdrop was the behind
+  scrim's opaque black, and with an opaque scrim System UI drew no blur. While the lock screen
+  turns, the PIN page's backdrop goes on the behind scrim with the portrait values, and the
+  blur comes back.
   **Charging line, turned**: Nothing centers the lock screen's charging / status line across
   the screen; turned, it ran over the bottom of Nothing's widgets (charging text at y 952, the
   widgets to 999), on the lock screen and the always-on display. With the halves, it is

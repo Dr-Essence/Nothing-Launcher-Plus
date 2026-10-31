@@ -116,8 +116,10 @@ final class DebugReport {
             + "dumpsys activity service com.android.systemui > $D/systemui.txt 2>&1\n"
             // The memory of what the module runs in: its own app (settings, overlay), Nothing
             // Launcher and System UI, each in detail.
+            // By process id: by name System UI's came out empty (DebuG report).
             + "for P in com.dressence.nothinglauncherplus com.nothing.launcher com.android.systemui;"
-            + " do echo \"=== $P\"; dumpsys meminfo $P; done > $D/memory.txt 2>&1\n"
+            + " do for Q in $(pidof $P); do echo \"=== $P ($Q)\"; dumpsys meminfo $Q; done;"
+            + " done > $D/memory.txt 2>&1\n"
             + "dumpsys input > $D/input.txt 2>&1\n"
             + "dumpsys display > $D/display.txt 2>&1\n"
             // `settings list` failed here ("Failed transaction"): the settings files are read
