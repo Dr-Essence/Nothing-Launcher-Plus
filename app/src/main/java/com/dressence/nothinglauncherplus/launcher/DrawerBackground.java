@@ -4,8 +4,10 @@ import android.graphics.Color;
 import android.view.View;
 
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
+import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
 /**
@@ -36,6 +38,24 @@ final class DrawerBackground {
                     }
                 });
 
+        // The drawer's search (Nothing's NTLauncherAllAppsContainerView) paints its own colours
+        // over that scrim: its sheet (foregroundPaint), its scrim and header protection, and the
+        // search results' background, all picked in updateCustomColor (and its constructor).
+        // They take the drawer's opacity too, so the search does not rise as a solid black
+        // panel over a see-through drawer.
+        Class<?> search = XposedHelpers.findClassIfExists(SmartDrawer.CLS_ALL_APPS_CONTAINER, cl);
+        if (search != null) {
+            XC_MethodHook colours = new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    Hooks.guard("drawer search colours", () ->
+                            searchColours(param.thisObject, store.get().drawerOpacity)).run();
+                }
+            };
+            XposedBridge.hookAllConstructors(search, colours);
+            XposedBridge.hookAllMethods(search, "updateCustomColor", colours);
+        }
+
         // A new opacity only reaches the scrim on the next state change; repaint an open drawer.
         Object allApps = XposedHelpers.getStaticObjectField(
                 XposedHelpers.findClass(CLS_LAUNCHER_STATE, cl), "ALL_APPS");
@@ -53,6 +73,31 @@ final class DrawerBackground {
                         allApps, "getWorkspaceScrimColor", launcher));
             }
         });
+    }
+
+    /** Nothing's drawer search colours at the drawer's opacity ({@code opacity} percent). */
+    private static void searchColours(Object container, int opacity) {
+        if (opacity >= 100) {
+            return;
+        }
+        android.graphics.Paint paint = (android.graphics.Paint) XposedHelpers.getObjectField(
+                container, "foregroundPaint");
+        if (paint != null) {
+            paint.setColor(faded(paint.getColor(), opacity));
+        }
+        for (String name : new String[] {"mScrimColor", "mHeaderProtectionColor"}) {
+            XposedHelpers.setIntField(container, name,
+                    faded(XposedHelpers.getIntField(container, name), opacity));
+        }
+        View results = (View) XposedHelpers.callMethod(container, "getSearchRecyclerView");
+        if (results != null && results.getBackground() != null) {
+            results.getBackground().mutate().setAlpha(255 * opacity / 100);
+        }
+        ((View) container).invalidate();
+    }
+
+    private static int faded(int color, int opacity) {
+        return (color & 0x00FFFFFF) | ((Color.alpha(color) * opacity / 100) << 24);
     }
 
     private DrawerBackground() {

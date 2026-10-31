@@ -317,6 +317,13 @@ public class MainActivity extends Activity {
                     config.lockRotation = checked;
                     store.save(this);
                 });
+        ui.switchRow("Always-on display rotation",
+                "The always-on display turns with the phone too; keeps the rotation sensor on"
+                        + " while it shows (a little more battery)",
+                config.aodRotation, checked -> {
+                    config.aodRotation = checked;
+                    store.save(this);
+                });
     }
 
     private void renderBackup(Ui ui) {

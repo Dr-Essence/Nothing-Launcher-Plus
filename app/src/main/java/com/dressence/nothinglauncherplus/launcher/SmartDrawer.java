@@ -57,7 +57,7 @@ final class SmartDrawer {
     private static final String CLS_GRID_ADAPTER = "com.android.launcher3.allapps.AllAppsGridAdapter";
     private static final String CLS_ADAPTER_ITEM =
             "com.android.launcher3.allapps.BaseAllAppsAdapter$AdapterItem";
-    private static final String CLS_ALL_APPS_CONTAINER =
+    static final String CLS_ALL_APPS_CONTAINER =
             "com.nothing.launcher.allapps.search.NTLauncherAllAppsContainerView";
     private static final String CLS_DIFF_UTIL = "androidx.recyclerview.widget.DiffUtil";
 

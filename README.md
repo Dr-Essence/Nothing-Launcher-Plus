@@ -492,6 +492,14 @@ Around the home screen:
   the screen; turned, it ran over the bottom of Nothing's widgets (charging text at y 952, the
   widgets to 999), on the lock screen and the always-on display. With the halves, it is
   centered in the other half, under the notifications and the fingerprint icon.
+  **Rotation sensor (MediaTek `dev_orient`)**: it reports only changes, and the window manager
+  started it again at each wake clearing the rotation it knew, so a phone held as it was gave
+  nothing to report and the screen kept its old rotation until it was turned; for such a sensor
+  it now starts again keeping what it knew (Android's own `enable(false)`). The always-on display
+  turns with the phone too (setting, on by default): the window manager keeps the sensor on while
+  dreaming when `shouldStayEnabledWhileDreaming()` says so, which Android answers only for a
+  sensor that can wake the phone; with the setting it answers yes, and the screen's turning off
+  still stops it.
   **Pull down from anywhere, turned**: System UI's drag-down helper sees a pull only through the
   shade window's intercept, which Android asks about a gesture's moves only while a view in the
   window has its touch. In portrait the notification stack covers the lock screen's middle and
@@ -677,6 +685,9 @@ second), and the loader waits for idle at most three seconds per step.
   by sliding the whole sheet down so its bottom leaves the screen, which the turned options page
   (the screen's height) barely does, so turned they are hidden with Nothing's own dots animation
   and shown again by its own reset when the list comes back.
+- **Drawer search** follows the drawer's opacity: Nothing paints its search's sheet, scrim,
+  header and results' background itself (`updateCustomColor`), so it rose as a solid black panel
+  over a see-through drawer.
 - **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
   many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
   sheet gives the list at least four rows, which squeezed the name off a landscape screen).

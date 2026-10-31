@@ -54,6 +54,7 @@ public final class Config {
     public static final String KEY_ALLOW_ROTATION = "allow_rotation";
     public static final String KEY_CONTROLLER_NAV = "controller_nav";
     public static final String KEY_LOCK_ROTATION = "lock_rotation";
+    public static final String KEY_AOD_ROTATION = "aod_rotation";
     public static final String KEY_HELIBOARD_CONTROLLER = "heliboard_controller";
     public static final String KEY_DIAGNOSTIC_LOGGING = "diagnostic_logging";
     public static final String KEY_SYSTEM_SCREENS = "system_screens";
@@ -153,6 +154,8 @@ public final class Config {
     public boolean controllerNav = true;
     /** Test: the lock screen follows auto-rotate too, and its landscape layout is logged. */
     public boolean lockRotation = false;
+    /** The always-on display follows how the phone is held too (the rotation sensor stays on). */
+    public boolean aodRotation = true;
     /** Type in HeliBoard with a game controller. */
     public boolean heliboardController = true;
     /** Write the diagnostic lines (orientation, lock screen layout, fingerprint) to the log. */
@@ -314,6 +317,7 @@ public final class Config {
         allowRotation = in.bool(KEY_ALLOW_ROTATION, false);
         controllerNav = in.bool(KEY_CONTROLLER_NAV, true);
         lockRotation = in.bool(KEY_LOCK_ROTATION, false);
+        aodRotation = in.bool(KEY_AOD_ROTATION, true);
         heliboardController = in.bool(KEY_HELIBOARD_CONTROLLER, true);
         diagnosticLogging = in.bool(KEY_DIAGNOSTIC_LOGGING, true);
         // Before this switch, system screens followed Home screen rotation.
@@ -351,6 +355,7 @@ public final class Config {
         out.bool(KEY_ALLOW_ROTATION, allowRotation);
         out.bool(KEY_CONTROLLER_NAV, controllerNav);
         out.bool(KEY_LOCK_ROTATION, lockRotation);
+        out.bool(KEY_AOD_ROTATION, aodRotation);
         out.bool(KEY_HELIBOARD_CONTROLLER, heliboardController);
         out.bool(KEY_DIAGNOSTIC_LOGGING, diagnosticLogging);
         out.bool(KEY_SYSTEM_SCREENS, systemScreens);

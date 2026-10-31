@@ -7,6 +7,7 @@ import com.dressence.nothinglauncherplus.perf.Device;
 import com.dressence.nothinglauncherplus.perf.GameBar;
 import com.dressence.nothinglauncherplus.perf.GameUnlock;
 import com.dressence.nothinglauncherplus.system.OrientationProbe;
+import com.dressence.nothinglauncherplus.system.RotationSensor;
 import com.dressence.nothinglauncherplus.system.SystemFonts;
 import com.dressence.nothinglauncherplus.systemui.SystemUi;
 import com.dressence.nothinglauncherplus.widgets.CardOrientation;
@@ -36,6 +37,7 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
             Hooks.install("system font", () -> SystemFonts.install(cl, store));
             Hooks.install("widget card orientation", () -> CardOrientation.install(cl, store));
             Hooks.install("orientation probe", () -> OrientationProbe.install(cl, store));
+            Hooks.install("rotation sensor", () -> RotationSensor.install(cl, store));
         } else if (!lpparam.isFirstApplication) {
             return;
         } else if (Config.LAUNCHER_PKG.equals(pkg)) {
