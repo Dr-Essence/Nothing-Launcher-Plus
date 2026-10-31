@@ -731,13 +731,19 @@ the screen is touched.
 ### Memory in recents
 
 *Home screen → Memory in recents* (on by default): recents shows how much memory is free of the
-phone's total (rounded up to the size it is sold as, 8 GB not 7.4), as crDroid's and Infinity
-X's recents do; a tap opens Developer options → Running services
-(`Settings$DevRunningServicesActivity`, or developer options where that screen is missing). It
+phone's total (rounded up to the size it is sold as, 8 GB not 7.4), and below it the swap
+(zram) free of its size when the phone has swap, as crDroid's and Infinity X's recents do. It
 is one more button in recents' row of action buttons (`OverviewActionsView`'s
-`action_buttons`, beside Screenshot), made with Nothing's own `OverviewActionButton` style, so
-it looks like them and fades, hides and moves with the row by Nothing's own animation. The
-figures are read off the main thread every 3 s, only while the button is on screen.
+`action_buttons`, beside Screenshot), made with Nothing's own `OverviewActionButton` style and
+taking the Screenshot button's background, colours, padding and focus, so it looks like it and
+fades, hides and moves with the row by Nothing's own animation. The figures are read off the
+main thread every 3 s, only while the button is on screen.
+
+A tap opens Developer options → Running services (`Settings$DevRunningServicesActivity`).
+Android 15+ lets an app open another app's activity only with an intent matching its intent
+filter, and Nothing's Settings refused the launcher's (START result -92), so the launcher asks
+system_server (`SystemShortcuts`), which is not held to that, to open it; where it cannot
+start, developer options opens instead.
 
 ### Gaming launcher with a controller
 
@@ -910,7 +916,7 @@ The module's code is grouped by where it runs:
 | `launcher` | Everything in Nothing Launcher: the Smart drawer's folders and covers, the folder menu, landscape, controllers, sounds, dot-matrix icons (`DotIcons`, `IconScreen`) and scrolling names. |
 | `systemui` | The status bar and quick settings: `Clock`, `Battery`, `GreenIcons`, `GreenTexts`, `QuickSettings`, `NetworkSpeed`, all in the lit look of `Led`. |
 | `perf` | CMF Phone 1 only: the device check and root helper (`Device`), the Ndot performance overlay (`OverlayService` reads, `PerfHud` draws) and the per-game 120 fps unlock (`GameUnlock`), the Game Bar's buttons (`GameBar`, in the Game Bar; `GameBarReceiver`, in the module app). |
-| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
+| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), screens opened on a feature's behalf (`SystemShortcuts`), and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |

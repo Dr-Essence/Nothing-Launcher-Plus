@@ -1,14 +1,12 @@
 package com.dressence.nothinglauncherplus.launcher;
 
 import android.app.ActivityManager;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.provider.Settings;
 import android.text.format.Formatter;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
@@ -17,6 +15,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 import com.dressence.nothinglauncherplus.xposed.Hooks;
 
@@ -25,8 +24,9 @@ import de.robv.android.xposed.XposedHelpers;
 
 /**
  * Memory in recents, as custom ROMs show it (crDroid's MemInfoView, Infinity X): how much
- * memory is free of the phone's total, and a tap opens Android's running services (Developer
- * options → Running services, Settings$DevRunningServicesActivity).
+ * memory is free of the phone's total, and swap below it when the phone has swap (zram); a
+ * tap opens Android's running services (Developer options → Running services). It takes
+ * Nothing's Screenshot button's look (background, colours, padding, focus), so it matches.
  *
  * <p>It is one more button in recents' row of action buttons (Screenshot, Split:
  * OverviewActionsView's {@code action_buttons}), made with Nothing's own button style
@@ -37,8 +37,6 @@ import de.robv.android.xposed.XposedHelpers;
 final class RecentsRam {
 
     private static final String CLS_ACTIONS = "com.android.quickstep.views.OverviewActionsView";
-    private static final ComponentName RUNNING_SERVICES = new ComponentName(
-            "com.android.settings", "com.android.settings.Settings$DevRunningServicesActivity");
     private static final long REFRESH_MS = 3000;
     private static final int[] KNOWN_GB = {1, 2, 3, 4, 6, 8, 10, 12, 16, 24, 32, 48, 64};
 
@@ -75,9 +73,19 @@ final class RecentsRam {
         int screenshotId = res.getIdentifier("action_screenshot", "id", pkg);
         View screenshot = screenshotId != 0 ? buttons.findViewById(screenshotId) : null;
         if (screenshot instanceof TextView) {
-            ram.setTextSize(TypedValue.COMPLEX_UNIT_PX, ((TextView) screenshot).getTextSize());
-            ram.setTypeface(((TextView) screenshot).getTypeface());
+            TextView shot = (TextView) screenshot;
+            ram.setTypeface(shot.getTypeface());
+            ram.setTextColor(shot.getTextColors());
+            ram.lineSize = shot.getTextSize();
+            android.graphics.drawable.Drawable background = shot.getBackground();
+            ram.setBackground(background == null || background.getConstantState() == null
+                    ? null : background.getConstantState().newDrawable(res).mutate());
+            ram.setFocusable(shot.isFocusable());
+            ram.setDefaultFocusHighlightEnabled(shot.getDefaultFocusHighlightEnabled());
+            ram.setPadding(shot.getPaddingLeft(), shot.getPaddingTop(),
+                    shot.getPaddingRight(), shot.getPaddingBottom());
         }
+        ram.setTextSize(TypedValue.COMPLEX_UNIT_PX, ram.lineSize);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         int spacing = res.getIdentifier("overview_actions_button_spacing", "dimen", pkg);
@@ -95,15 +103,14 @@ final class RecentsRam {
         });
     }
 
+    /**
+     * Opened by system_server (SystemShortcuts): Android 15+ lets an app open another app's
+     * activity only with an intent that matches its intent filter, and Nothing's Settings
+     * refused the launcher's (DebuG10: START result -92, "does your intent not match its
+     * declared intent-filter"); the system is not held to that.
+     */
     private static void openRunningServices(Context context) {
-        Intent intent = new Intent(Intent.ACTION_MAIN).setComponent(RUNNING_SERVICES)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        if (intent.resolveActivity(context.getPackageManager()) == null) {
-            // Not in this Settings: developer options, where Running services is listed.
-            intent = new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        }
-        context.startActivity(intent);
+        context.sendBroadcast(new Intent(Config.ACTION_RUNNING_SERVICES).setPackage("android"));
     }
 
     private static synchronized Handler worker() {
@@ -113,6 +120,30 @@ final class RecentsRam {
             worker = new Handler(thread.getLooper());
         }
         return worker;
+    }
+
+    /** Swap total and free, in bytes, from /proc/meminfo (zeros when there is none). */
+    private static long[] swap() {
+        long total = 0;
+        long free = 0;
+        try (java.io.BufferedReader in = new java.io.BufferedReader(
+                new java.io.FileReader("/proc/meminfo"))) {
+            String line;
+            while ((line = in.readLine()) != null) {
+                if (line.startsWith("SwapTotal:")) {
+                    total = kilobytes(line) * 1024;
+                } else if (line.startsWith("SwapFree:")) {
+                    free = kilobytes(line) * 1024;
+                }
+            }
+        } catch (Exception e) {
+            return new long[] {0, 0};
+        }
+        return new long[] {total, free};
+    }
+
+    private static long kilobytes(String line) {
+        return Long.parseLong(line.replaceAll("[^0-9]", ""));
     }
 
     /** The phone's memory as sold (8 GB, not 7.4): the next known size up. */
@@ -134,12 +165,15 @@ final class RecentsRam {
         private final Handler main = new Handler(Looper.getMainLooper());
         private final Runnable refresh = this::refresh;
         private boolean shown;
+        /** Nothing's Screenshot text size; two lines (memory, swap) are drawn smaller. */
+        float lineSize = 36f;
 
         RamButton(Context context, int style, ConfigStore store) {
             super(context, null, 0, style);
             this.store = store;
             this.activityManager = context.getSystemService(ActivityManager.class);
-            setSingleLine(true);
+            setMaxLines(2);
+            setGravity(android.view.Gravity.CENTER);
             setContentDescription("Memory, open running services");
             applySetting();
         }
@@ -164,9 +198,20 @@ final class RecentsRam {
             try {
                 ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
                 activityManager.getMemoryInfo(info);
-                String text = Formatter.formatShortFileSize(getContext(), info.availMem)
+                String text = "RAM " + Formatter.formatShortFileSize(getContext(), info.availMem)
                         + " free · " + totalLabel(info.totalMem);
-                main.post(() -> setText(text));
+                long[] swap = swap();
+                if (swap[0] > 0) {
+                    text += "\nSwap " + Formatter.formatShortFileSize(getContext(), swap[1])
+                            + " free · " + Formatter.formatShortFileSize(getContext(), swap[0]);
+                }
+                boolean twoLines = swap[0] > 0;
+                String shownText = text;
+                main.post(() -> {
+                    setTextSize(TypedValue.COMPLEX_UNIT_PX, twoLines ? lineSize * 0.82f
+                            : lineSize);
+                    setText(shownText);
+                });
             } catch (Throwable t) {
                 Hooks.log("recents memory read failed: " + t);
                 return;
