@@ -474,6 +474,16 @@ public class MainActivity extends Activity {
                     store.save(this);
                 });
 
+        ui.section("Tests");
+        ui.switchRow("Landscape fingerprint test", "Shows Nothing's fingerprint dim layer"
+                + " without hiding it from screenshots, to see whether that lets the sensor read"
+                + " in landscape. Applies the next time the lock screen shows. While on,"
+                + " screenshots of the lock screen look slightly dimmed", config.fingerprintTest,
+                checked -> {
+                    config.fingerprintTest = checked;
+                    store.save(this);
+                });
+
         ui.section("Debug report");
         ui.row("Capture debug report", "Waits while you set the problem up, then records the"
                 + " screen and saves screenshots, layer, window and view layouts, logcat and the"

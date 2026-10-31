@@ -448,7 +448,14 @@ Around the home screen:
   the composer in either landscape direction, so the driver times out every touch
   (`GF_ERROR_UI_READY_TIMEOUT`) while portrait switches HBM on as the lock screen shows. The
   pass that drops it is Android's own (CompositionEngine's `ensureOutputLayerIfVisible`, the
-  same in Nothing's build); which of its checks drops it in landscape is being looked into. Nothing's sensor layers are left as Nothing makes them.
+  same in Nothing's build); which of its checks drops it in landscape is being looked into.
+  **Landscape fingerprint test** (Settings → Diagnostics → Tests, off by default): the one
+  property that sets the dim layer apart from Nothing's illumination layer, which does reach
+  the composer in landscape, is the skip-screenshot flag Nothing gives it. With the test on,
+  Nothing's own calls (`NTUdfpsDimLayerController.showSurface` / `updateAlpha`) set that flag
+  off for the dim layer only; nothing else about the layer changes. It applies the next time
+  the lock screen shows; while on, screenshots and recordings of the lock screen look slightly
+  dimmed. The kernel log then shows whether HBM comes on in landscape (`hbm_status: 1`). Nothing's sensor layers are left as Nothing makes them.
   A finger on the sensor also pulled the shade down: Nothing's touch handling asks
   `UdfpsUtils.isWithinSensorArea` with the touch as it is on screen against the sensor's
   unturned bounds ("rotate to portrait" off), so in landscape the sensor window never took the

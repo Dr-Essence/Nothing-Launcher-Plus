@@ -57,6 +57,7 @@ public final class Config {
     public static final String KEY_HELIBOARD_CONTROLLER = "heliboard_controller";
     public static final String KEY_DIAGNOSTIC_LOGGING = "diagnostic_logging";
     public static final String KEY_SYSTEM_SCREENS = "system_screens";
+    public static final String KEY_FINGERPRINT_TEST = "fingerprint_test";
     public static final String KEY_PERF_OVERLAY = "perf_overlay";
     public static final String KEY_UNLOCK_GAMES = "unlock_games";
     public static final String KEY_PERF_PROFILE = "perf_profile";
@@ -159,6 +160,8 @@ public final class Config {
     public boolean diagnosticLogging = true;
     /** Nothing's portrait-only system screens that work in landscape follow auto-rotate. */
     public boolean systemScreens = false;
+    /** Test: Nothing's fingerprint dim layer is shown without skip-screenshot (landscape HBM). */
+    public boolean fingerprintTest = false;
     /** The Ndot performance overlay is on (CMF Phone 1). */
     public boolean perfOverlay = false;
     /** Packages of games shown a Galaxy S24 Ultra, to unlock their 120 fps (CMF Phone 1). */
@@ -318,6 +321,7 @@ public final class Config {
         diagnosticLogging = in.bool(KEY_DIAGNOSTIC_LOGGING, true);
         // Before this switch, system screens followed Home screen rotation.
         systemScreens = in.bool(KEY_SYSTEM_SCREENS, allowRotation);
+        fingerprintTest = in.bool(KEY_FINGERPRINT_TEST, false);
         perfOverlay = in.bool(KEY_PERF_OVERLAY, false);
         perfProfile = in.text(KEY_PERF_PROFILE, "");
         thermalOff = in.bool(KEY_THERMAL_OFF, false);
@@ -354,6 +358,7 @@ public final class Config {
         out.bool(KEY_HELIBOARD_CONTROLLER, heliboardController);
         out.bool(KEY_DIAGNOSTIC_LOGGING, diagnosticLogging);
         out.bool(KEY_SYSTEM_SCREENS, systemScreens);
+        out.bool(KEY_FINGERPRINT_TEST, fingerprintTest);
         out.bool(KEY_PERF_OVERLAY, perfOverlay);
         out.text(KEY_PERF_PROFILE, perfProfile);
         out.bool(KEY_THERMAL_OFF, thermalOff);
