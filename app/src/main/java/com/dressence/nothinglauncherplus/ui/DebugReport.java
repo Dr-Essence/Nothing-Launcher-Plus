@@ -37,9 +37,11 @@ final class DebugReport {
             + "waited=0\n"
             + "while [ $waited -lt $DELAY ] && [ ! -e $STOP ]; do sleep 1;"
             + " waited=$((waited+1)); done\n"
-            // The screen, in parts of at most 3 minutes (screenrecord's limit).
+            // The screen, in parts of at most 3 minutes (screenrecord's limit), at 2 Mbit/s
+            // (about 15 MB a minute) so a report stays small enough to send.
             + "( n=1; left=$DUR; while [ $left -gt 0 ] && [ ! -e $STOP ]; do t=$left;"
-            + " [ $t -gt 180 ] && t=180; screenrecord --time-limit $t $D/video$n.mp4"
+            + " [ $t -gt 180 ] && t=180;"
+            + " screenrecord --bit-rate 2000000 --time-limit $t $D/video$n.mp4"
             + " >/dev/null 2>&1; left=$((left-t)); n=$((n+1)); done ) &\n"
             + "REC=$!\n"
             + "STEP=5; [ $DUR -gt 60 ] && STEP=10; [ $DUR -gt 300 ] && STEP=30\n"
