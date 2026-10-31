@@ -457,6 +457,13 @@ Around the home screen:
   cannot place them, as Nothing's `BLASTBufferQueue` gives them a destination frame, and
   SurfaceFlinger then takes their geometry from that frame alone. With colour inversion on, the dim keeps Nothing's name, as SurfaceFlinger
   exempts the tagged layer from colour transforms.
+  **Always-on display, turned**: its burn-in movement (`AodBurnInViewModel`, applied as
+  translationY to the clock, date, AOD notification icons and Nothing's widget container) moves
+  them within Nothing's `burn_in_prevention_offset_y` (100dp), sized for portrait; turned, the
+  lock screen's content already fills the height, so they went about 416 px down and the
+  widgets were cut off. In landscape the movement's vertical offset is kept, where its
+  `BurnInModel` is made, within the room those views leave on the lock screen (logged as
+  `always-on display: …`); they keep drifting against burn-in. Portrait is unchanged.
   A finger on the sensor also pulled the shade down: Nothing's touch handling asks
   `UdfpsUtils.isWithinSensorArea` with the touch as it is on screen against the sensor's
   unturned bounds ("rotate to portrait" off), so in landscape the sensor window never took the
