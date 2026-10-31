@@ -653,6 +653,12 @@ second), and the loader waits for idle at most three seconds per step.
   portrait page: the launcher deletes items that overlap or leave the grid when it next loads,
   so every landscape write is checked against the portrait page. The page is then arranged
   again in place, without reloading the launcher.
+- **Widget picker** in landscape: Nothing sizes it from one profile of fractions of the
+  screen, made the first time the picker opens and kept from then on, so a portrait profile was
+  used turned and the other way round. Each orientation now gets its own, made by Nothing for
+  it; turned, a widget's options sheet takes the screen's height under the status bar (Nothing
+  gives it half the height: 568 px turned, so its previews and sizes ran off the screen), and
+  the list's page indicator sits at the sheet's bottom instead of over its second row.
 - **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
   many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
   sheet gives the list at least four rows, which squeezed the name off a landscape screen).

@@ -38,6 +38,7 @@ public final class Launcher {
         new LandscapeGrid(cl).install();
         new LandscapeSurfaces(cl, store).install();
         Hooks.install("landscape folder sheet", () -> new FolderSheetLandscape(cl).install());
+        Hooks.install("landscape widget picker", () -> new WidgetPickerLandscape(cl, store).install());
         Hooks.install("controller", () -> Gamepad.install(cl, store));
         Hooks.install("dot-matrix icons", () -> DotIcons.install(cl, store));
         Hooks.install("scrolling app names", () -> LabelScroll.install(cl, store));
