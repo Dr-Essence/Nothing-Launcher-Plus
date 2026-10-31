@@ -244,6 +244,21 @@ final class LandscapeShade {
                         }
                     }
                 });
+        // Whether the shade window was asked to intercept the first move, and its answer.
+        XposedHelpers.findAndHookMethod(XposedHelpers.findClass(
+                "com.android.systemui.shade.NotificationShadeWindowView", cl),
+                "onInterceptTouchEvent", android.view.MotionEvent.class, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        String trace = pullTrace;
+                        if (trace != null && !trace.contains("window asked")
+                                && ((android.view.MotionEvent) param.args[0]).getActionMasked()
+                                        == android.view.MotionEvent.ACTION_MOVE) {
+                            pullTrace = trace + ", window asked on the first move: "
+                                    + param.getResult();
+                        }
+                    }
+                });
         // The gesture's end, wherever it went: the line is written once per touch.
         XposedHelpers.findAndHookMethod(android.view.ViewGroup.class, "dispatchTouchEvent",
                 android.view.MotionEvent.class, new XC_MethodHook() {
@@ -255,6 +270,11 @@ final class LandscapeShade {
                             return; // Only the window's root, once per event.
                         }
                         int action = ((android.view.MotionEvent) param.args[0]).getActionMasked();
+                        if (action == android.view.MotionEvent.ACTION_DOWN) {
+                            pullTrace = trace + ", taken by " + touchTargets(
+                                    (android.view.ViewGroup) param.thisObject);
+                            return;
+                        }
                         if (action == android.view.MotionEvent.ACTION_UP
                                 || action == android.view.MotionEvent.ACTION_CANCEL) {
                             pullTrace = null;
@@ -264,6 +284,33 @@ final class LandscapeShade {
                         }
                     }
                 });
+    }
+
+    /** The views a touch down went to, from the window's root down (Android's touch targets). */
+    private static String touchTargets(android.view.ViewGroup root) {
+        StringBuilder chain = new StringBuilder();
+        Object group = root;
+        for (int depth = 0; depth < 12 && group instanceof android.view.ViewGroup; depth++) {
+            Object target = XposedHelpers.getObjectField(group, "mFirstTouchTarget");
+            if (target == null) {
+                if (depth == 0) {
+                    chain.append("the window itself (no view took it)");
+                }
+                break;
+            }
+            View child = (View) XposedHelpers.getObjectField(target, "child");
+            String id = "";
+            try {
+                id = child.getId() != View.NO_ID
+                        ? "#" + child.getResources().getResourceEntryName(child.getId()) : "";
+            } catch (Throwable t) {
+                // No name.
+            }
+            chain.append(depth == 0 ? "" : " > ").append(child.getClass().getSimpleName())
+                    .append(id);
+            group = child;
+        }
+        return chain.toString();
     }
 
     /**

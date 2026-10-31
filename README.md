@@ -658,7 +658,10 @@ second), and the loader waits for idle at most three seconds per step.
   used turned and the other way round. Each orientation now gets its own, made by Nothing for
   it; turned, a widget's options sheet takes the screen's height under the status bar (Nothing
   gives it half the height: 568 px turned, so its previews and sizes ran off the screen), and
-  the list's page indicator sits at the sheet's bottom instead of over its second row.
+  the list's page indicator sits as near the sheet's bottom as in portrait instead of over its
+  second row. Nothing makes the profile from the application's window size, which just after a
+  turn can still be the other orientation's; a profile that does not match the picker's screen
+  is made again by Nothing's constructor from that screen.
 - **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
   many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
   sheet gives the list at least four rows, which squeezed the name off a landscape screen).

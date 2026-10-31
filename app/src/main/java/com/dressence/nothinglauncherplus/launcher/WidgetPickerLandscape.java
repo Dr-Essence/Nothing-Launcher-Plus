@@ -25,8 +25,8 @@ import de.robv.android.xposed.XposedHelpers;
  * screen). Here Nothing keeps one profile for each orientation, each made by Nothing's own
  * constructor for that orientation, and turned, the options sheet takes the screen's height
  * under the status bar, as the picker's list does. The list's page indicator sits over the
- * gesture bar plus 16dp (Nothing's); turned it takes the gesture bar's room only, at the
- * sheet's bottom instead of over its second row of widgets (928..993 of 1080).
+ * gesture bar plus 16dp (Nothing's), 87 px up turned, over the list's second row (928..993 of
+ * 1080); turned it sits as near the sheet's bottom as in portrait (16 px).
  */
 final class WidgetPickerLandscape {
 
@@ -67,6 +67,34 @@ final class WidgetPickerLandscape {
                     PROFILES[made] = cached;
                     // Nothing makes the one for now when there is none yet.
                     XposedHelpers.setStaticObjectField(profile, "N", PROFILES[now]);
+                } catch (Throwable t) {
+                    Hooks.log("widget picker profile: " + t);
+                }
+            }
+
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                try {
+                    if (!(param.args.length == 1 && param.args[0] instanceof Context)
+                            || param.getResult() == null) {
+                        return;
+                    }
+                    // Nothing makes it from the application's window size, which just after a
+                    // turn can still be the other orientation's (DebuG report: a portrait-sized
+                    // profile on the turned picker, its options sheet shifted to y 556). Then
+                    // Nothing's constructor makes it again from the picker's own screen.
+                    Context context = (Context) param.args[0];
+                    boolean now = landscape(context);
+                    if (isLandscape(param.getResult()) == now) {
+                        return;
+                    }
+                    Object made = XposedHelpers.newInstance(profile, context);
+                    if (isLandscape(made) != now) {
+                        return;
+                    }
+                    PROFILES[now ? 1 : 0] = made;
+                    XposedHelpers.setStaticObjectField(profile, "N", made);
+                    param.setResult(made);
                 } catch (Throwable t) {
                     Hooks.log("widget picker profile: " + t);
                 }
@@ -112,7 +140,9 @@ final class WidgetPickerLandscape {
                             }
                             ViewGroup.MarginLayoutParams lp =
                                     (ViewGroup.MarginLayoutParams) indicator.getLayoutParams();
-                            int bottom = XposedHelpers.getIntField(sheet, "mBottomPadding");
+                            // As far from the sheet's bottom as in portrait (16 px there).
+                            int bottom = Math.round(16 * sheet.getResources().getDisplayMetrics()
+                                    .density / 3f);
                             if (lp.bottomMargin == bottom) {
                                 return;
                             }
