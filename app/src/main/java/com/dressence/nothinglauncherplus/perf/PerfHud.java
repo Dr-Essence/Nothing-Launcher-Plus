@@ -158,7 +158,7 @@ final class PerfHud extends View {
     }
 
     /** Columns and rows of the frame time dot screen. */
-    private static final int GRAPH_COLUMNS = 40;
+    static final int GRAPH_COLUMNS = 40;
     private static final int GRAPH_ROWS = 8;
 
     /**

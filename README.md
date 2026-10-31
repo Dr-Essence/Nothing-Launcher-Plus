@@ -444,8 +444,11 @@ Around the home screen:
   finds the name, `HWCDisplay::validate` sets the display's flag, `HWCDispatcher::setJob` puts
   it in the frame's job; nothing else is checked). `dumpsys SurfaceFlinger` shows that layer
   in the composer's list in portrait and not in landscape, although SurfaceFlinger itself
-  counts it as visible there (`--frontend` dumps); why it leaves it out in landscape is being
-  looked into. Nothing's sensor layers are left as Nothing makes them.
+  counts it as visible there (`--frontend` dumps), and the layer trace shows it never reaches
+  the composer in either landscape direction, so the driver times out every touch
+  (`GF_ERROR_UI_READY_TIMEOUT`) while portrait switches HBM on as the lock screen shows. The
+  pass that drops it is Android's own (CompositionEngine's `ensureOutputLayerIfVisible`, the
+  same in Nothing's build); which of its checks drops it in landscape is being looked into. Nothing's sensor layers are left as Nothing makes them.
   A finger on the sensor also pulled the shade down: Nothing's touch handling asks
   `UdfpsUtils.isWithinSensorArea` with the touch as it is on screen against the sensor's
   unturned bounds ("rotate to portrait" off), so in landscape the sensor window never took the
@@ -655,10 +658,12 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   not MangoHud's code: MangoHud is a Linux Vulkan / OpenGL layer drawn inside the game, which
   Android only loads into debuggable apps):
   - CPU and GPU load rings with their clocks;
-  - FPS and frame time in any app (the focused window found on whichever display has one), with the last 40 frames on a Nothing dot screen
-    (SurfaceFlinger's present times for the focused window's layer: its SurfaceView in a game
-    or video, else the window itself; with no focused window, as on the lock screen, System
-    UI's; a still screen shows 0);
+  - FPS and frame time in any app (the focused window found on whichever display has one): the
+    frames presented in the last second up to now, and each new frame's time on a Nothing dot
+    screen that scrolls as frames come (an empty column for a read with none, or a rest of
+    200 ms or more) (SurfaceFlinger's present times for the focused window's layer: its
+    SurfaceView in a game or video, else the window itself; with no focused window, as on the
+    lock screen, System UI's; a still screen falls to 0);
   - GPU load, clock and temperature; CPU load and hottest core;
   - each cluster's set clock, then every core's load and real clock, as Scene lists them
     ("off" when a core is parked). On this phone every clock file reads the cluster's set

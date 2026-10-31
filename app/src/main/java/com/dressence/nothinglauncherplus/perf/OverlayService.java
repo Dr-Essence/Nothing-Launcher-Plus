@@ -10,13 +10,11 @@ import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.os.BatteryManager;
 import android.os.IBinder;
-
+import android.os.SystemClock;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * The performance overlay's readings (CMF Phone 1), twice a second, sent to System UI, which
@@ -208,6 +206,8 @@ public final class OverlayService extends Service {
         private final long[] lastBusy = new long[8];
         private final long[] lastTotal = new long[8];
         private long lastFrame;
+        /** The frame time graph's columns, oldest first (ms; -1 for none). */
+        private final float[] graph = filled(PerfHud.GRAPH_COLUMNS);
         /** The GPU's last real temperature: its sensor goes off with it (-274 °C). */
         private float lastGpuTemp = Float.NaN;
         private PerfHud.Sample next = new PerfHud.Sample();
@@ -345,34 +345,58 @@ public final class OverlayService extends Service {
             }
         }
 
-        /** FPS and frame times from the focused layer's last present times (ns). */
+        /**
+         * FPS and frame times from the focused layer's last present times (ns, on
+         * SurfaceFlinger's clock: CLOCK_MONOTONIC, as {@link SystemClock#uptimeMillis}). FPS
+         * counts the frames presented in the second up to now, so it falls to 0 when nothing
+         * draws; the graph takes each newly presented frame's time, and an empty column for a
+         * read with none, so it moves with what is on screen rather than repeating old frames.
+         */
         private void frames(long[] times) {
-            if (times.length < 2) {
-                return;
-            }
-            long newest = times[times.length - 1];
-            if (newest == lastFrame) {
-                next.fps = 0; // Nothing new presented this second.
-                return;
-            }
-            lastFrame = newest;
+            frames(times, SystemClock.uptimeMillis() * 1_000_000L);
+        }
+
+        void frames(long[] times, long now) {
             int count = 0;
-            List<Float> gaps = new ArrayList<>();
-            for (int i = times.length - 1; i > 0; i--) {
-                if (newest - times[i - 1] > 1_000_000_000L) {
-                    break;
+            long first = 0;
+            long last = 0;
+            for (long time : times) {
+                if (time > now - 1_000_000_000L && time <= now) {
+                    if (count == 0) {
+                        first = time;
+                    }
+                    last = time;
+                    count++;
                 }
-                count++;
-            }
-            for (int i = 1; i < times.length; i++) {
-                gaps.add((times[i] - times[i - 1]) / 1_000_000f);
             }
             next.fps = count;
-            next.frameMs = count > 0 ? 1000f / count : 0;
-            next.frameTimes = new float[gaps.size()];
-            for (int i = 0; i < gaps.size(); i++) {
-                next.frameTimes[i] = gaps.get(i);
+            next.frameMs = count > 1 ? (last - first) / 1_000_000f / (count - 1) : 0;
+            int added = 0;
+            long previous = lastFrame;
+            for (long time : times) {
+                if (time <= lastFrame) {
+                    continue;
+                }
+                // A gap of 200 ms or more is the app resting (a UI draws only when something
+                // changes), not a slow frame: an empty column.
+                long gap = previous > 0 ? time - previous : 0;
+                graph(gap > 0 && gap < 200_000_000L ? gap / 1_000_000f : -1);
+                previous = time;
+                added++;
             }
+            if (times.length > 0) {
+                lastFrame = Math.max(lastFrame, times[times.length - 1]);
+            }
+            if (added == 0) {
+                graph(-1);
+            }
+            next.frameTimes = graph.clone();
+        }
+
+        /** Scrolls the graph by one frame time (ms; -1 for none). */
+        private void graph(float ms) {
+            System.arraycopy(graph, 1, graph, 0, graph.length - 1);
+            graph[graph.length - 1] = ms;
         }
 
         private static float celsius(long milli) {
@@ -386,6 +410,12 @@ public final class OverlayService extends Service {
             } catch (NumberFormatException e) {
                 return 0;
             }
+        }
+
+        private static float[] filled(int size) {
+            float[] columns = new float[size];
+            java.util.Arrays.fill(columns, -1);
+            return columns;
         }
 
         static long[] numbers(String text) {
