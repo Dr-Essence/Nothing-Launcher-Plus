@@ -1,8 +1,12 @@
 package com.dressence.nothinglauncherplus.launcher;
 
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Rect;
+import android.os.PowerManager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -85,6 +89,8 @@ final class SmartDrawer {
     private final Map<String, String> uriToComponent = new ConcurrentHashMap<>();
     private final Set<Class<?>> processedClasses = ConcurrentHashMap.newKeySet();
     private final Set<Object> smartLists = Collections.newSetFromMap(new WeakHashMap<>());
+    /** Whether battery saver is followed for the emoji covers yet (main thread). */
+    private boolean saverFollowed;
 
     SmartDrawer(ClassLoader cl, ConfigStore store, FolderCovers covers) {
         this.cl = cl;
@@ -102,7 +108,8 @@ final class SmartDrawer {
         Hooks.install("loose app spans", this::hookLooseAppSpans);
         Hooks.install("loose app spacing", this::hookLooseAppSpacing);
         Hooks.install("cover greeting", this::hookCoverGreeting);
-        store.addChangeListener(this::refresh);
+        // Settings changes reach tiles already bound (covers on or off) as well.
+        store.addChangeListener(this::rebind);
         // Rotation changes the tile count; Nothing's drawer does not ask again by itself.
         Hooks.install("smart grid rotation", () -> XposedHelpers.findAndHookMethod(
                 XposedHelpers.findClass("com.android.launcher3.Launcher", cl),
@@ -387,6 +394,48 @@ final class SmartDrawer {
         }
     }
 
+    /**
+     * Whether emoji covers show: switched on, and not left out for battery saver. The first
+     * call starts following battery saver, so the tiles change as it turns on or off.
+     */
+    private boolean emojiCoversShown(Context context) {
+        Config config = store.get();
+        if (!config.emojiCovers) {
+            return false;
+        }
+        PowerManager power = context.getSystemService(PowerManager.class);
+        if (!saverFollowed && power != null) {
+            saverFollowed = true;
+            context.getApplicationContext().registerReceiver(new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context c, Intent intent) {
+                    Hooks.guard("battery saver covers", () -> {
+                        if (store.get().emojiCovers && store.get().coversOffInSaver) {
+                            rebind();
+                        }
+                    }).run();
+                }
+            }, new IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED),
+                    Context.RECEIVER_NOT_EXPORTED);
+        }
+        return !(config.coversOffInSaver && power != null && power.isPowerSaveMode());
+    }
+
+    /** Main thread: regroups every live Smart list and binds its tiles again. */
+    private void rebind() {
+        refresh();
+        List<Object> lists;
+        synchronized (smartLists) {
+            lists = new ArrayList<>(smartLists);
+        }
+        for (Object list : lists) {
+            Object adapter = XposedHelpers.getObjectField(list, "mAdapter");
+            if (adapter != null) {
+                XposedHelpers.callMethod(adapter, "notifyDataSetChanged");
+            }
+        }
+    }
+
     /** Main thread: re-applies grid columns and regroups every live Smart list. */
     private void refresh() {
         List<Object> lists;
@@ -649,7 +698,8 @@ final class SmartDrawer {
                         param.thisObject, "getFolderIconContainer");
                 resizeTile((View) param.thisObject, previews);
                 covers.apply((FrameLayout) param.thisObject, previews, name, folder,
-                        store.get().animateCovers, store.get().dotMatrix);
+                        store.get().animateCovers, store.get().dotMatrix,
+                        emojiCoversShown(previews.getContext()));
             }
         });
     }

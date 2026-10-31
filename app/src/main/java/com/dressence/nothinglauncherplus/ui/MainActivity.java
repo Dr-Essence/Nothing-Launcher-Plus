@@ -169,6 +169,17 @@ public class MainActivity extends Activity {
         addOpacityRow(ui, config);
 
         ui.section("Covers");
+        ui.switchRow("Emoji covers", "Off: folders show their apps as Nothing does; your emoji"
+                + " stay saved for later · image covers stay", config.emojiCovers, checked -> {
+                    config.emojiCovers = checked;
+                    store.save(this);
+                });
+        ui.switchRow("No emoji covers in battery saver", "Folders show their apps while battery"
+                + " saver is on, and their emoji again when it goes off", config.coversOffInSaver,
+                checked -> {
+                    config.coversOffInSaver = checked;
+                    store.save(this);
+                });
         ui.switchRow("Animate emoji covers", frameRateSummary(), config.animateCovers, checked -> {
             config.animateCovers = checked;
             store.save(this);

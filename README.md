@@ -96,6 +96,11 @@ plus your folders.
 
 ## Emoji animations
 
+- **Emoji covers** (on by default; App drawer page): off, every folder shows its apps as
+  Nothing draws them, and the emoji chosen for each folder stays saved for when it is switched
+  back on (image covers stay). **No emoji covers in battery saver** (off by default) does the
+  same only while battery saver is on: the tiles change as it turns on and back off. Hidden
+  covers do not animate.
 - **Dot matrix** (on by default, switch in the module): the whole folder tile becomes a Nothing
   dot screen. The dots fill the card the launcher actually draws (read from the tile's own
   outline, so they follow its shape and rounded corners and never spill past it), as many whole

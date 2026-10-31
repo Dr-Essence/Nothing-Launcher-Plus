@@ -35,6 +35,8 @@ public final class Config {
     public static final String KEY_LOOSE_APPS = "loose_apps";
     public static final String KEY_DRAWER_OPACITY = "drawer_opacity";
     public static final String KEY_ANIMATE_COVERS = "animate_covers";
+    public static final String KEY_EMOJI_COVERS = "emoji_covers";
+    public static final String KEY_COVERS_OFF_IN_SAVER = "covers_off_in_saver";
     public static final String KEY_DOT_MATRIX = "dot_matrix";
     public static final String KEY_DOT_ICONS = "dot_icons";
     public static final String KEY_NDOT_STATUS = "ndot_status_bar";
@@ -108,6 +110,10 @@ public final class Config {
     public int drawerOpacity = 100;
     /** Play emoji cover animations. */
     public boolean animateCovers = true;
+    /** Show emoji covers on folder tiles (off: Nothing's app previews; the emoji is kept). */
+    public boolean emojiCovers = true;
+    /** Show Nothing's app previews instead of emoji covers while battery saver is on. */
+    public boolean coversOffInSaver = false;
     /** Emoji covers drawn as a Nothing-style dot matrix. */
     public boolean dotMatrix = true;
     /** Every app icon drawn as a glowing Nothing dot matrix. */
@@ -268,6 +274,8 @@ public final class Config {
         looseApps = in.bool(KEY_LOOSE_APPS, false);
         drawerOpacity = Math.max(0, Math.min(100, in.number(KEY_DRAWER_OPACITY, 100)));
         animateCovers = in.bool(KEY_ANIMATE_COVERS, true);
+        emojiCovers = in.bool(KEY_EMOJI_COVERS, true);
+        coversOffInSaver = in.bool(KEY_COVERS_OFF_IN_SAVER, false);
         dotMatrix = in.bool(KEY_DOT_MATRIX, true);
         dotIcons = in.bool(KEY_DOT_ICONS, false);
         ndotStatusBar = in.bool(KEY_NDOT_STATUS, false);
@@ -290,6 +298,8 @@ public final class Config {
         out.bool(KEY_LOOSE_APPS, looseApps);
         out.number(KEY_DRAWER_OPACITY, drawerOpacity);
         out.bool(KEY_ANIMATE_COVERS, animateCovers);
+        out.bool(KEY_EMOJI_COVERS, emojiCovers);
+        out.bool(KEY_COVERS_OFF_IN_SAVER, coversOffInSaver);
         out.bool(KEY_DOT_MATRIX, dotMatrix);
         out.bool(KEY_DOT_ICONS, dotIcons);
         out.bool(KEY_NDOT_STATUS, ndotStatusBar);

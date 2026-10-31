@@ -61,9 +61,13 @@ final class FolderCovers {
      * Shows {@code folder}'s cover on the tile, or restores the stock previews. Emoji covers play
      * their motion and effect when {@code animate} is set and are drawn as dots when
      * {@code dotMatrix} is; then the folder's {@code name} is lit on the same dot screen too.
+     * Without {@code emoji}, emoji covers give way to the stock previews (image covers stay).
      */
     void apply(FrameLayout tile, View previews, TextView name, Config.Folder folder,
-            boolean animate, boolean dotMatrix) {
+            boolean animate, boolean dotMatrix, boolean emoji) {
+        if (folder != null && !emoji && folder.coverImageVersion == 0) {
+            folder = null;
+        }
         CoverView cover = tile.findViewWithTag(COVER_TAG);
         DotPanel panel = tile.findViewWithTag(PANEL_TAG);
         boolean dots = folder != null && dotMatrix && folder.coverImageVersion == 0
