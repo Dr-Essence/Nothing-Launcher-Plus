@@ -42,6 +42,7 @@ public final class Launcher {
         Hooks.install("landscape widget picker", () -> new WidgetPickerLandscape(cl, store).install());
         Hooks.install("lifecycle after a turn", () -> hookTurnLifecycle(cl));
         Hooks.install("controller", () -> Gamepad.install(cl, store));
+        Hooks.install("recents memory", () -> RecentsRam.install(cl, store));
         Hooks.install("dot-matrix icons", () -> DotIcons.install(cl, store));
         Hooks.install("scrolling app names", () -> LabelScroll.install(cl, store));
         LauncherSounds.install(cl, store);

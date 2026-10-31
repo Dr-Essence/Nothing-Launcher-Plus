@@ -54,6 +54,7 @@ public final class Config {
     public static final String KEY_ALLOW_ROTATION = "allow_rotation";
     public static final String KEY_CONTROLLER_NAV = "controller_nav";
     public static final String KEY_CONTROLLER_HOME = "controller_home";
+    public static final String KEY_RECENTS_MEMORY = "recents_memory";
     public static final String KEY_CONTROLLER_HOME_APP = "controller_home_app";
     public static final String KEY_LOCK_ROTATION = "lock_rotation";
     public static final String KEY_AOD_ROTATION = "aod_rotation";
@@ -154,6 +155,8 @@ public final class Config {
     public boolean allowRotation = false;
     /** Game controller buttons (Y, L1/R1, X, Start) and focus animations. */
     public boolean controllerNav = true;
+    /** Recents shows free memory; a tap opens running services. */
+    public boolean recentsMemory = true;
     /** While a game controller is connected, home is the gaming launcher below. */
     public boolean controllerHome = false;
     /** Package of the gaming launcher ("" none picked). */
@@ -323,6 +326,7 @@ public final class Config {
         allowRotation = in.bool(KEY_ALLOW_ROTATION, false);
         controllerNav = in.bool(KEY_CONTROLLER_NAV, true);
         controllerHome = in.bool(KEY_CONTROLLER_HOME, false);
+        recentsMemory = in.bool(KEY_RECENTS_MEMORY, true);
         controllerHomeApp = in.text(KEY_CONTROLLER_HOME_APP, "");
         lockRotation = in.bool(KEY_LOCK_ROTATION, false);
         aodRotation = in.bool(KEY_AOD_ROTATION, true);
@@ -363,6 +367,7 @@ public final class Config {
         out.bool(KEY_ALLOW_ROTATION, allowRotation);
         out.bool(KEY_CONTROLLER_NAV, controllerNav);
         out.bool(KEY_CONTROLLER_HOME, controllerHome);
+        out.bool(KEY_RECENTS_MEMORY, recentsMemory);
         out.text(KEY_CONTROLLER_HOME_APP, controllerHomeApp);
         out.bool(KEY_LOCK_ROTATION, lockRotation);
         out.bool(KEY_AOD_ROTATION, aodRotation);

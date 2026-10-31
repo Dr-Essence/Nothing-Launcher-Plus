@@ -281,6 +281,14 @@ public class MainActivity extends Activity {
                     store.save(this);
                 });
 
+        ui.section("Recents");
+        ui.switchRow("Memory in recents", "Free and total memory beside Screenshot; tap it for"
+                + " Developer options → Running services",
+                config.recentsMemory, checked -> {
+                    config.recentsMemory = checked;
+                    store.save(this);
+                });
+
         ui.section("Launcher");
         ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,
                 null, v -> restartLauncher());

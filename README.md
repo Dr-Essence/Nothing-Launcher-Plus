@@ -728,6 +728,17 @@ Launcher3 moves its keyboard focus with them. The module adds:
 The focused icon or folder lifts on a spring (scale + elevation) and settles back the moment
 the screen is touched.
 
+### Memory in recents
+
+*Home screen → Memory in recents* (on by default): recents shows how much memory is free of the
+phone's total (rounded up to the size it is sold as, 8 GB not 7.4), as crDroid's and Infinity
+X's recents do; a tap opens Developer options → Running services
+(`Settings$DevRunningServicesActivity`, or developer options where that screen is missing). It
+is one more button in recents' row of action buttons (`OverviewActionsView`'s
+`action_buttons`, beside Screenshot), made with Nothing's own `OverviewActionButton` style, so
+it looks like them and fades, hides and moves with the row by Nothing's own animation. The
+figures are read off the main thread every 3 s, only while the button is on screen.
+
 ### Gaming launcher with a controller
 
 *Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any
