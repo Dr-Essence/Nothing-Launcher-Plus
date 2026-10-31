@@ -49,9 +49,11 @@
 
         <activity android:name=".ui.EmojiPickerActivity" />
 
+        <!-- Exported for Nothing's Game Bar, which starts it (the system may, while the module is
+             in the background); it only shows or hides the module's own overlay. -->
         <service
             android:name=".perf.OverlayService"
-            android:exported="false"
+            android:exported="true"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"

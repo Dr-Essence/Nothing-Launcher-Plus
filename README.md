@@ -361,8 +361,11 @@ Around the home screen:
   off.)
 - **Nothing's system screens built for any orientation follow auto-rotate** (switch: *Status
   bar & quick settings → System screens in landscape*; it starts as Home screen rotation was
-  set), where Nothing declares them portrait-only: so far SystemUI's quick
-  settings widget picker (`QSWidgetActivity`, a scrolling list). Each portrait-only screen of
+  set), where Nothing declares them portrait-only: SystemUI's quick settings widget picker
+  (`QSWidgetActivity`, a scrolling list) and the Settings app's pages (lists; the orientation
+  log showed `SettingsHomepageActivity` and `SubSettings` asking for portrait), except
+  PIN / password / lock confirmation, fingerprint and face set-up, first set-up and the
+  start-up home, which stay portrait. Each portrait-only screen of
   a system app you open is written to the LSPosed log once (`portrait-only screen: …`, with
   diagnostic logging on), so
   others (Settings pages and the like) can be checked in Nothing's code and added. Screens
@@ -416,8 +419,9 @@ Around the home screen:
   back as Nothing made them in portrait. Nothing's clock, measured as wide as the screen, gets
   the half's width, also in the pass where SystemUI lays out the clock alone (kept at full
   width it stuck out past the screen's edge and vanished). With the fingerprint sensor on the
-  left (the screen turned 270°), Nothing's clock, date and widgets go to the right half and
-  the lock screen's notifications to the left half (only while the lock screen itself shows;
+  left (the screen turned 270°), Nothing's clock, date and widgets go to the right half, with
+  or without notifications (without them Nothing's clock sat on the left over the sensor's
+  icon), and the lock screen's notifications to the left half (only while the lock screen itself shows;
   pulled down, the shade is laid out as SystemUI makes it). Turning straight from one
   landscape side to the other keeps the screen's size and orientation, so Android tells System
   UI of no configuration change and Nothing never laid its lock screen out again: the lock
@@ -678,12 +682,16 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   choose by their graphics chip, which the driver still reports as Mali.
 
 - **In Nothing's Game Bar** (tick *Game Bar* / `com.nothing.ntgamedashboard` in the module's
-  LSPosed scope): three buttons after Nothing's own in its settings grid: **Overlay** on / off,
-  **PerfMTK** profile (each tap the next: performance, balanced, powersave) and **Thermal**
-  limits on / off, each showing its state. The Game Bar's grid is a fixed list of setting keys
+  LSPosed scope): three buttons after Nothing's own in its settings grid: **Perf overlay**
+  (each tap on or off), **PerfMTK** profile (each tap the next: performance, balanced,
+  powersave; PerfMTK's own per-app profiles still switch it as apps change) and **Thermal**
+  limits on / off, showing its state. The Game Bar's grid is a fixed list of setting keys
   that it binds by name and leaves empty for a key it does not know; the module adds its keys,
-  fills their rows and, on a tap, asks the module app (which has root and the overlay) to act.
-  The module app only listens to the system, which the Game Bar runs as.
+  fills their rows. The overlay is started by the Game Bar itself: Android lets the system
+  start a foreground service for an app in the background, not that app itself (asked from
+  the module's own receiver it crashed with `ForegroundServiceStartNotAllowedException`). For
+  the PerfMTK buttons it asks the module app, which has root and only listens to the system,
+  which the Game Bar runs as.
 
 Planned next: refresh rate options through PerfMTK's profiles (`--reload`).
 

@@ -198,7 +198,12 @@ final class LockScreenTurn {
                     Resources res = context.getResources();
                     int split = res.getIdentifier("config_use_split_notification_shade", "bool",
                             context.getPackageName());
-                    if (store.get().lockRotation && Boolean.FALSE.equals(centered)
+                    // Halves with notifications showing (Nothing would center the clock
+                    // otherwise), and always with the sensor on the left: without
+                    // notifications Nothing's clock sat on the left over the sensor's icon
+                    // (report at rotation 3), so its pieces go to the right half then.
+                    if (store.get().lockRotation
+                            && (Boolean.FALSE.equals(centered) || sensorOnLeft(context))
                             && res.getConfiguration().orientation
                                     == Configuration.ORIENTATION_LANDSCAPE
                             && split != 0 && res.getBoolean(split)) {

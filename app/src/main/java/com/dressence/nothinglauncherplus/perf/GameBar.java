@@ -85,6 +85,10 @@ public final class GameBar {
                             show(key, store.get(), label, icon);
                         });
                         Runnable tap = Hooks.guard("game bar", () -> {
+                            if (KEY_OVERLAY.equals(key)) {
+                                toggleOverlay(row.getContext());
+                                return;
+                            }
                             ask(row.getContext(), key);
                             // The module saves the new state; shown once it has.
                             row.postDelayed(relabel, 1500);
@@ -98,7 +102,8 @@ public final class GameBar {
     private static void show(String key, Config config, TextView label, ImageView icon) {
         switch (key) {
             case KEY_OVERLAY:
-                label.setText(config.perfOverlay ? "Overlay on" : "Overlay off");
+                // Whether it shows is only known to the module's service: a plain switch.
+                label.setText("Perf overlay");
                 icon.setImageResource(android.R.drawable.ic_menu_view);
                 break;
             case KEY_PROFILE:
@@ -114,7 +119,17 @@ public final class GameBar {
     }
 
     /**
-     * The module acts (it has root and its overlay); the Game Bar only asks, sharing who it is
+     * The overlay is started here, by the Game Bar: Android lets the system start a foreground
+     * service for an app in the background, but not that app itself (the module's receiver
+     * failed with ForegroundServiceStartNotAllowedException).
+     */
+    private static void toggleOverlay(Context context) {
+        context.startForegroundService(new Intent(OverlayService.ACTION_TOGGLE)
+                .setClassName(Config.MODULE_PKG, Config.MODULE_PKG + ".perf.OverlayService"));
+    }
+
+    /**
+     * The module acts (it has root); the Game Bar only asks, sharing who it is
      * (Android 14+), as the module listens to the system alone.
      */
     private static void ask(Context context, String key) {

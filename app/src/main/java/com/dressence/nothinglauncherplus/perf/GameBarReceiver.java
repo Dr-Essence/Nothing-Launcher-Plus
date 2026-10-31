@@ -9,10 +9,10 @@ import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.ui.SettingsStore;
 
 /**
- * Acts on the module's options in Nothing's Game Bar ({@link GameBar}): the performance
- * overlay on or off, the next PerfMTK profile, PerfMTK's thermal limits on or off, saving the
- * new state so the Game Bar's labels show it. Only the system (the Game Bar runs as it) is
- * listened to, so no other app can switch these.
+ * Acts on the module's PerfMTK options in Nothing's Game Bar ({@link GameBar}): the next PerfMTK
+ * profile, PerfMTK's thermal limits on or off, saving the new state so the Game Bar's labels
+ * show it (the overlay the Game Bar starts itself). Only the system (the Game Bar runs as it)
+ * is listened to, so no other app can switch these.
  */
 public final class GameBarReceiver extends BroadcastReceiver {
 
@@ -30,16 +30,6 @@ public final class GameBarReceiver extends BroadcastReceiver {
         String key = intent.getStringExtra(EXTRA_KEY);
         SettingsStore store = new SettingsStore(context);
         Config config = store.config;
-        if (GameBar.KEY_OVERLAY.equals(key)) {
-            config.perfOverlay = !config.perfOverlay;
-            store.save(context);
-            if (config.perfOverlay) {
-                OverlayService.start(context);
-            } else {
-                OverlayService.stop(context);
-            }
-            return;
-        }
         PendingResult result = goAsync();
         new Thread(() -> {
             try {
@@ -61,6 +51,8 @@ public final class GameBarReceiver extends BroadcastReceiver {
                         store.save(context);
                     }
                 }
+            } catch (Throwable t) {
+                // Root refused or PerfMTK missing: nothing changes; never crash.
             } finally {
                 result.finish();
             }

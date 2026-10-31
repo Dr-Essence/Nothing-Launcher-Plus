@@ -38,6 +38,11 @@ import java.util.List;
  */
 public final class OverlayService extends Service {
 
+    /**
+     * Started with this by Nothing's Game Bar (the system starts it, which Android allows
+     * while the module is in the background): on if it is off, off if it is on.
+     */
+    static final String ACTION_TOGGLE = "com.dressence.nothinglauncherplus.TOGGLE_OVERLAY";
     private static final String CHANNEL = "overlay";
     private static final int NOTIFICATION = 1;
     /** Readings below this are a sensor's "off" value (a powered-down GPU says -274 °C). */
@@ -123,17 +128,40 @@ public final class OverlayService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         startForeground(NOTIFICATION, notification(),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        boolean toggle = intent != null && ACTION_TOGGLE.equals(intent.getAction());
+        if (toggle && panel != null) {
+            // From the Game Bar: it was showing, so off.
+            remember(false);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         if (panel == null) {
             try {
                 show();
             } catch (Exception e) {
                 // No overlay permission (or no window): nothing to show, stop quietly.
+                remember(false);
                 stopSelf();
                 return START_NOT_STICKY;
             }
+            remember(true);
             readSensors();
         }
         return START_NOT_STICKY;
+    }
+
+    /** Saves whether the overlay shows, for the Performance page's switch. */
+    private void remember(boolean on) {
+        try {
+            com.dressence.nothinglauncherplus.ui.SettingsStore store =
+                    new com.dressence.nothinglauncherplus.ui.SettingsStore(this);
+            if (store.config.perfOverlay != on) {
+                store.config.perfOverlay = on;
+                store.save(this);
+            }
+        } catch (Exception e) {
+            // Unsaved: the switch shows the old state until changed.
+        }
     }
 
     @Override

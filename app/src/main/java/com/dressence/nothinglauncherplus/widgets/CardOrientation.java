@@ -40,6 +40,22 @@ public final class CardOrientation {
     private static final java.util.Set<String> SYSTEM_SCREENS = new java.util.HashSet<>(
             java.util.Arrays.asList(
                     "com.android.systemui/com.nothing.systemui.qs.widget.QSWidgetActivity"));
+    /**
+     * Apps whose portrait-locked screens all work in landscape: Settings (its pages are lists,
+     * and Nothing locks them all; the reports showed SettingsHomepageActivity and SubSettings
+     * asking for portrait). Their screens named with a part of {@link #KEEP_PORTRAIT} keep
+     * Nothing's lock.
+     */
+    private static final java.util.Set<String> SYSTEM_APPS = new java.util.HashSet<>(
+            java.util.Arrays.asList("com.android.settings"));
+    /**
+     * Screens left portrait: PIN / password / pattern and lock confirmation, fingerprint and
+     * face set-up (drawn around the sensor and camera as they sit in portrait), first set-up,
+     * and the home shown while the phone starts.
+     */
+    private static final String[] KEEP_PORTRAIT = {"Password", "ConfirmLock", "ChooseLock",
+            "ConfirmDeviceCredential", "Fingerprint", "Biometric", "Face", "Setup",
+            "FallbackHome"};
     /** Portrait-only screens already logged. */
     private static final java.util.Set<String> LOGGED =
             java.util.Collections.synchronizedSet(new java.util.HashSet<>());
@@ -73,7 +89,8 @@ public final class CardOrientation {
             if (!store.get().systemScreens) {
                 return;
             }
-            if (SYSTEM_SCREENS.contains(screen)) {
+            if (SYSTEM_SCREENS.contains(screen) || (SYSTEM_APPS.contains(info.packageName)
+                    && !keepsPortrait(info.name))) {
                 info.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
             } else if (info.applicationInfo != null && (info.applicationInfo.flags
                     & android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
@@ -90,6 +107,15 @@ public final class CardOrientation {
             // relays it out instead of being restarted (see WidgetApps).
             info.configChanges |= ROTATION_CHANGES;
         }
+    }
+
+    private static boolean keepsPortrait(String activity) {
+        for (String part : KEEP_PORTRAIT) {
+            if (activity.contains(part)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static boolean isPortraitLock(int orientation) {
