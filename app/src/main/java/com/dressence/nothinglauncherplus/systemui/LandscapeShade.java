@@ -2,7 +2,6 @@ package com.dressence.nothinglauncherplus.systemui;
 
 import android.hardware.display.DisplayManager;
 import android.view.Display;
-import android.view.View;
 import android.view.Surface;
 
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
@@ -140,7 +139,7 @@ final class LandscapeShade {
                     }
                 });
         pinPage(cl, store);
-        tracePulls(cl, store);
+        pullFromAnywhere(cl, store);
         Hooks.log("landscape shade: ready");
     }
 
@@ -182,135 +181,54 @@ final class LandscapeShade {
         });
     }
 
-    /** The turned lock screen's pull downs being traced (main thread), to name what blocks one. */
-    private static String pullTrace;
-
     /**
-     * Diagnostic, while the lock screen's pull down works only from the status bar: a pull from
-     * the middle reached the panel (NPVC onTouch) and never System UI's drag-down helper, which
-     * sees only what the shade window intercepts (DebuG report: no "drag down has started").
-     * For each touch on the turned lock screen it logs, once, what turned the window's intercept
-     * off (requestDisallowInterceptTouchEvent, with its caller) and what the drag-down helper
-     * made of the first move. Logged with diagnostic logging on; to go once the cause is fixed.
+     * The pull down from the middle of the turned lock screen. System UI's drag-down helper
+     * (LockscreenShadeTransitionController's) sees a pull only through the shade window's
+     * intercept, which Android asks about a gesture's moves only while a view inside the window
+     * has its touch down. In portrait the notification stack covers the lock screen's middle and
+     * takes it; turned (split shade) the stack is one half, and the middle has no view that
+     * takes a touch, so the window itself had it and its moves never reached the helper (DebuG
+     * report: every pull from the middle "taken by the window itself", none seen by the
+     * helper; pulls taken by the status bar's clock worked). While the lock screen turns, a move
+     * of a gesture the window holds itself is put to the same intercept System UI uses; when the
+     * drag-down helper takes it there, the rest goes to the helper as an intercepted pull does
+     * (handleTouchEvent: mLastInterceptWasDragDownHelper), and the panel, which had the gesture,
+     * is told it ended (a cancel, as Android sends a view whose gesture its parent takes).
      */
-    private static void tracePulls(ClassLoader cl, ConfigStore store) {
-        XposedHelpers.findAndHookMethod(android.view.ViewGroup.class,
-                "requestDisallowInterceptTouchEvent", boolean.class, new XC_MethodHook() {
+    private static void pullFromAnywhere(ClassLoader cl, ConfigStore store) {
+        XposedHelpers.findAndHookMethod(XposedHelpers.findClass(
+                "com.android.systemui.shade.NotificationShadeWindowViewController$1", cl),
+                "handleTouchEvent", android.view.MotionEvent.class, new XC_MethodHook() {
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) {
-                        if (!(Boolean) param.args[0] || pullTrace == null
-                                || pullTrace.contains("blocked")) {
-                            return;
-                        }
-                        StringBuilder by = new StringBuilder();
-                        StackTraceElement[] stack = new Throwable().getStackTrace();
-                        for (int i = 0, n = 0; i < stack.length && n < 4; i++) {
-                            String c = stack[i].getClassName();
-                            if (c.startsWith("de.robv") || c.startsWith("LSP")
-                                    || c.contains("nothinglauncherplus") || c.startsWith("java.")
-                                    || c.equals("android.view.ViewGroup")) {
-                                continue;
-                            }
-                            by.append(n++ == 0 ? "" : " < ").append(c.substring(
-                                    c.lastIndexOf('.') + 1)).append('.')
-                                    .append(stack[i].getMethodName());
-                        }
-                        pullTrace += ", blocked by " + param.thisObject.getClass().getSimpleName()
-                                + " (" + by + ")";
-                    }
-                });
-        XposedBridge.hookAllMethods(XposedHelpers.findClass(
-                "com.android.systemui.statusbar.DragDownHelper", cl), "onInterceptTouchEvent",
-                new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) {
                         try {
-                            if (!store.get().lockRotation || !store.get().diagnosticLogging
-                                    || !turned()) {
-                                pullTrace = null;
+                            android.view.MotionEvent event = (android.view.MotionEvent) param.args[0];
+                            Object handler = param.thisObject;
+                            if (event.getActionMasked() != android.view.MotionEvent.ACTION_MOVE
+                                    || !store.get().lockRotation || !turned()
+                                    || XposedHelpers.getBooleanField(handler,
+                                            "mLastInterceptWasDragDownHelper")) {
                                 return;
                             }
-                            android.view.MotionEvent e = (android.view.MotionEvent) param.args[0];
-                            int action = e.getActionMasked();
-                            if (action == android.view.MotionEvent.ACTION_DOWN) {
-                                pullTrace = "touch at " + (int) e.getRawX() + "," + (int) e.getRawY();
-                            } else if (action == android.view.MotionEvent.ACTION_MOVE
-                                    && pullTrace != null && !pullTrace.contains("first move")) {
-                                pullTrace += ", first move seen by the drag-down helper"
-                                        + (Boolean.TRUE.equals(param.getResult()) ? " (taken)" : "");
+                            boolean taken = (Boolean) XposedHelpers.callMethod(handler,
+                                    "shouldInterceptTouchEvent", event);
+                            if (!taken || !XposedHelpers.getBooleanField(handler,
+                                    "mLastInterceptWasDragDownHelper")) {
+                                return;
                             }
+                            XposedHelpers.callMethod(handler, "didIntercept", event);
+                            Object controller = XposedHelpers.getSurroundingThis(handler);
+                            Object panel = XposedHelpers.getObjectField(controller,
+                                    "mShadeViewController");
+                            android.view.MotionEvent cancel = android.view.MotionEvent.obtain(event);
+                            cancel.setAction(android.view.MotionEvent.ACTION_CANCEL);
+                            XposedHelpers.callMethod(panel, "handleExternalTouch", cancel);
+                            cancel.recycle();
                         } catch (Throwable t) {
-                            // Diagnostic only.
+                            Hooks.log("lock screen pull: " + t);
                         }
                     }
                 });
-        // Whether the shade window was asked to intercept the first move, and its answer.
-        XposedHelpers.findAndHookMethod(XposedHelpers.findClass(
-                "com.android.systemui.shade.NotificationShadeWindowView", cl),
-                "onInterceptTouchEvent", android.view.MotionEvent.class, new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) {
-                        String trace = pullTrace;
-                        if (trace != null && !trace.contains("window asked")
-                                && ((android.view.MotionEvent) param.args[0]).getActionMasked()
-                                        == android.view.MotionEvent.ACTION_MOVE) {
-                            pullTrace = trace + ", window asked on the first move: "
-                                    + param.getResult();
-                        }
-                    }
-                });
-        // The gesture's end, wherever it went: the line is written once per touch.
-        XposedHelpers.findAndHookMethod(android.view.ViewGroup.class, "dispatchTouchEvent",
-                android.view.MotionEvent.class, new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) {
-                        String trace = pullTrace;
-                        if (trace == null || !(param.thisObject instanceof android.view.ViewGroup)
-                                || ((View) param.thisObject).getParent() instanceof View) {
-                            return; // Only the window's root, once per event.
-                        }
-                        int action = ((android.view.MotionEvent) param.args[0]).getActionMasked();
-                        if (action == android.view.MotionEvent.ACTION_DOWN) {
-                            pullTrace = trace + ", taken by " + touchTargets(
-                                    (android.view.ViewGroup) param.thisObject);
-                            return;
-                        }
-                        if (action == android.view.MotionEvent.ACTION_UP
-                                || action == android.view.MotionEvent.ACTION_CANCEL) {
-                            pullTrace = null;
-                            Hooks.log("lock screen pull: " + trace
-                                    + (trace.contains("first move") ? "" : ", no move reached"
-                                    + " the drag-down helper"));
-                        }
-                    }
-                });
-    }
-
-    /** The views a touch down went to, from the window's root down (Android's touch targets). */
-    private static String touchTargets(android.view.ViewGroup root) {
-        StringBuilder chain = new StringBuilder();
-        Object group = root;
-        for (int depth = 0; depth < 12 && group instanceof android.view.ViewGroup; depth++) {
-            Object target = XposedHelpers.getObjectField(group, "mFirstTouchTarget");
-            if (target == null) {
-                if (depth == 0) {
-                    chain.append("the window itself (no view took it)");
-                }
-                break;
-            }
-            View child = (View) XposedHelpers.getObjectField(target, "child");
-            String id = "";
-            try {
-                id = child.getId() != View.NO_ID
-                        ? "#" + child.getResources().getResourceEntryName(child.getId()) : "";
-            } catch (Throwable t) {
-                // No name.
-            }
-            chain.append(depth == 0 ? "" : " > ").append(child.getClass().getSimpleName())
-                    .append(id);
-            group = child;
-        }
-        return chain.toString();
     }
 
     /**
