@@ -37,6 +37,7 @@ final class LandscapeShade {
 
     private static final String PROVIDER = "com.android.systemui.classifier.FalsingDataProvider";
     private static final String DISTANCE = "com.android.systemui.classifier.DistanceClassifier";
+    private static final String PROXIMITY = "com.android.systemui.classifier.ProximityClassifier";
     private static final String PANEL = "com.android.systemui.shade.NotificationPanelViewController";
     private static final String SCRIM_STATE = "com.android.systemui.statusbar.phone.ScrimState";
     private static final int KEYGUARD = 1;
@@ -95,6 +96,29 @@ final class LandscapeShade {
         Class<?> distance = XposedHelpers.findClass(DISTANCE, cl);
         XposedBridge.hookAllMethods(distance, "calculateFalsingResult", thresholds);
         XposedBridge.hookAllMethods(distance, "isLongSwipe", thresholds);
+        // The proximity sensor sits at the top edge in portrait: held turned, the hand holding
+        // that edge covers it, and ProximityClassifier then takes any swipe that is not a long
+        // one (80% of the screen) for a pocket touch (DebuG reports: percentInProximity 1.0 on
+        // full swipes down and up to the PIN page, rejected; a rejected pull down left quick
+        // settings open alone). Turned, the grip is not a pocket: that check passes, as it
+        // does for an uncovered sensor; every other check and Nothing's pocket mode stand.
+        XposedBridge.hookAllMethods(XposedHelpers.findClass(PROXIMITY, cl),
+                "calculateFalsingResult", new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        try {
+                            if (!store.get().lockRotation || !turned()) {
+                                return;
+                            }
+                            Class<?> result = ((java.lang.reflect.Method) param.method)
+                                    .getReturnType();
+                            param.setResult(XposedHelpers.callStaticMethod(result, "passed",
+                                    0.5d));
+                        } catch (Throwable t) {
+                            // System UI's check stands.
+                        }
+                    }
+                });
 
         Class<?> panel = XposedHelpers.findClass(PANEL, cl);
         XposedHelpers.findAndHookMethod(panel, "closeQsIfPossible", new XC_MethodHook() {
@@ -161,18 +185,23 @@ final class LandscapeShade {
      * is for the other orientation than the display has now.
      */
     private static boolean swapped(Object provider) {
+        return display() != null && swapped(provider, turned());
+    }
+
+    static boolean swapped(Object provider, boolean turned) {
+        boolean storedWide = XposedHelpers.getIntField(provider, "mWidthPixels")
+                > XposedHelpers.getIntField(provider, "mHeightPixels");
+        return turned != storedWide;
+    }
+
+    /** Whether the display is turned a quarter (landscape on this phone). */
+    private static boolean turned() {
         Display display = display();
         if (display == null) {
             return false;
         }
-        return swapped(provider, display.getRotation());
-    }
-
-    static boolean swapped(Object provider, int rotation) {
-        boolean turned = rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270;
-        boolean storedWide = XposedHelpers.getIntField(provider, "mWidthPixels")
-                > XposedHelpers.getIntField(provider, "mHeightPixels");
-        return turned != storedWide;
+        int rotation = display.getRotation();
+        return rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270;
     }
 
     private static Display display() {

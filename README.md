@@ -494,7 +494,10 @@ Around the home screen:
   `closeQsIfPossible` leaves them open in split shade, so a swipe up opened the bouncer and,
   once it was put away, the lock screen came back with them still open. While the lock screen
   turns, the falsing check's size and dpi follow the rotation (its thresholds worked out from
-  them with System UI's own settings and sums), and quick settings over the lock screen close
+  them with System UI's own settings and sums). Its proximity check took the hand holding the
+  turned phone (over the sensor at the top edge in portrait) for a pocket and threw away every
+  swipe shorter than 80% of the screen (`percentInProximity=1.0` on full swipes down and up to
+  the PIN page); while turned that check passes. Quick settings over the lock screen close
   on back or when the panel closes, as Nothing closes them when split shade returns to the
   lock screen.
   **Always-on display, turned**: its burn-in movement (`AodBurnInViewModel`, applied as
