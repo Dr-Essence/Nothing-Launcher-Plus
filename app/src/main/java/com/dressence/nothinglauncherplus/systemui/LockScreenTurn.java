@@ -82,6 +82,10 @@ final class LockScreenTurn {
             "com.android.keyguard.KeyguardSecurityContainerController";
     private static final String CLS_WIDGET_SECTION =
             "com.nothing.systemui.keyguard.ui.view.layout.sections.NTWidgetContainerSection";
+    private static final String CLS_BLUEPRINT_INTERACTOR =
+            "com.android.systemui.keyguard.domain.interactor.KeyguardBlueprintInteractor";
+    private static final String CLS_TRANSITION_TYPE = "com.android.systemui.keyguard.ui.view"
+            + ".layout.blueprints.transitions.IntraBlueprintTransition$Type";
     /** Nothing's lock screen pieces kept to the left half beside the notifications. */
     private static final String[] LEFT_HALF = {"lockscreen_clock_view", "keyguard_slice_view",
             "nt_widget_host_view_container"};
@@ -111,6 +115,9 @@ final class LockScreenTurn {
     private static android.content.Context halfContext;
     /** Whether the half layout was put on Nothing's pieces (to be taken off again). */
     private static boolean halfApplied;
+    /** The notification container and its last updateConstraints args (main thread). */
+    private static Object notifications;
+    private static Object[] notificationArgs;
 
     private LockScreenTurn() {
     }
@@ -138,6 +145,7 @@ final class LockScreenTurn {
         turnFingerprint(cl, store);
         landscapeBouncer(cl, store);
         mirrorNotifications(cl, store);
+        layOutOnFlip(cl, store);
         logFingerprint(cl, store);
         sensorTouches(cl, store);
         Class<?> window = XposedHelpers.findClassIfExists(CLS_SHADE_WINDOW, cl);
@@ -714,7 +722,6 @@ final class LockScreenTurn {
             Hooks.log("lock screen notifications: classes not found");
             return;
         }
-        Object[] last = new Object[2]; // The container and its last updateConstraints args.
         boolean[] listening = {false};
         XposedBridge.hookAllMethods(container, "updateConstraints", new XC_MethodHook() {
             @Override
@@ -722,8 +729,8 @@ final class LockScreenTurn {
                 if (param.args.length != 6) {
                     return;
                 }
-                last[0] = param.thisObject;
-                last[1] = param.args.clone();
+                notifications = param.thisObject;
+                notificationArgs = param.args.clone();
                 if (!store.get().lockRotation) {
                     return;
                 }
@@ -734,10 +741,8 @@ final class LockScreenTurn {
                         XposedHelpers.callMethod(state, "addCallback", java.lang.reflect.Proxy
                                 .newProxyInstance(cl, new Class<?>[] {listenerClass},
                                         (proxy, method, args) -> {
-                                            if (method.getName().equals("onStateChanged")
-                                                    && last[0] != null) {
-                                                XposedHelpers.callMethod(last[0],
-                                                        "updateConstraints", (Object[]) last[1]);
+                                            if (method.getName().equals("onStateChanged")) {
+                                                layOutNotifications();
                                             }
                                             return method.getReturnType() == boolean.class
                                                     ? Boolean.FALSE : null;
@@ -776,6 +781,90 @@ final class LockScreenTurn {
                 }
             }
         });
+    }
+
+    /** SystemUI's notification placement, done again with its last arguments. */
+    private static void layOutNotifications() {
+        if (notifications != null) {
+            XposedHelpers.callMethod(notifications, "updateConstraints",
+                    (Object[]) notificationArgs);
+        }
+    }
+
+    /**
+     * Turning straight from one landscape side to the other (sensor right, sensor left) keeps
+     * the screen's size and orientation, so Android reports no configuration change to System
+     * UI and Nothing never lays its lock screen out again: the lock icon stayed over the
+     * sensor's old side (logged: no new icon placement after rotation 1 to 3) and the clock and
+     * notifications kept their old halves. On that turn System UI is asked for the same
+     * relayout it does on a configuration change (KeyguardBlueprintInteractor.refreshBlueprint,
+     * which places the icon, clock and widgets again) and the notifications are placed again.
+     */
+    private static void layOutOnFlip(ClassLoader cl, ConfigStore store) {
+        Class<?> interactor = XposedHelpers.findClassIfExists(CLS_BLUEPRINT_INTERACTOR, cl);
+        Class<?> type = XposedHelpers.findClassIfExists(CLS_TRANSITION_TYPE, cl);
+        if (interactor == null || type == null) {
+            Hooks.log("lock screen flip: classes not found");
+            return;
+        }
+        XposedBridge.hookAllMethods(interactor, "start", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                Object blueprints = param.thisObject;
+                android.app.Application app = android.app.AndroidAppHelper.currentApplication();
+                android.hardware.display.DisplayManager displays = app == null ? null
+                        : app.getSystemService(android.hardware.display.DisplayManager.class);
+                if (displays == null) {
+                    Hooks.log("lock screen flip: no display manager");
+                    return;
+                }
+                android.view.Display display = displays.getDisplay(
+                        android.view.Display.DEFAULT_DISPLAY);
+                int[] last = {display != null ? display.getRotation() : 0};
+                displays.registerDisplayListener(new android.hardware.display.DisplayManager
+                        .DisplayListener() {
+                    @Override
+                    public void onDisplayChanged(int displayId) {
+                        if (displayId != android.view.Display.DEFAULT_DISPLAY) {
+                            return;
+                        }
+                        try {
+                            android.view.Display d = displays.getDisplay(displayId);
+                            int rotation = d != null ? d.getRotation() : last[0];
+                            boolean flipped = rotation != last[0]
+                                    && isLandscapeRotation(rotation)
+                                    && isLandscapeRotation(last[0]);
+                            last[0] = rotation;
+                            if (!flipped || !store.get().lockRotation) {
+                                return;
+                            }
+                            @SuppressWarnings({"unchecked", "rawtypes"})
+                            Object none = Enum.valueOf((Class) type, "NoTransition");
+                            XposedHelpers.callMethod(blueprints, "refreshBlueprint", none);
+                            layOutNotifications();
+                            Hooks.log("lock screen flip: laid out again for rotation "
+                                    + rotation);
+                        } catch (Throwable t) {
+                            Hooks.log("lock screen flip: " + t);
+                        }
+                    }
+
+                    @Override
+                    public void onDisplayAdded(int displayId) {
+                    }
+
+                    @Override
+                    public void onDisplayRemoved(int displayId) {
+                    }
+                }, new android.os.Handler(android.os.Looper.getMainLooper()));
+                Hooks.log("lock screen flip: watching turns");
+            }
+        });
+    }
+
+    private static boolean isLandscapeRotation(int rotation) {
+        return rotation == android.view.Surface.ROTATION_90
+                || rotation == android.view.Surface.ROTATION_270;
     }
 
     /** Ends Nothing's clock, date and widgets at the middle of the lock screen. */

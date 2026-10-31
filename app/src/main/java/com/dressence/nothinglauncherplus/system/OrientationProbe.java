@@ -38,6 +38,23 @@ public final class OrientationProbe {
         Hooks.log("orientation probe: " + hooked + " hooks");
     }
 
+    /**
+     * The window that decided: each container keeps the child it took the orientation from
+     * ({@code mLastOrientationSource}), so the chain is followed down from the display (whose
+     * own source is only its top display area) to the activity or window at its end.
+     */
+    private static Object source(Object display) {
+        Object source = XposedHelpers.getObjectField(display, "mLastOrientationSource");
+        for (int depth = 0; source != null && depth < 16; depth++) {
+            Object next = XposedHelpers.getObjectField(source, "mLastOrientationSource");
+            if (next == null || next == source) {
+                break;
+            }
+            source = next;
+        }
+        return source;
+    }
+
     private static void report(Object display) {
         if (!XposedHelpers.getBooleanField(display, "isDefaultDisplay")) {
             return;
@@ -45,7 +62,7 @@ public final class OrientationProbe {
         Object rotation = XposedHelpers.getObjectField(display, "mDisplayRotation");
         String line = "orientation: requested "
                 + XposedHelpers.callMethod(display, "getLastOrientation")
-                + " by " + XposedHelpers.getObjectField(display, "mLastOrientationSource")
+                + " by " + source(display)
                 + " · rotation " + XposedHelpers.callMethod(rotation, "getRotation")
                 + " · user rotation mode " + XposedHelpers.callMethod(rotation,
                         "getUserRotationMode")

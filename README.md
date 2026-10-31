@@ -374,7 +374,13 @@ Around the home screen:
   width it stuck out past the screen's edge and vanished). With the fingerprint sensor on the
   left (the screen turned 270°), Nothing's clock, date and widgets go to the right half and
   the lock screen's notifications to the left half (only while the lock screen itself shows;
-  pulled down, the shade is laid out as SystemUI makes it). The always-on display follows the
+  pulled down, the shade is laid out as SystemUI makes it). Turning straight from one
+  landscape side to the other keeps the screen's size and orientation, so Android tells System
+  UI of no configuration change and Nothing never laid its lock screen out again: the lock
+  icon stayed over the sensor's old side and the clock and notifications kept their old
+  halves. On that turn System UI is asked for the relayout it does on a configuration change
+  (`KeyguardBlueprintInteractor.refreshBlueprint`) and the notifications are placed again
+  (logged as `lock screen flip: …`). The always-on display follows the
   screen's turn like the lock screen (its landscape layout is logged for fitting it). Fingerprint events in landscape are logged
   (`fingerprint: …`: finger down / up, the overlay window's place, what the fingerprint
   service answers). Known limit: the fingerprint does not read in landscape yet. The Goodix
@@ -383,8 +389,9 @@ Around the home screen:
   hands it a layer whose buffer is named `NTFingerprintDimLayer` (`HWCLayer::setupPrivateHandle`
   finds the name, `HWCDisplay::validate` sets the display's flag, `HWCDispatcher::setJob` puts
   it in the frame's job; nothing else is checked). `dumpsys SurfaceFlinger` shows that layer
-  in the composer's list in portrait and not in landscape; why SurfaceFlinger leaves it out in
-  landscape is being looked into. Nothing's sensor layers are left as Nothing makes them.
+  in the composer's list in portrait and not in landscape, although SurfaceFlinger itself
+  counts it as visible there (`--frontend` dumps); why it leaves it out in landscape is being
+  looked into. Nothing's sensor layers are left as Nothing makes them.
   A finger on the sensor also pulled the shade down: Nothing's touch handling asks
   `UdfpsUtils.isWithinSensorArea` with the touch as it is on screen against the sensor's
   unturned bounds ("rotate to portrait" off), so in landscape the sensor window never took the
@@ -629,7 +636,7 @@ The module's code is grouped by where it runs:
 | `xposed` | The entry point (`ModuleEntry`, named in `assets/xposed_init`), hook helpers (`Hooks`: installing a feature so its failure is its own, guarding code the apps call back into), the settings as hooked apps read them (`ConfigStore`) and Nothing's NDot font (`NdotFont`). |
 | `launcher` | Everything in Nothing Launcher: the Smart drawer's folders and covers, the folder menu, landscape, controllers, sounds, dot-matrix icons (`DotIcons`, `IconScreen`) and scrolling names. |
 | `systemui` | The status bar and quick settings: `Clock`, `Battery`, `GreenIcons`, `GreenTexts`, `QuickSettings`, `NetworkSpeed`, all in the lit look of `Led`. |
-| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`). |
+| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
