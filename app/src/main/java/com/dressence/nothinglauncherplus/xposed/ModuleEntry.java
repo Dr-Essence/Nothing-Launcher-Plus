@@ -32,7 +32,7 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
             ConfigStore store = new ConfigStore();
             Hooks.install("system font", () -> SystemFonts.install(cl, store));
             Hooks.install("widget card orientation", () -> CardOrientation.install(cl, store));
-            Hooks.install("orientation probe", () -> OrientationProbe.install(cl));
+            Hooks.install("orientation probe", () -> OrientationProbe.install(cl, store));
         } else if (!lpparam.isFirstApplication) {
             return;
         } else if (Config.LAUNCHER_PKG.equals(pkg)) {
@@ -40,7 +40,8 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
         } else if (Config.SYSTEMUI_PKG.equals(pkg)) {
             SystemUi.install(cl, new ConfigStore());
         } else if (HeliBoardGamepad.PKG.equals(pkg)) {
-            Hooks.install("heliboard gamepad", () -> HeliBoardGamepad.install(cl));
+            Hooks.install("heliboard gamepad",
+                    () -> HeliBoardGamepad.install(cl, new ConfigStore()));
         } else if (WidgetApps.handles(pkg)) {
             Hooks.install("widget apps", () -> WidgetApps.install(new ConfigStore()));
         }

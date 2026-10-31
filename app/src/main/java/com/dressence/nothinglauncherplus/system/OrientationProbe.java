@@ -1,5 +1,6 @@
 package com.dressence.nothinglauncherplus.system;
 
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import de.robv.android.xposed.XC_MethodHook;
@@ -23,13 +24,17 @@ public final class OrientationProbe {
     private OrientationProbe() {
     }
 
-    public static void install(ClassLoader cl) {
+    public static void install(ClassLoader cl, ConfigStore store) {
         int hooked = XposedBridge.hookAllMethods(XposedHelpers.findClass(CLS_DISPLAY_CONTENT, cl),
                 "updateOrientation", new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) {
                         try {
-                            report(param.thisObject);
+                            // The settings are read again as activities start (CardOrientation),
+                            // not here, under the window manager's lock.
+                            if (store.get().diagnosticLogging) {
+                                report(param.thisObject);
+                            }
                         } catch (Throwable t) {
                             Hooks.log("orientation probe failed: " + t);
                         }

@@ -156,7 +156,8 @@ final class LockScreenTurn {
                     View root = (View) param.thisObject;
                     root.getViewTreeObserver().addOnGlobalLayoutListener(
                             Hooks.guard("lock screen layout", () -> {
-                                if (store.get().lockRotation) {
+                                if (store.get().lockRotation
+                                        && store.get().diagnosticLogging) {
                                     record(root);
                                 }
                             })::run);
@@ -294,7 +295,7 @@ final class LockScreenTurn {
                         return;
                     }
                     try {
-                        turnIcon(param);
+                        turnIcon(param, store.get().diagnosticLogging);
                     } catch (Throwable t) {
                         Hooks.log("lock screen fingerprint: " + t);
                     }
@@ -308,7 +309,7 @@ final class LockScreenTurn {
      * The lock icon over the fingerprint sensor: its spot (natural, unturned display
      * coordinates) turned as the sensor overlay turns it, then in the lock screen's coordinates.
      */
-    private static void turnIcon(XC_MethodHook.MethodHookParam param) {
+    private static void turnIcon(XC_MethodHook.MethodHookParam param, boolean log) {
         Object section = param.thisObject;
         Object model = XposedHelpers.callMethod(
                 XposedHelpers.getObjectField(section, "deviceEntryIconViewModel"), "get");
@@ -338,6 +339,9 @@ final class LockScreenTurn {
         int[] origin = rootOrigin(section, wm);
         param.args[0] = new android.graphics.Point(tx - origin[0], ty - origin[1]);
         turnedSpot = new int[] {tx, ty, rotation};
+        if (!log) {
+            return;
+        }
         Hooks.log("lock screen fingerprint: icon at " + tx + "," + ty + " on screen (sensor "
                 + x + "," + y + " unturned, rotation " + rotation + ", lock screen at "
                 + origin[0] + "," + origin[1] + ")");
@@ -580,7 +584,7 @@ final class LockScreenTurn {
         XC_MethodHook log = new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
-                if (!store.get().lockRotation) {
+                if ((!store.get().lockRotation || !store.get().diagnosticLogging)) {
                     return;
                 }
                 StringBuilder args = new StringBuilder();
@@ -622,7 +626,7 @@ final class LockScreenTurn {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) {
                     Object lp = param.getResult();
-                    if (!store.get().lockRotation || !(lp instanceof
+                    if ((!store.get().lockRotation || !store.get().diagnosticLogging) || !(lp instanceof
                             android.view.WindowManager.LayoutParams)) {
                         return;
                     }

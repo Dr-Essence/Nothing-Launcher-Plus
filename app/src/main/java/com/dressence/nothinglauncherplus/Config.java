@@ -54,6 +54,9 @@ public final class Config {
     public static final String KEY_ALLOW_ROTATION = "allow_rotation";
     public static final String KEY_CONTROLLER_NAV = "controller_nav";
     public static final String KEY_LOCK_ROTATION = "lock_rotation";
+    public static final String KEY_HELIBOARD_CONTROLLER = "heliboard_controller";
+    public static final String KEY_DIAGNOSTIC_LOGGING = "diagnostic_logging";
+    public static final String KEY_SYSTEM_SCREENS = "system_screens";
 
     /** Broadcast sent to the launcher after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
@@ -146,6 +149,12 @@ public final class Config {
     public boolean controllerNav = true;
     /** Test: the lock screen follows auto-rotate too, and its landscape layout is logged. */
     public boolean lockRotation = false;
+    /** Type in HeliBoard with a game controller. */
+    public boolean heliboardController = true;
+    /** Write the diagnostic lines (orientation, lock screen layout, fingerprint) to the log. */
+    public boolean diagnosticLogging = true;
+    /** Nothing's portrait-only system screens that work in landscape follow auto-rotate. */
+    public boolean systemScreens = false;
 
     private final Map<String, Folder> byComponent = new HashMap<>();
     private final Map<String, Folder> byKey = new HashMap<>();
@@ -293,6 +302,10 @@ public final class Config {
         allowRotation = in.bool(KEY_ALLOW_ROTATION, false);
         controllerNav = in.bool(KEY_CONTROLLER_NAV, true);
         lockRotation = in.bool(KEY_LOCK_ROTATION, false);
+        heliboardController = in.bool(KEY_HELIBOARD_CONTROLLER, true);
+        diagnosticLogging = in.bool(KEY_DIAGNOSTIC_LOGGING, true);
+        // Before this switch, system screens followed Home screen rotation.
+        systemScreens = in.bool(KEY_SYSTEM_SCREENS, allowRotation);
     }
 
     private void writeSettings(Sink out) {
@@ -317,6 +330,9 @@ public final class Config {
         out.bool(KEY_ALLOW_ROTATION, allowRotation);
         out.bool(KEY_CONTROLLER_NAV, controllerNav);
         out.bool(KEY_LOCK_ROTATION, lockRotation);
+        out.bool(KEY_HELIBOARD_CONTROLLER, heliboardController);
+        out.bool(KEY_DIAGNOSTIC_LOGGING, diagnosticLogging);
+        out.bool(KEY_SYSTEM_SCREENS, systemScreens);
     }
 
     private void readFolders(JSONArray array) throws JSONException {

@@ -33,7 +33,9 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. **Stop
     capture** ends it early and still saves it. It can hold personal information
     (screenshots, the recording, notifications, logs), so look through it before posting it
-    publicly.
+    publicly. The **Diagnostic logging** switch on the same page (on for now) writes the
+    module's diagnostic lines to the LSPosed log: orientation changes, lock screen layout,
+    fingerprint events and portrait-only system screens.
 
 ### Before you install: protect your phone
 
@@ -330,10 +332,12 @@ Around the home screen:
   was taller than the screen: opened in landscape it showed as a full-screen gradient with no
   corners or close button, and after a turn it filled the height with its close button cut
   off.)
-- **Nothing's system screens built for any orientation follow auto-rotate** (with Home
-  screen rotation on), where Nothing declares them portrait-only: so far SystemUI's quick
+- **Nothing's system screens built for any orientation follow auto-rotate** (switch: *Status
+  bar & quick settings → System screens in landscape*; it starts as Home screen rotation was
+  set), where Nothing declares them portrait-only: so far SystemUI's quick
   settings widget picker (`QSWidgetActivity`, a scrolling list). Each portrait-only screen of
-  a system app you open is written to the LSPosed log once (`portrait-only screen: …`), so
+  a system app you open is written to the LSPosed log once (`portrait-only screen: …`, with
+  diagnostic logging on), so
   others (Settings pages and the like) can be checked in Nothing's code and added. Screens
   that are only a notice (the overheating warning, the AI screenshot tip) stay as they are.
   System framework scope and a reboot are needed for this.
@@ -578,8 +582,8 @@ the screen is touched.
 ### Typing with a controller (HeliBoard)
 
 For the best experience use **[HeliBoard](https://github.com/Helium314/HeliBoard)**
-(`helium314.keyboard`, open source; tick it in the module's LSPosed scope). With the keyboard
-up, the controller types on it the way a PlayStation's on-screen keyboard works:
+(`helium314.keyboard`, open source; tick it in the module's LSPosed scope; switch: *Home
+screen → Controller typing in HeliBoard*, on by default). With the keyboard up, the controller types on it the way a PlayStation's on-screen keyboard works:
 
 | Button | Keyboard |
 | --- | --- |

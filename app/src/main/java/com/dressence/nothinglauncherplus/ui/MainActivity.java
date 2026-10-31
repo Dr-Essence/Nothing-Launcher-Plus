@@ -92,7 +92,7 @@ public class MainActivity extends Activity {
                 renderBackup(Ui.page(this, "Backup", true));
                 break;
             default:
-                renderDiagnostics(Ui.page(this, "Diagnostics", true));
+                renderDiagnostics(Ui.page(this, "Diagnostics", true), config);
                 break;
         }
     }
@@ -134,7 +134,7 @@ public class MainActivity extends Activity {
                 v -> openPage(PAGE_SOUND));
 
         ui.section("System");
-        ui.row("Status bar & quick settings", "Ndot clock and date, green and amber glow", null,
+        ui.row("Status bar & quick settings", "Ndot clock and date, glow, system screens", null,
                 ui.chevron(), v -> openPage(PAGE_SYSTEM_UI));
         ui.row("Lock screen", "Landscape lock screen (test)", null, ui.chevron(),
                 v -> openPage(PAGE_LOCK));
@@ -251,6 +251,12 @@ public class MainActivity extends Activity {
                     config.controllerNav = checked;
                     store.save(this);
                 });
+        ui.switchRow("Controller typing in HeliBoard", "Move over HeliBoard's keys, suggestions"
+                + " and panels with the controller · HeliBoard in the module's LSPosed scope",
+                config.heliboardController, checked -> {
+                    config.heliboardController = checked;
+                    store.save(this);
+                });
 
         ui.section("Launcher");
         ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,
@@ -283,12 +289,20 @@ public class MainActivity extends Activity {
                     config.qsAmber = checked;
                     store.save(this);
                 });
+
+        ui.section("System screens");
+        ui.switchRow("System screens in landscape", "Nothing's portrait-only screens that work"
+                + " in landscape follow auto-rotate (so far the quick settings widget picker)",
+                config.systemScreens, checked -> {
+                    config.systemScreens = checked;
+                    store.save(this);
+                });
     }
 
     private void renderLock(Ui ui, Config config) {
         ui.section("Landscape");
         ui.switchRow("Lock screen rotation (test)",
-                "Lock screen follows auto-rotate and logs its landscape layout, for fixing it",
+                "Lock screen, PIN screen and fingerprint follow auto-rotate",
                 config.lockRotation, checked -> {
                     config.lockRotation = checked;
                     store.save(this);
@@ -309,8 +323,16 @@ public class MainActivity extends Activity {
                         .setType("*/*"), REQUEST_IMPORT));
     }
 
-    private void renderDiagnostics(Ui ui) {
-        ui.section("Diagnostics");
+    private void renderDiagnostics(Ui ui, Config config) {
+        ui.section("Logging");
+        ui.switchRow("Diagnostic logging", "Writes what is needed to fix problems to the LSPosed"
+                + " log: orientation changes, lock screen layout, fingerprint events, portrait-only"
+                + " screens", config.diagnosticLogging, checked -> {
+                    config.diagnosticLogging = checked;
+                    store.save(this);
+                });
+
+        ui.section("Debug report");
         ui.row("Capture debug report", "Waits while you set the problem up, then records the"
                 + " screen and saves screenshots, layer, window and view layouts, logcat and the"
                 + " LSPosed log to Download · needs root · may hold personal info", null, null,

@@ -19,6 +19,7 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.HorizontalScrollView;
 
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 import com.dressence.nothinglauncherplus.xposed.Hooks;
 
 import java.lang.ref.WeakReference;
@@ -129,13 +130,16 @@ public final class HeliBoardGamepad {
         keyRepeat = XposedHelpers.getStaticObjectField(haptic, "KEY_REPEAT");
     }
 
-    public static void install(ClassLoader cl) {
+    public static void install(ClassLoader cl, ConfigStore store) {
         HeliBoardGamepad pad = new HeliBoardGamepad(cl);
         Class<?> imeClass = XposedHelpers.findClass(CLS_IME, cl);
         XposedHelpers.findAndHookMethod(imeClass, "onKeyDown", int.class, KeyEvent.class,
                 new XC_MethodHook() {
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) {
+                        if (!store.get().heliboardController) {
+                            return;
+                        }
                         InputMethodService service = (InputMethodService) param.thisObject;
                         if (pad.onKeyDown(service, (KeyEvent) param.args[1])) {
                             param.setResult(true);
@@ -146,6 +150,9 @@ public final class HeliBoardGamepad {
                 new XC_MethodHook() {
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) {
+                        if (!store.get().heliboardController) {
+                            return;
+                        }
                         InputMethodService service = (InputMethodService) param.thisObject;
                         if (pad.onKeyUp(service, (KeyEvent) param.args[1])) {
                             param.setResult(true);
@@ -157,6 +164,8 @@ public final class HeliBoardGamepad {
         XC_MethodHook reset = new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
+                // The switch is read again here (a file check), not on every key.
+                store.reloadIfChanged();
                 pad.reset();
             }
         };

@@ -20,8 +20,9 @@ import de.robv.android.xposed.XposedHelpers;
  * <p>The same goes for Nothing's system screens that Nothing declares portrait-only although
  * they are built to work in any orientation (listed below, each checked in Nothing's own
  * code): they follow auto-rotate like other apps' screens, and turning restarts them in
- * landscape the ordinary way. Every other portrait-only screen opened while Home screen
- * rotation is on is written to the LSPosed log once ("portrait-only screen: …"), so further
+ * landscape the ordinary way, while "System screens in landscape" is on. Every other
+ * portrait-only screen opened then is written to the LSPosed log once (with diagnostic logging
+ * on: "portrait-only screen: …"), so further
  * ones can be checked and added from what is really opened (system apps only).
  */
 public final class CardOrientation {
@@ -69,14 +70,14 @@ public final class CardOrientation {
         String screen = info.packageName + "/" + info.name;
         if (!WidgetApps.handles(info.packageName)) {
             store.reloadIfChanged();
-            if (!store.get().allowRotation) {
+            if (!store.get().systemScreens) {
                 return;
             }
             if (SYSTEM_SCREENS.contains(screen)) {
                 info.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
             } else if (info.applicationInfo != null && (info.applicationInfo.flags
                     & android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
-                    && LOGGED.add(screen)) {
+                    && store.get().diagnosticLogging && LOGGED.add(screen)) {
                 // System apps only: other apps' screens are theirs to lock.
                 Hooks.log("portrait-only screen: " + screen);
             }
