@@ -8,17 +8,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
-import android.graphics.PixelFormat;
-import android.graphics.Typeface;
 import android.os.BatteryManager;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
-import android.util.TypedValue;
-import android.view.Gravity;
-import android.view.WindowManager;
 
-import com.dressence.nothinglauncherplus.xposed.NdotFont;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -27,14 +19,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The performance overlay (CMF Phone 1): {@link PerfHud} over everything, twice a second. The
- * clocks, loads and temperatures are root-only on this phone, so one root shell reads them in
- * a loop (the files as found on the phone: cpufreq, /proc/stat, /proc/meminfo, MediaTek's GED
- * HAL and DVFSRC, the thermal zones by name, the battery's current and voltage), with
- * SurfaceFlinger's frame times for the focused window's layer (its SurfaceView if it has one,
- * else its own), so FPS shows in any app. The battery's temperature comes from Android. The
- * panel can be dragged anywhere and stays where it is left; it takes only the touches on
- * itself.
+ * The performance overlay's readings (CMF Phone 1), twice a second, sent to System UI, which
+ * draws {@link PerfHud} ({@link HudWindows}: above the lock screen too, which an app's overlay
+ * cannot be). The clocks, loads and temperatures are root-only on this phone, so one root
+ * shell reads them in a loop (the files as found on the phone: cpufreq, /proc/stat,
+ * /proc/meminfo, MediaTek's GED HAL and DVFSRC, the thermal zones by name, the battery's
+ * current and voltage), with SurfaceFlinger's frame times for the focused window's layer (its
+ * SurfaceView if it has one, else its own), so FPS shows in any app. The battery's temperature
+ * comes from Android.
  */
 public final class OverlayService extends Service {
 
@@ -47,10 +39,6 @@ public final class OverlayService extends Service {
     private static final int NOTIFICATION = 1;
     /** Readings below this are a sensor's "off" value (a powered-down GPU says -274 °C). */
     private static final float NO_READING_C = -40f;
-    /** Where the panel was dragged to. */
-    private static final String PLACE = "overlay";
-    private static final String PLACE_X = "x";
-    private static final String PLACE_Y = "y";
 
     /**
      * Every half second prints: "F f0..f7 (each core's cluster clock, kHz, 0 when offline) | G opp kHz | U load | T cpu zones (m°C) | X gpu soc
@@ -108,8 +96,6 @@ public final class OverlayService extends Service {
             + "  n=$((n+1))\n"
             + "done\n";
 
-    private final Handler main = new Handler(Looper.getMainLooper());
-    private PerfHud panel;
     private Process reader;
     private volatile boolean running;
 
@@ -131,21 +117,13 @@ public final class OverlayService extends Service {
         startForeground(NOTIFICATION, notification(),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         boolean toggle = intent != null && ACTION_TOGGLE.equals(intent.getAction());
-        if (toggle && panel != null) {
+        if (toggle && running) {
             // From the Game Bar: it was showing, so off.
             remember(false);
             stopSelf();
             return START_NOT_STICKY;
         }
-        if (panel == null) {
-            try {
-                show();
-            } catch (Exception e) {
-                // No overlay permission (or no window): nothing to show, stop quietly.
-                remember(false);
-                stopSelf();
-                return START_NOT_STICKY;
-            }
+        if (!running) {
             remember(true);
             readSensors();
         }
@@ -172,14 +150,8 @@ public final class OverlayService extends Service {
         if (reader != null) {
             reader.destroy();
         }
-        if (panel != null) {
-            try {
-                getSystemService(WindowManager.class).removeView(panel);
-            } catch (Exception e) {
-                // Already gone with the window.
-            }
-            panel = null;
-        }
+        // System UI takes its panel away.
+        HudWindows.send(this, new Intent(HudWindows.ACTION_HUD_OFF));
         super.onDestroy();
     }
 
@@ -193,53 +165,6 @@ public final class OverlayService extends Service {
                 .setContentText("Turn it off in Nothing Launcher+ → Performance")
                 .setOngoing(true)
                 .build();
-    }
-
-    private void show() {
-        Typeface ndot = NdotFont.get(this);
-        panel = new PerfHud(this, ndot != null ? ndot : Typeface.MONOSPACE);
-        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                PixelFormat.TRANSLUCENT);
-        lp.gravity = Gravity.TOP | Gravity.START;
-        android.content.SharedPreferences place = getSharedPreferences(PLACE, MODE_PRIVATE);
-        int margin = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8,
-                getResources().getDisplayMetrics()));
-        lp.x = place.getInt(PLACE_X, getResources().getDisplayMetrics().widthPixels / 2);
-        lp.y = place.getInt(PLACE_Y, margin * 4);
-        lp.alpha = 0.9f;
-        WindowManager windows = getSystemService(WindowManager.class);
-        windows.addView(panel, lp);
-        // Dragged to where it is wanted, and kept there. It takes the touches on itself only;
-        // everything around it reaches the app as usual.
-        float[] grab = new float[4];
-        panel.setOnTouchListener((view, event) -> {
-            try {
-                switch (event.getActionMasked()) {
-                    case android.view.MotionEvent.ACTION_DOWN:
-                        grab[0] = event.getRawX();
-                        grab[1] = event.getRawY();
-                        grab[2] = lp.x;
-                        grab[3] = lp.y;
-                        return true;
-                    case android.view.MotionEvent.ACTION_MOVE:
-                        lp.x = Math.round(grab[2] + event.getRawX() - grab[0]);
-                        lp.y = Math.round(grab[3] + event.getRawY() - grab[1]);
-                        windows.updateViewLayout(panel, lp);
-                        return true;
-                    case android.view.MotionEvent.ACTION_UP:
-                        place.edit().putInt(PLACE_X, lp.x).putInt(PLACE_Y, lp.y).apply();
-                        return true;
-                    default:
-                        return true;
-                }
-            } catch (Exception e) {
-                return false; // The window went away mid-drag.
-            }
-        });
     }
 
     /** One root shell prints the readings twice a second; each round updates the panel. */
@@ -256,16 +181,14 @@ public final class OverlayService extends Service {
                 String line;
                 while (running && (line = in.readLine()) != null) {
                     PerfHud.Sample sample = parser.line(line, batteryTemperature());
-                    if (sample != null) {
-                        main.post(() -> {
-                            if (panel != null) {
-                                panel.show(sample);
-                            }
-                        });
+                    if (sample != null && running) {
+                        // System UI draws it (above the lock screen too).
+                        HudWindows.send(this, new Intent(HudWindows.ACTION_HUD)
+                                .putExtra(HudWindows.EXTRA_SAMPLE, sample.toBundle()));
                     }
                 }
             } catch (Exception e) {
-                // Root refused or the shell ended: the panel keeps "Reading…".
+                // Root refused or the shell ended: no more readings are sent.
             }
         }, "performance overlay").start();
     }

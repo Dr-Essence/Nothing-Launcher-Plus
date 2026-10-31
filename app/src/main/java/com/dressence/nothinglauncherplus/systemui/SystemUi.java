@@ -21,5 +21,9 @@ public final class SystemUi {
         Hooks.install("green texts", () -> GreenTexts.install(store));
         Hooks.install("quick settings", () -> QuickSettings.install(cl, store));
         Hooks.install("lock screen rotation", () -> LockScreenTurn.install(cl, store));
+        if (com.dressence.nothinglauncherplus.perf.Device.isCmfPhone1()) {
+            Hooks.install("module panels", () ->
+                    com.dressence.nothinglauncherplus.perf.HudWindows.install(cl));
+        }
     }
 }

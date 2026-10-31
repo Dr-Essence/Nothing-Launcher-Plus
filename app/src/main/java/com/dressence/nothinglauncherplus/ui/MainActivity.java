@@ -335,18 +335,20 @@ public class MainActivity extends Activity {
 
     private void renderPerformance(Ui ui, Config config) {
         ui.note("Experimental, CMF Phone 1 only, needs root.");
-        if (config.perfOverlay && android.provider.Settings.canDrawOverlays(this)) {
+        if (config.perfOverlay) {
             // After a reboot the overlay comes back when this page is opened.
             com.dressence.nothinglauncherplus.perf.OverlayService.start(this);
         }
         ui.section("Overlay");
         ui.switchRow("Ndot performance overlay", "Each CPU core's clock, GPU clock and load, CPU,"
-                + " GPU, SoC and battery temperatures, over every app", config.perfOverlay,
+                + " GPU, SoC and battery temperatures, FPS · over every app and the lock screen",
+                config.perfOverlay,
                 checked -> {
                     config.perfOverlay = checked;
                     store.save(this);
                     if (checked) {
-                        startOverlay();
+                        // System UI draws it: no "display over other apps" needed.
+                        com.dressence.nothinglauncherplus.perf.OverlayService.start(this);
                     } else {
                         com.dressence.nothinglauncherplus.perf.OverlayService.stop(this);
                     }
@@ -366,27 +368,6 @@ public class MainActivity extends Activity {
         ui.row("120 fps unlock", (n == 0 ? "No games" : n == 1 ? "1 game" : n + " games")
                 + " · the game sees a Galaxy S24 Ultra · read the warning", null, ui.chevron(),
                 v -> warnBeforeUnlock(config));
-    }
-
-    /** The overlay needs "display over other apps": granted through root, else asked for. */
-    private void startOverlay() {
-        new Thread(() -> {
-            if (!android.provider.Settings.canDrawOverlays(this)) {
-                com.dressence.nothinglauncherplus.perf.Device.su("appops set "
-                        + getPackageName() + " SYSTEM_ALERT_WINDOW allow");
-            }
-            runOnUiThread(() -> {
-                if (android.provider.Settings.canDrawOverlays(this)) {
-                    com.dressence.nothinglauncherplus.perf.OverlayService.start(this);
-                } else {
-                    Toast.makeText(this, "Allow \"Display over other apps\", then switch it"
-                            + " on again", Toast.LENGTH_LONG).show();
-                    startActivity(new Intent(
-                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:" + getPackageName())));
-                }
-            });
-        }).start();
     }
 
     private static final String[] PERFMTK_PROFILES =

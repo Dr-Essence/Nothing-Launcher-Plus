@@ -37,8 +37,8 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. While it
     runs you can tell what it is doing: one buzz when capturing starts and two when the
     report is saved (felt on the lock screen too), an ongoing notification counting down
-    ("Capture starts in…", "Capturing…", "Saving the report…"), and, where an overlay can
-    show (not over the lock screen), a small "● REC" pill with the seconds left. **Stop
+    ("Capture starts in…", "Capturing…", "Saving the report…"), and a small "● REC" pill
+    with the seconds left, drawn by System UI, so it shows on the lock screen too. **Stop
     capture** ends it early and still saves it. It can hold personal information
     (screenshots, the recording, notifications, logs), so look through it before posting it
     publicly. The **Diagnostic logging** switch on the same page (on for now) writes the
@@ -648,7 +648,8 @@ A **Performance** page appears in the module's menu on a CMF Phone 1 (`ro.produc
 Tetris) and nowhere else. Everything on it was built from what this phone reports (its
 clock, GPU and thermal files, Android's display and game services, PerfMTK's own files).
 
-- **Ndot performance overlay**: a small panel over every app, updated twice a second,
+- **Ndot performance overlay**: a small panel over every app and the lock screen, updated
+  twice a second,
   in MangoHud's style (its row colours and a frame time graph) with
   Scene's contents and size, drawn by the module (it is
   not MangoHud's code: MangoHud is a Linux Vulkan / OpenGL layer drawn inside the game, which
@@ -668,8 +669,12 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
     own row.
 
   Sensors that report a value below −40 °C are off: a powered-down GPU reports −274 °C, so
-  the GPU's last real temperature is shown, marked "idle"; other sensors show "—". The files are root-only, so one root shell reads them. Drag the panel to move
-  it; it stays where it is left and takes only the touches on itself. It needs "Display over other apps", granted through root
+  the GPU's last real temperature is shown, marked "idle"; other sensors show "—". The files are root-only, so the module app reads them in one root shell and
+  sends each reading to System UI, which draws the panel: Android hides an app's overlay on
+  the lock screen (its layer, 111000, is below the lock screen's, 171000, and the keyguard
+  policy hides windows below it), while a System UI panel window above it shows, as Nothing's
+  fingerprint overlay does. Drag the panel to move it; it stays where it is left and takes
+  only the touches on itself. No "Display over other apps" permission is needed. It needs "Display over other apps", granted through root
   when it can be. After a reboot it comes back when the Performance page is opened.
 - **PerfMTK profile**: switches [PerfMTK](https://github.com/JUANIMAN/PerfMTK) to Performance,
   Balanced, Powersave or Powersave+ (`perfmtk <profile>`). PerfMTK's own per-app profiles

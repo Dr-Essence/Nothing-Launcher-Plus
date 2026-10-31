@@ -225,6 +225,63 @@ final class PerfHud extends View {
         float frameMs;
         float[] frameTimes = new float[0];
 
+        /** For the trip from the module app (which reads it) to System UI (which shows it). */
+        android.os.Bundle toBundle() {
+            android.os.Bundle b = new android.os.Bundle();
+            b.putLongArray("coreKhz", coreKhz);
+            b.putLongArray("clusterKhz", clusterKhz);
+            b.putLongArray("coreRealKhz", coreRealKhz);
+            b.putFloatArray("coreLoad", coreLoad);
+            b.putLong("gpuKhz", gpuKhz);
+            b.putFloat("gpuLoad", gpuLoad);
+            b.putFloat("cpuTemp", cpuTemp);
+            b.putFloat("gpuTemp", gpuTemp);
+            b.putBoolean("gpuIdle", gpuIdle);
+            b.putFloat("socTemp", socTemp);
+            b.putFloat("batteryTemp", batteryTemp);
+            b.putLong("ddrMhz", ddrMhz);
+            b.putFloat("ram", ram);
+            b.putFloat("swap", swap);
+            b.putFloat("watts", watts);
+            b.putFloat("fps", fps);
+            b.putFloat("frameMs", frameMs);
+            b.putFloatArray("frameTimes", frameTimes);
+            return b;
+        }
+
+        static Sample fromBundle(android.os.Bundle b) {
+            Sample s = new Sample();
+            copy(b.getLongArray("coreKhz"), s.coreKhz);
+            copy(b.getLongArray("clusterKhz"), s.clusterKhz);
+            copy(b.getLongArray("coreRealKhz"), s.coreRealKhz);
+            float[] loads = b.getFloatArray("coreLoad");
+            if (loads != null) {
+                System.arraycopy(loads, 0, s.coreLoad, 0, Math.min(loads.length, 8));
+            }
+            s.gpuKhz = b.getLong("gpuKhz");
+            s.gpuLoad = b.getFloat("gpuLoad", -1);
+            s.cpuTemp = b.getFloat("cpuTemp", Float.NaN);
+            s.gpuTemp = b.getFloat("gpuTemp", Float.NaN);
+            s.gpuIdle = b.getBoolean("gpuIdle");
+            s.socTemp = b.getFloat("socTemp", Float.NaN);
+            s.batteryTemp = b.getFloat("batteryTemp", Float.NaN);
+            s.ddrMhz = b.getLong("ddrMhz");
+            s.ram = b.getFloat("ram", -1);
+            s.swap = b.getFloat("swap", -1);
+            s.watts = b.getFloat("watts", -1);
+            s.fps = b.getFloat("fps", -1);
+            s.frameMs = b.getFloat("frameMs");
+            float[] times = b.getFloatArray("frameTimes");
+            s.frameTimes = times != null ? times : new float[0];
+            return s;
+        }
+
+        private static void copy(long[] from, long[] to) {
+            if (from != null) {
+                System.arraycopy(from, 0, to, 0, Math.min(from.length, to.length));
+            }
+        }
+
         float cpuLoad() {
             float sum = 0;
             int online = 0;
