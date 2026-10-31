@@ -109,7 +109,10 @@ final class LockScreenTurn {
     private static final ThreadLocal<int[]> BOUNCER = ThreadLocal.withInitial(() -> new int[1]);
     /** Set if the bouncer's landscape code failed once: Nothing's layouts from then on. */
     private static volatile boolean bouncerFailed;
-    /** The fingerprint spot on the screen as last turned, and the rotation it is for. */
+    /**
+     * The fingerprint spot on the screen as last turned: its center, the rotation it is for
+     * and the lock icon's radius around it (Nothing's centerIcon).
+     */
     private static volatile int[] turnedSpot;
 
     private static int dumps;
@@ -403,7 +406,15 @@ final class LockScreenTurn {
         int ty = rotation == android.view.Surface.ROTATION_90 ? naturalW - x : x;
         int[] origin = rootOrigin(section, wm);
         param.args[0] = new android.graphics.Point(tx - origin[0], ty - origin[1]);
-        turnedSpot = new int[] {tx, ty, rotation};
+        int[] spot = {tx, ty, rotation, (int) (float) (Float) param.args[1]};
+        int[] last = turnedSpot;
+        turnedSpot = spot;
+        if (!java.util.Arrays.equals(spot, last)) {
+            // The notifications keep clear of the icon (mirrorNotifications): placed again
+            // for its new spot, after this layout pass.
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(
+                    Hooks.guard("lock screen notifications", LockScreenTurn::layOutNotifications));
+        }
         if (!log) {
             return;
         }
@@ -772,8 +783,9 @@ final class LockScreenTurn {
      * Nothing's pieces on the right. SystemUI's SharedNotificationContainer puts them from its
      * middle guideline to the right edge ("MiddleToEdge"); while the lock screen itself shows
      * (not the shade pulled over it, where quick settings take the left half) they go from the
-     * left edge to that guideline instead, otherwise as SystemUI places them. Laid out again
-     * when that state changes.
+     * left edge to that guideline instead, otherwise as SystemUI places them. On either side
+     * the column keeps clear of the fingerprint icon (clearOfSensor). Laid out again when that
+     * state changes.
      */
     private static void mirrorNotifications(ClassLoader cl, ConfigStore store) {
         Class<?> container = XposedHelpers.findClassIfExists(
@@ -819,11 +831,20 @@ final class LockScreenTurn {
                     }
                     View view = (View) param.thisObject;
                     if (!param.args[0].getClass().getSimpleName().equals("MiddleToEdge")
-                            || !sensorOnLeft(view.getContext()) || state == null
+                            || state == null
                             || (Integer) XposedHelpers.callMethod(state, "getState")
                                     != STATE_KEYGUARD) {
                         return;
                     }
+                    boolean left = sensorOnLeft(view.getContext());
+                    int clear = clearOfSensor(view, left);
+                    if (!left) {
+                        // Sensor on the right: SystemUI's own end margin, widened to end
+                        // the notifications before the fingerprint icon.
+                        param.args[3] = Math.max((Integer) param.args[3], clear);
+                        return;
+                    }
+                    param.args[1] = Math.max((Integer) param.args[1], clear);
                     Resources res = view.getResources();
                     String pkg = view.getContext().getPackageName();
                     int nssl = res.getIdentifier("notification_stack_scroller", "id", pkg);
@@ -850,6 +871,32 @@ final class LockScreenTurn {
                 }
             }
         });
+    }
+
+    /**
+     * How far from the notification container's edge on the fingerprint's side the
+     * notifications keep (px): past the turned lock icon over the sensor and a gap, so no
+     * notification, however many or however tall, reaches the circle (the column's top half
+     * ran over it: icon at x 198..384 under a column from 85). 0 when the icon's spot for
+     * this rotation is not known yet; placed again once it is (turnIcon).
+     */
+    static int clearOfSensor(View container, boolean left) {
+        int[] spot = turnedSpot;
+        if (spot == null || spot.length < 4 || container.getWidth() <= 0) {
+            return 0;
+        }
+        android.view.WindowManager wm = (android.view.WindowManager) container.getContext()
+                .getSystemService(android.content.Context.WINDOW_SERVICE);
+        if (wm == null || wm.getDefaultDisplay().getRotation() != spot[2]) {
+            return 0;
+        }
+        int[] at = new int[2];
+        container.getLocationOnScreen(at);
+        int gap = Math.round(16 * container.getResources().getDisplayMetrics().density);
+        int clear = left ? spot[0] + spot[3] + gap - at[0]
+                : at[0] + container.getWidth() - (spot[0] - spot[3] - gap);
+        // Never more than half the container: the notifications keep a usable width.
+        return Math.max(0, Math.min(clear, container.getWidth() / 2));
     }
 
     /** SystemUI's notification placement, done again with its last arguments. */

@@ -463,7 +463,11 @@ Around the home screen:
   column (logged `nssl_placeholder` top 1026 of a 1080 high lock screen), so in landscape they
   were laid out off the screen and only their icons showed. Turned with split shade, that
   placeholder's top is where AOSP's split-shade section puts it (the screen's top,
-  `keyguard_split_shade_top_margin` down).
+  `keyguard_split_shade_top_margin` down). Their column then ran over the fingerprint icon
+  (column from x 85, icon at 198..384): on the lock screen itself SystemUI's own margin on the
+  sensor's side (`SharedNotificationContainer.updateConstraints`) is widened to end the column
+  16dp short of the turned icon, so no notification, however many or however tall, reaches
+  the circle; placed again whenever the icon's spot changes.
   **Always-on display, turned**: its burn-in movement (`AodBurnInViewModel`, applied as
   translationY to the clock, date, AOD notification icons and Nothing's widget container) moves
   them within Nothing's `burn_in_prevention_offset_y` (100dp), sized for portrait; turned, the
