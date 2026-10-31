@@ -61,6 +61,14 @@ final class DebugReport {
             + "TRACE=$!\n"
             + "STEP=5; [ $DUR -gt 60 ] && STEP=10; [ $DUR -gt 300 ] && STEP=30\n"
             + "END=$(( $(date +%%s) + DUR ))\n"
+            // Each time the always-on display shows (it may show only a few seconds, as on the
+            // CMF Phone 1), once it has settled: a screenshot and every view with its bounds.
+            + "( k=0; dz=0; while [ $(date +%%s) -lt $END ] && [ ! -e $STOP ]; do"
+            + " if dumpsys power | grep -q 'mWakefulness=Dozing'; then"
+            + " if [ $dz = 0 ]; then dz=1; k=$((k+1)); sleep 1; screencap -p $D/aod$k.png;"
+            + " timeout 10 uiautomator dump $D/aod$k.xml >/dev/null 2>&1; fi; else dz=0; fi;"
+            + " sleep 0.5; done ) &\n"
+            + "AOD=$!\n"
             + "i=1\n"
             + "while :; do\n"
             + "  date > $D/time$i.txt\n"
@@ -91,6 +99,7 @@ final class DebugReport {
             + "pkill -INT screenrecord 2>/dev/null\n"
             + "wait $TRACE 2>/dev/null\n"
             + "wait $REC 2>/dev/null\n"
+            + "wait $AOD 2>/dev/null\n"
             + "dumpsys activity activities > $D/activities.txt 2>&1\n"
             + "dumpsys activity service com.android.systemui > $D/systemui.txt 2>&1\n"
             + "dumpsys input > $D/input.txt 2>&1\n"
