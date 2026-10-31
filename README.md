@@ -644,13 +644,14 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   not MangoHud's code: MangoHud is a Linux Vulkan / OpenGL layer drawn inside the game, which
   Android only loads into debuggable apps):
   - CPU and GPU load rings with their clocks;
-  - FPS and frame time in any app, with the last 40 frames on a Nothing dot screen
+  - FPS and frame time in any app (the focused window found on whichever display has one), with the last 40 frames on a Nothing dot screen
     (SurfaceFlinger's present times for the focused window's layer: its SurfaceView in a game
     or video, else the window itself; a still screen shows 0);
   - GPU load, clock and temperature; CPU load and hottest core;
-  - each cluster's set clock, then every core's load and measured clock, as Scene lists them
-    ("off" when a core is parked; the core's own clock is its root-only `cpuinfo_cur_freq`,
-    else its cluster's);
+  - each cluster's set clock, then every core's load and real clock, as Scene lists them
+    ("off" when a core is parked). On this phone every clock file reads the cluster's set
+    clock (PerfMTK's limit), so a core's real clock is measured as Scene does: its CPU cycles
+    over half a second (`simpleperf stat -a --per-core -e cpu-cycles`), else the cluster's;
   - RAM and swap use, DDR clock;
   - SoC temperature, battery temperature and the power drawn from the battery, each on its
     own row.

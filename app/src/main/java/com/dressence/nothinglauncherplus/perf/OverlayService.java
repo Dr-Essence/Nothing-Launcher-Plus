@@ -48,11 +48,11 @@ public final class OverlayService extends Service {
     private static final String PLACE_Y = "y";
 
     /**
-     * Every half second prints: "F f0..f7 (each core's measured clock, cpuinfo_cur_freq, else
-     * its cluster's; kHz, 0 when offline) | G opp kHz | U load | T cpu zones (m°C) | X gpu soc
+     * Every half second prints: "F f0..f7 (each core's cluster clock, kHz, 0 when offline) | G opp kHz | U load | T cpu zones (m°C) | X gpu soc
      * (m°C) | D ddr Hz | B µA µV | C the two clusters' set clocks (kHz)", then "S" + the per-core /proc/stat lines,
-     * "M" + MemTotal MemAvailable SwapTotal SwapFree (kB), "P" + the game layer's last present
-     * times (ns), and "E" to end the round.
+     * "M" + MemTotal MemAvailable SwapTotal SwapFree (kB), "P" + the focused layer's last
+     * present times (ns), "Y" + simpleperf's per-core cpu-cycles lines over half a second, and
+     * "E" to end the round.
      */
     private static final String SENSORS = ""
             + "Z(){ for z in /sys/class/thermal/thermal_zone*; do"
@@ -62,12 +62,13 @@ public final class OverlayService extends Service {
             + " big-core3-1 big-core3-2; do CPU=\"$CPU $(Z cpu-$n)\"; done\n"
             + "GPU=$(Z gpu); SOC=$(Z soc_max)\n"
             + "PS=/sys/class/power_supply/battery\n"
+            + "SP=$(command -v simpleperf)\n"
             + "L=\"\"; n=0\n"
             + "while :; do\n"
             + "  f=\"\"; for c in 0 1 2 3 4 5 6 7; do d=/sys/devices/system/cpu/cpu$c;"
             + " if [ \"$(cat $d/online 2>/dev/null)\" = 0 ]; then f=\"$f 0\";"
-            + " else f=\"$f $(cat $d/cpufreq/cpuinfo_cur_freq 2>/dev/null"
-            + " || cat $d/cpufreq/scaling_cur_freq 2>/dev/null || echo 0)\"; fi; done\n"
+            + " else f=\"$f $(cat $d/cpufreq/scaling_cur_freq 2>/dev/null || echo 0)\"; fi;"
+            + " done\n"
             + "  t=\"\"; for z in $CPU; do t=\"$t $(cat $z)\"; done\n"
             + "  echo \"F$f|G $(cat /sys/kernel/ged/hal/current_freqency)"
             + "|U $(cat /sys/kernel/ged/hal/gpu_utilization)|T$t|X $(cat $GPU) $(cat $SOC)"
@@ -78,11 +79,12 @@ public final class OverlayService extends Service {
             + "  echo \"S $(grep '^cpu[0-7] ' /proc/stat | tr '\\n' ',')\"\n"
             + "  echo \"M $(grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo"
             + " | awk '{print $2}' | tr '\\n' ' ')\"\n"
-            // Every 2 s: the focused window, and the layer it draws into: its SurfaceView (a
+            // Every 2 s: the focused window (the first display with one: the others list
+            // "mCurrentFocus=null", often first), and the layer it draws into: its SurfaceView (a
             // game, a video) if it has one, else its own ("pkg/activity#N", or a system
             // window's title, such as NotificationShade#N).
-            + "  if [ $((n % 4)) = 0 ]; then W=$(dumpsys window | grep -m1 mCurrentFocus"
-            + " | sed 's/.* u0 //; s/}.*//'); P=${W%%/*};"
+            + "  if [ $((n % 4)) = 0 ]; then W=$(dumpsys window | grep mCurrentFocus"
+            + " | grep -v =null | head -1 | sed 's/.* u0 //; s/}.*//'); P=${W%%/*};"
             + " LS=$(dumpsys SurfaceFlinger --list);"
             + " L=$(echo \"$LS\" | grep -m1 \"SurfaceView\\[$P/.*(BLAST)\");"
             + " [ -z \"$L\" ] && L=$(echo \"$LS\" | awk -v w=\"$W#\""
@@ -90,8 +92,13 @@ public final class OverlayService extends Service {
             + "  [ -n \"$L\" ] && echo \"P $(dumpsys SurfaceFlinger --latency \"$L\""
             + " | awk 'NR>1 && $2>0 && $2<9000000000000000000 {print $2}' | tail -120"
             + " | tr '\\n' ' ')\"\n"
+            // Each core's real clock: its CPU cycles over half a second (the hardware counters,
+            // as Scene measures them); this also paces the loop. Without simpleperf, a pause.
+            + "  if [ -n \"$SP\" ]; then echo \"Y $($SP stat -a --per-core -e cpu-cycles"
+            + " --duration 0.5 2>&1 | grep cpu-cycles | sed 's/cpu-cycles.*//' | tr '\\n' ';')\";"
+            + " else sleep 0.5; fi\n"
             + "  echo E\n"
-            + "  n=$((n+1)); sleep 0.5\n"
+            + "  n=$((n+1))\n"
             + "done\n";
 
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -262,6 +269,8 @@ public final class OverlayService extends Service {
                     next.ram = 1f - (float) m[1] / m[0];
                     next.swap = m[2] > 0 ? 1f - (float) m[3] / m[2] : -1;
                 }
+            } else if (line.startsWith("Y ")) {
+                cycles(line.substring(2));
             } else if (line.startsWith("P ")) {
                 frames(numbers(line.substring(2)));
             } else if (line.equals("E")) {
@@ -343,7 +352,37 @@ public final class OverlayService extends Service {
             }
         }
 
-        /** FPS and frame times from the game layer's last present times (ns). */
+        /**
+         * Each core's real clock from simpleperf's per-core cpu-cycles counts over 0.5 s, one
+         * "core count" line each (cut at the event name): the core is the small number, the
+         * count the large one (thousands separators dropped), whatever the columns look like.
+         */
+        private void cycles(String text) {
+            for (String row : text.split(";")) {
+                String digits = row.replaceAll("(?<=\\d),(?=\\d{3})", "");
+                long cpu = -1;
+                long count = -1;
+                for (String word : digits.trim().split("\\s+")) {
+                    String w = word.startsWith("cpu") ? word.substring(3) : word;
+                    try {
+                        long value = Long.parseLong(w);
+                        if (value < 64 && cpu < 0 && count < 0) {
+                            cpu = value;
+                        } else if (value >= 1000) {
+                            count = value;
+                        }
+                    } catch (NumberFormatException e) {
+                        // A column that is not a number.
+                    }
+                }
+                if (cpu >= 0 && cpu < 8 && count > 0) {
+                    // Cycles in 0.5 s: × 2 per second, in kHz.
+                    next.coreRealKhz[(int) cpu] = count * 2 / 1000;
+                }
+            }
+        }
+
+        /** FPS and frame times from the focused layer's last present times (ns). */
         private void frames(long[] times) {
             if (times.length < 2) {
                 return;
