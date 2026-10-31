@@ -687,7 +687,8 @@ second), and the loader waits for idle at most three seconds per step.
   and shown again by its own reset when the list comes back.
 - **Drawer search** follows the drawer's opacity: Nothing paints its search's sheet, scrim,
   header and results' background itself (`updateCustomColor`), so it rose as a solid black panel
-  over a see-through drawer.
+  over a see-through drawer; Launcher3's strip under the search bar, over the gesture bar (its
+  navigation bar scrim), takes it too.
 - **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
   many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
   sheet gives the list at least four rows, which squeezed the name off a landscape screen).

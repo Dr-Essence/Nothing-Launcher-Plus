@@ -42,7 +42,7 @@ final class DrawerBackground {
         // over that scrim: its sheet (foregroundPaint), its scrim and header protection, and the
         // search results' background, all picked in updateCustomColor (and its constructor).
         // They take the drawer's opacity too, so the search does not rise as a solid black
-        // panel over a see-through drawer.
+        // panel over a see-through drawer; so does Launcher3's strip under the search bar.
         Class<?> search = XposedHelpers.findClassIfExists(SmartDrawer.CLS_ALL_APPS_CONTAINER, cl);
         if (search != null) {
             XC_MethodHook colours = new XC_MethodHook() {
@@ -75,6 +75,8 @@ final class DrawerBackground {
         });
     }
 
+    private static final String NAV_SCRIM = "nlplus.navScrimColor";
+
     /** Nothing's drawer search colours at the drawer's opacity ({@code opacity} percent). */
     private static void searchColours(Object container, int opacity) {
         if (opacity >= 100) {
@@ -88,6 +90,18 @@ final class DrawerBackground {
         for (String name : new String[] {"mScrimColor", "mHeaderProtectionColor"}) {
             XposedHelpers.setIntField(container, name,
                     faded(XposedHelpers.getIntField(container, name), opacity));
+        }
+        // Launcher3's strip under the search bar, over the gesture bar (the navigation bar
+        // scrim, mNavBarScrimPaint): set once, so faded from the colour it was given.
+        android.graphics.Paint strip = (android.graphics.Paint) XposedHelpers.getObjectField(
+                container, "mNavBarScrimPaint");
+        if (strip != null) {
+            Object given = XposedHelpers.getAdditionalInstanceField(container, NAV_SCRIM);
+            if (given == null) {
+                given = strip.getColor();
+                XposedHelpers.setAdditionalInstanceField(container, NAV_SCRIM, given);
+            }
+            strip.setColor(faded((Integer) given, opacity));
         }
         View results = (View) XposedHelpers.callMethod(container, "getSearchRecyclerView");
         if (results != null && results.getBackground() != null) {
