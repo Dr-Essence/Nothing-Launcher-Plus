@@ -204,6 +204,38 @@ final class WidgetPickerLandscape {
                         }
                     }
                 });
+        // Turned: the list's page dots go away on a widget's options, as in portrait. Nothing
+        // hides them there by sliding the whole sheet down (translationShiftFirst, 1 - n: 44% of
+        // it in portrait), which takes the list's bottom with its dots below the screen; turned
+        // the options page is the screen's height, the slide is 3% and the dots stayed over it
+        // (the recording). Turned, the options page hides them with Nothing's own dots animation
+        // (animationPageIndicatorByState, as its search does), and the list shows them again
+        // through Nothing's own resetPageIndicator.
+        XC_MethodHook dots = new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                try {
+                    Object sheet = param.thisObject;
+                    if (!store.get().allowRotation
+                            || !landscape(((View) sheet).getContext())) {
+                        return;
+                    }
+                    boolean options = (Boolean) XposedHelpers.callMethod(sheet,
+                            "isInPickerDetails");
+                    if (options) {
+                        XposedHelpers.callMethod(sheet, "animationPageIndicatorByState",
+                                View.GONE, 200L);
+                    } else if (param.method.getName().equals("setContentViewVisible")) {
+                        XposedHelpers.callMethod(sheet, "resetPageIndicator");
+                    }
+                } catch (Throwable t) {
+                    Hooks.log("widget picker dots: " + t);
+                }
+            }
+        };
+        Class<?> sheetClass = XposedHelpers.findClass(SHEET, cl);
+        XposedBridge.hookAllMethods(sheetClass, "setContentViewVisible", dots);
+        XposedBridge.hookAllMethods(sheetClass, "resetPageIndicator", dots);
         Hooks.log("widget picker landscape: ready");
     }
 

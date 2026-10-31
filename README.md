@@ -672,6 +672,10 @@ second), and the loader waits for idle at most three seconds per step.
   open, the sheet is rebuilt for the new orientation by Launcher3's own rebuild
   (`WidgetsFullSheet.onDeviceProfileChanged`, which on its own rebuilds only between one and
   two panels), so it takes the new orientation's sizes.
+  On a widget's options the list's page dots go away, as in portrait: Nothing hides them there
+  by sliding the whole sheet down so its bottom leaves the screen, which the turned options page
+  (the screen's height) barely does, so turned they are hidden with Nothing's own dots animation
+  and shown again by its own reset when the list comes back.
 - **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
   many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
   sheet gives the list at least four rows, which squeezed the name off a landscape screen).
