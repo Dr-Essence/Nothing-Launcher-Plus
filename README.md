@@ -78,6 +78,10 @@ instructions first.
   describes its optional **PerfMTK-Hook** LSPosed module, for switching profiles automatically
   per app.
 
+- **Shout-out: [HeliBoard](https://github.com/Helium314/HeliBoard)**, the best Android keyboard
+  there is: open source, private (no internet access), and endlessly customisable. With it in
+  the module's LSPosed scope, you can type with a game controller (see *Typing with a
+  controller (HeliBoard)*).
 - **Shout-out: [NothingTweaks](https://github.com/RevealedSoulEven/NothingTweaks)** (LSPosed
   module, root): system tweaks for Nothing OS, such as status bar and clock options, a network
   speed indicator, navigation bar options, lock screen extras (double tap to sleep, scrambled
