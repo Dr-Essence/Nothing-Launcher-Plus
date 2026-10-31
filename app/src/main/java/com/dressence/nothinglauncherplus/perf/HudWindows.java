@@ -43,6 +43,11 @@ public final class HudWindows {
     public static final String EXTRA_TEXT = "text";
     public static final String EXTRA_COLOR = "color";
     private static final String PLACE = "nlplus_hud";
+    /**
+     * WindowManager.LayoutParams.TYPE_NAVIGATION_BAR_PANEL: hidden from the public SDK the
+     * module builds against, its value fixed in Android (2024, as Android 16 has it).
+     */
+    private static final int TYPE_NAVIGATION_BAR_PANEL = 2024;
 
     private static PerfHud hud;
     private static WindowManager.LayoutParams hudParams;
@@ -114,7 +119,7 @@ public final class HudWindows {
     private static WindowManager.LayoutParams params(int flags) {
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_NAVIGATION_BAR_PANEL,
+                TYPE_NAVIGATION_BAR_PANEL,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | flags,
                 PixelFormat.TRANSLUCENT);
