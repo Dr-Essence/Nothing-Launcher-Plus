@@ -74,23 +74,35 @@ final class ReorderList extends LinearLayout {
         this(ui, components, 64, null, listener);
     }
 
-    /** A list of {@code keys}, each row {@code rowHeightDp} tall, built by {@code factory}. */
+    /**
+     * A list of {@code keys}, built by {@code factory}, each row {@code rowHeightDp} tall or as
+     * tall as its tallest row needs (a system font with taller lines cut the second line off).
+     */
     ReorderList(Ui ui, List<String> keys, int rowHeightDp, RowFactory factory,
             Listener listener) {
         super(ui.context());
         setOrientation(VERTICAL);
         this.listener = listener;
         order = new ArrayList<>(keys);
-        rowHeight = ui.dp(rowHeightDp);
         handleWidth = ui.dp(72);
         edge = ui.dp(72);
         scrollStep = ui.dp(10);
         dragBackground.setColor(Ui.SURFACE);
         dragBackground.setCornerRadius(ui.dp(16));
         PackageManager pm = getContext().getPackageManager();
+        List<LinearLayout> rows = new ArrayList<>();
+        int tallest = ui.dp(rowHeightDp);
+        int unspecified = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
         for (String key : order) {
             LinearLayout row = factory != null ? factory.create(key) : createRow(ui, pm, key);
             row.addView(handle(ui), new LayoutParams(ui.dp(40), ViewGroup.LayoutParams.MATCH_PARENT));
+            row.measure(unspecified, unspecified);
+            tallest = Math.max(tallest, row.getMeasuredHeight());
+            rows.add(row);
+        }
+        // One height for every row: dragging places rows by it.
+        rowHeight = tallest;
+        for (LinearLayout row : rows) {
             addView(row, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, rowHeight));
         }
     }

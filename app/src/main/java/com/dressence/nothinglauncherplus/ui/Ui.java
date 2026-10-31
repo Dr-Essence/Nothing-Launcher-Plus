@@ -148,7 +148,10 @@ final class Ui {
             row.setOnClickListener(onClick);
         }
         if (leading != null) {
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(40), dp(40));
+            // 40 dp, or the size the view was made at (a larger cover preview was cropped).
+            ViewGroup.LayoutParams own = leading.getLayoutParams();
+            int side = own != null && own.width > 0 ? own.width : dp(40);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(side, side);
             lp.setMarginEnd(dp(16));
             row.addView(leading, lp);
         }
@@ -250,6 +253,8 @@ final class Ui {
     View coverPreview(Config.Folder folder, int sizeDp, boolean animate, boolean dotMatrix) {
         int size = dp(sizeDp);
         FrameLayout badge = new FrameLayout(activity);
+        // Its size, for the row that shows it.
+        badge.setLayoutParams(new ViewGroup.LayoutParams(size, size));
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(SURFACE);
         bg.setCornerRadius(size * 0.22f);
