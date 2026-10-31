@@ -677,8 +677,15 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   cheating and ban the account, and nothing can rule that out. It does not help games that
   choose by their graphics chip, which the driver still reports as Mali.
 
-Planned next: refresh rate options through PerfMTK's profiles (`--reload`) and a page for
-these in Nothing's Game Bar.
+- **In Nothing's Game Bar** (tick *Game Bar* / `com.nothing.ntgamedashboard` in the module's
+  LSPosed scope): three buttons after Nothing's own in its settings grid: **Overlay** on / off,
+  **PerfMTK** profile (each tap the next: performance, balanced, powersave) and **Thermal**
+  limits on / off, each showing its state. The Game Bar's grid is a fixed list of setting keys
+  that it binds by name and leaves empty for a key it does not know; the module adds its keys,
+  fills their rows and, on a tap, asks the module app (which has root and the overlay) to act.
+  The module app only listens to the system, which the Game Bar runs as.
+
+Planned next: refresh rate options through PerfMTK's profiles (`--reload`).
 
 ## Roadmap
 
@@ -739,7 +746,7 @@ The module's code is grouped by where it runs:
 | `xposed` | The entry point (`ModuleEntry`, named in `assets/xposed_init`), hook helpers (`Hooks`: installing a feature so its failure is its own, guarding code the apps call back into), the settings as hooked apps read them (`ConfigStore`) and Nothing's NDot font (`NdotFont`). |
 | `launcher` | Everything in Nothing Launcher: the Smart drawer's folders and covers, the folder menu, landscape, controllers, sounds, dot-matrix icons (`DotIcons`, `IconScreen`) and scrolling names. |
 | `systemui` | The status bar and quick settings: `Clock`, `Battery`, `GreenIcons`, `GreenTexts`, `QuickSettings`, `NetworkSpeed`, all in the lit look of `Led`. |
-| `perf` | CMF Phone 1 only: the device check and root helper (`Device`), the Ndot performance overlay (`OverlayService` reads, `PerfHud` draws) and the per-game 120 fps unlock (`GameUnlock`). |
+| `perf` | CMF Phone 1 only: the device check and root helper (`Device`), the Ndot performance overlay (`OverlayService` reads, `PerfHud` draws) and the per-game 120 fps unlock (`GameUnlock`), the Game Bar's buttons (`GameBar`, in the Game Bar; `GameBarReceiver`, in the module app). |
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |

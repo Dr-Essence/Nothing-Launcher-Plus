@@ -58,6 +58,15 @@
                 android:value="Performance overlay: CPU / GPU clocks and temperatures over games" />
         </service>
 
+        <!-- The module's options in Nothing's Game Bar ask this; it listens to the system only. -->
+        <receiver
+            android:name=".perf.GameBarReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.dressence.nothinglauncherplus.GAME_BAR" />
+            </intent-filter>
+        </receiver>
+
         <!-- Restarts Nothing Launcher after an update so the new hooks load without a reboot. -->
         <receiver
             android:name=".UpdateReceiver"

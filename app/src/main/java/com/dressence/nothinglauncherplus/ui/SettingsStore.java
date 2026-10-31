@@ -7,15 +7,15 @@ import android.content.SharedPreferences;
 import com.dressence.nothinglauncherplus.Config;
 
 /** Loads and saves the configuration, and tells the launcher to pick changes up. */
-final class SettingsStore {
+public final class SettingsStore {
 
     final SharedPreferences prefs;
     /** False when LSPosed is not managing the prefs, i.e. the launcher cannot read them. */
     final boolean shared;
-    Config config;
+    public Config config;
 
     @SuppressWarnings("deprecation")
-    SettingsStore(Context context) {
+    public SettingsStore(Context context) {
         SharedPreferences p;
         boolean s;
         try {
@@ -35,7 +35,7 @@ final class SettingsStore {
         config = Config.read(prefs);
     }
 
-    void save(Context context) {
+    public void save(Context context) {
         SharedPreferences.Editor editor = prefs.edit();
         config.write(editor);
         editor.commit();

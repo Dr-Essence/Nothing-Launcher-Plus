@@ -397,7 +397,8 @@ public class MainActivity extends Activity {
                 .setTitle("PerfMTK profile")
                 .setItems(new String[] {"Performance", "Balanced", "Powersave", "Powersave+"},
                         (d, which) -> perfMtk(PERFMTK_PROFILES[which],
-                                "PerfMTK: " + PERFMTK_PROFILES[which]))
+                                "PerfMTK: " + PERFMTK_PROFILES[which],
+                                () -> store.config.perfProfile = PERFMTK_PROFILES[which]))
                 .setNegativeButton("Cancel", null)
                 .show();
     }
@@ -409,20 +410,27 @@ public class MainActivity extends Activity {
                 .setMessage("Off lets the phone run hotter before it slows down. Use it for"
                         + " short sessions, and switch it back on after.")
                 .setPositiveButton("On", (d, w) -> perfMtk("--thermal enable",
-                        "Thermal limits on"))
+                        "Thermal limits on", () -> store.config.thermalOff = false))
                 .setNegativeButton("Off", (d, w) -> perfMtk("--thermal disable",
-                        "Thermal limits off"))
+                        "Thermal limits off", () -> store.config.thermalOff = true))
                 .setNeutralButton("Cancel", null)
                 .show();
     }
 
-    private void perfMtk(String arguments, String done) {
+    /** Runs PerfMTK; on success {@code saved} records the state (shown in the Game Bar). */
+    private void perfMtk(String arguments, String done, Runnable saved) {
         new Thread(() -> {
             String failure = com.dressence.nothinglauncherplus.perf.Device.hasPerfMtk()
                     ? com.dressence.nothinglauncherplus.perf.Device.su("perfmtk " + arguments)
                     : "PerfMTK is not installed";
-            runOnUiThread(() -> Toast.makeText(this, failure == null ? done
-                    : "Failed: " + failure, Toast.LENGTH_LONG).show());
+            runOnUiThread(() -> {
+                if (failure == null) {
+                    saved.run();
+                    store.save(this);
+                }
+                Toast.makeText(this, failure == null ? done : "Failed: " + failure,
+                        Toast.LENGTH_LONG).show();
+            });
         }).start();
     }
 

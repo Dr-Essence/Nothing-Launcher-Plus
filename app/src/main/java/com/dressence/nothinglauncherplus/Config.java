@@ -59,6 +59,8 @@ public final class Config {
     public static final String KEY_SYSTEM_SCREENS = "system_screens";
     public static final String KEY_PERF_OVERLAY = "perf_overlay";
     public static final String KEY_UNLOCK_GAMES = "unlock_games";
+    public static final String KEY_PERF_PROFILE = "perf_profile";
+    public static final String KEY_THERMAL_OFF = "thermal_off";
 
     /** Broadcast sent to the launcher after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
@@ -161,6 +163,10 @@ public final class Config {
     public boolean perfOverlay = false;
     /** Packages of games shown a Galaxy S24 Ultra, to unlock their 120 fps (CMF Phone 1). */
     public final java.util.Set<String> unlockGames = new java.util.LinkedHashSet<>();
+    /** The PerfMTK profile last set from the Game Bar or the Performance page ("" none). */
+    public String perfProfile = "";
+    /** PerfMTK's thermal limits were last switched off. */
+    public boolean thermalOff = false;
 
     private final Map<String, Folder> byComponent = new HashMap<>();
     private final Map<String, Folder> byKey = new HashMap<>();
@@ -313,6 +319,8 @@ public final class Config {
         // Before this switch, system screens followed Home screen rotation.
         systemScreens = in.bool(KEY_SYSTEM_SCREENS, allowRotation);
         perfOverlay = in.bool(KEY_PERF_OVERLAY, false);
+        perfProfile = in.text(KEY_PERF_PROFILE, "");
+        thermalOff = in.bool(KEY_THERMAL_OFF, false);
         unlockGames.clear();
         for (String pkg : in.text(KEY_UNLOCK_GAMES, "").split(",")) {
             if (!pkg.isEmpty()) {
@@ -347,6 +355,8 @@ public final class Config {
         out.bool(KEY_DIAGNOSTIC_LOGGING, diagnosticLogging);
         out.bool(KEY_SYSTEM_SCREENS, systemScreens);
         out.bool(KEY_PERF_OVERLAY, perfOverlay);
+        out.text(KEY_PERF_PROFILE, perfProfile);
+        out.bool(KEY_THERMAL_OFF, thermalOff);
         out.text(KEY_UNLOCK_GAMES, String.join(",", unlockGames));
     }
 

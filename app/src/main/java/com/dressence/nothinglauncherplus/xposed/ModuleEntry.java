@@ -4,6 +4,7 @@ import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.keyboard.HeliBoardGamepad;
 import com.dressence.nothinglauncherplus.launcher.Launcher;
 import com.dressence.nothinglauncherplus.perf.Device;
+import com.dressence.nothinglauncherplus.perf.GameBar;
 import com.dressence.nothinglauncherplus.perf.GameUnlock;
 import com.dressence.nothinglauncherplus.system.OrientationProbe;
 import com.dressence.nothinglauncherplus.system.SystemFonts;
@@ -46,6 +47,8 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
                     () -> HeliBoardGamepad.install(cl, new ConfigStore()));
         } else if (WidgetApps.handles(pkg)) {
             Hooks.install("widget apps", () -> WidgetApps.install(new ConfigStore()));
+        } else if (GameBar.PKG.equals(pkg) && Device.isCmfPhone1()) {
+            Hooks.install("game bar", () -> GameBar.install(cl, new ConfigStore()));
         } else if (Device.isCmfPhone1()) {
             // A game the user added to the scope for the 120 fps unlock.
             Hooks.install("120 fps unlock", () -> {
