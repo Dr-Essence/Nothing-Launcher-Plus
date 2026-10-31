@@ -457,6 +457,13 @@ Around the home screen:
   cannot place them, as Nothing's `BLASTBufferQueue` gives them a destination frame, and
   SurfaceFlinger then takes their geometry from that frame alone. With colour inversion on, the dim keeps Nothing's name, as SurfaceFlinger
   exempts the tagged layer from colour transforms.
+  **Notifications, turned**: the module keeps Nothing's lock screen layout ("default"
+  blueprint) where landscape would switch to AOSP's "split-shade" one, but the default layout's
+  notification section is the portrait one: it starts the notifications below the clock's
+  column (logged `nssl_placeholder` top 1026 of a 1080 high lock screen), so in landscape they
+  were laid out off the screen and only their icons showed. Turned with split shade, that
+  placeholder's top is where AOSP's split-shade section puts it (the screen's top,
+  `keyguard_split_shade_top_margin` down).
   **Always-on display, turned**: its burn-in movement (`AodBurnInViewModel`, applied as
   translationY to the clock, date, AOD notification icons and Nothing's widget container) moves
   them within Nothing's `burn_in_prevention_offset_y` (100dp), sized for portrait; turned, the

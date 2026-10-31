@@ -80,6 +80,8 @@ final class LockScreenTurn {
             "com.android.keyguard.KeyguardSecurityViewFlipperController";
     private static final String CLS_SECURITY_CONTAINER =
             "com.android.keyguard.KeyguardSecurityContainerController";
+    private static final String CLS_NSSL_SECTION = "com.android.systemui.keyguard.ui.view.layout"
+            + ".sections.DefaultNotificationStackScrollLayoutSection";
     private static final String CLS_WIDGET_SECTION =
             "com.nothing.systemui.keyguard.ui.view.layout.sections.NTWidgetContainerSection";
     private static final String CLS_BLUEPRINT_INTERACTOR =
@@ -94,6 +96,7 @@ final class LockScreenTurn {
     private static final int END = 7;
     private static final int VERTICAL = 1;
     private static final int PARENT = 0;
+    private static final int TOP = 3;
     /** The lock screen's views, by resource name. */
     private static final String[] ROOTS = {"keyguard_root_view", "shared_notification_container",
             "keyguard_message_area_container", "keyguard_bouncer_container", "nt_bouncer_icon_area"};
@@ -184,6 +187,44 @@ final class LockScreenTurn {
                 }
             }
         });
+        // Nothing's layout stays, but its notification section is the portrait one: it starts
+        // the notifications below the clock's column (logged nssl_placeholder top 1026 of a
+        // 1080 high lock screen), so in landscape they were laid out off the screen and only
+        // their icons showed. Turned with split shade, the placeholder's top is where AOSP's
+        // split-shade section puts it (the screen's top, keyguard_split_shade_top_margin
+        // down): the notifications fill their half from the top, as the split-shade layout
+        // that was swapped out would have them.
+        Class<?> notifications = XposedHelpers.findClassIfExists(CLS_NSSL_SECTION, cl);
+        if (notifications != null) {
+            XposedBridge.hookAllMethods(notifications, "applyConstraints", new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    try {
+                        if (!store.get().lockRotation) {
+                            return;
+                        }
+                        android.content.Context context = (android.content.Context)
+                                XposedHelpers.callMethod(param.thisObject, "getContext");
+                        Resources res = context.getResources();
+                        String pkg = context.getPackageName();
+                        int split = res.getIdentifier("config_use_split_notification_shade",
+                                "bool", pkg);
+                        int holder = res.getIdentifier("nssl_placeholder", "id", pkg);
+                        int margin = res.getIdentifier("keyguard_split_shade_top_margin",
+                                "dimen", pkg);
+                        if (split == 0 || holder == 0 || margin == 0 || !res.getBoolean(split)
+                                || res.getConfiguration().orientation
+                                        != Configuration.ORIENTATION_LANDSCAPE) {
+                            return;
+                        }
+                        XposedHelpers.callMethod(param.args[0], "connect", holder, TOP, PARENT,
+                                TOP, res.getDimensionPixelSize(margin));
+                    } catch (Throwable t) {
+                        Hooks.log("lock screen notifications: " + t);
+                    }
+                }
+            });
+        }
         XposedBridge.hookAllMethods(clock, "applyConstraints", new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
