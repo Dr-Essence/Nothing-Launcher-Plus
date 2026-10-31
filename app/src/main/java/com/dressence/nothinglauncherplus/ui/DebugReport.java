@@ -56,6 +56,16 @@ final class DebugReport {
             + "  dumpsys window displays > $D/window_displays$i.txt 2>&1\n"
             + "  dumpsys window windows > $D/window_windows$i.txt 2>&1\n"
             + "  timeout 20 cmd window dump-visible-window-views > $D/views$i.zip 2>/dev/null\n"
+            // What the overlay times for FPS: the focused window, the layer picked for it (as
+            // OverlayService picks it) and that layer's frame times, raw.
+            + "  { W=$(dumpsys window | grep mCurrentFocus | grep -v =null | head -1"
+            + " | sed 's/.* u0 //; s/}.*//'); [ -z \"$W\" ] && W=NotificationShade;"
+            + " P=${W%%%%/*}; LS=$(dumpsys SurfaceFlinger --list);"
+            + " L=$(echo \"$LS\" | grep -m1 \"SurfaceView\\[$P/.*(BLAST)\");"
+            + " [ -z \"$L\" ] && L=$(echo \"$LS\" | awk -v w=\"$W#\""
+            + " 'index($0,w)==1{print;exit}');"
+            + " echo \"focus: $W\"; echo \"layer: $L\"; echo \"$LS\" | grep -F \"$P\";"
+            + " dumpsys SurfaceFlinger --latency \"$L\"; } > $D/fps$i.txt 2>&1\n"
             + "  i=$((i+1))\n"
             + "  [ $(date +%%s) -ge $END ] || [ -e $STOP ] && break\n"
             + "  s=0; while [ $s -lt $STEP ] && [ ! -e $STOP ]; do sleep 1; s=$((s+1)); done\n"

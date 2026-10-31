@@ -202,11 +202,20 @@ final class LockScreenTurn {
                     // otherwise), and always with the sensor on the left: without
                     // notifications Nothing's clock sat on the left over the sensor's icon
                     // (report at rotation 3), so its pieces go to the right half then.
-                    if (store.get().lockRotation
-                            && (Boolean.FALSE.equals(centered) || sensorOnLeft(context))
-                            && res.getConfiguration().orientation
-                                    == Configuration.ORIENTATION_LANDSCAPE
-                            && split != 0 && res.getBoolean(split)) {
+                    boolean landscape = res.getConfiguration().orientation
+                            == Configuration.ORIENTATION_LANDSCAPE;
+                    boolean splitShade = split != 0 && res.getBoolean(split);
+                    boolean left = sensorOnLeft(context);
+                    boolean half = store.get().lockRotation
+                            && (Boolean.FALSE.equals(centered) || left) && landscape
+                            && splitShade;
+                    if (store.get().diagnosticLogging) {
+                        logHalves("lock screen halves: centered " + centered + ", sensor "
+                                + (left ? "left" : "right") + ", landscape " + landscape
+                                + ", split shade " + splitShade + " -> "
+                                + (half ? "half" : halfApplied ? "whole" : "Nothing's"));
+                    }
+                    if (half) {
                         halfContext = context;
                         // SystemUI also lays the clock out on its own (clock changes), cloning
                         // the lock screen's constraints and applying only the clock's: the
@@ -241,6 +250,16 @@ final class LockScreenTurn {
                 }
             }
         });
+    }
+
+    /** The last halves decision logged, so a pass that decides the same writes nothing. */
+    private static String lastHalves;
+
+    private static void logHalves(String line) {
+        if (!line.equals(lastHalves)) {
+            lastHalves = line;
+            Hooks.log(line);
+        }
     }
 
     private static void turnFingerprint(ClassLoader cl, ConfigStore store) {

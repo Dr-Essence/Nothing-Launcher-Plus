@@ -85,11 +85,13 @@ public final class OverlayService extends Service {
             + "  echo \"M $(grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo"
             + " | awk '{print $2}' | tr '\\n' ' ')\"\n"
             // Every 2 s: the focused window (the first display with one: the others list
-            // "mCurrentFocus=null", often first), and the layer it draws into: its SurfaceView (a
+            // "mCurrentFocus=null", often first; with none, as on the lock screen, System UI's
+            // NotificationShade, which draws it), and the layer it draws into: its SurfaceView (a
             // game, a video) if it has one, else its own ("pkg/activity#N", or a system
             // window's title, such as NotificationShade#N).
             + "  if [ $((n % 4)) = 0 ]; then W=$(dumpsys window | grep mCurrentFocus"
-            + " | grep -v =null | head -1 | sed 's/.* u0 //; s/}.*//'); P=${W%%/*};"
+            + " | grep -v =null | head -1 | sed 's/.* u0 //; s/}.*//');"
+            + " [ -z \"$W\" ] && W=NotificationShade; P=${W%%/*};"
             + " LS=$(dumpsys SurfaceFlinger --list);"
             + " L=$(echo \"$LS\" | grep -m1 \"SurfaceView\\[$P/.*(BLAST)\");"
             + " [ -z \"$L\" ] && L=$(echo \"$LS\" | awk -v w=\"$W#\""
@@ -283,6 +285,8 @@ public final class OverlayService extends Service {
         private final long[] lastBusy = new long[8];
         private final long[] lastTotal = new long[8];
         private long lastFrame;
+        /** The GPU's last real temperature: its sensor goes off with it (-274 °C). */
+        private float lastGpuTemp = Float.NaN;
         private PerfHud.Sample next = new PerfHud.Sample();
 
         /** The finished second's sample on its "E" line, else null. */
@@ -330,7 +334,15 @@ public final class OverlayService extends Service {
             }
             next.cpuTemp = hottest;
             long[] other = numbers(parts[4].substring(1));
-            next.gpuTemp = other.length > 0 ? celsius(other[0]) : Float.NaN;
+            float gpuNow = other.length > 0 ? celsius(other[0]) : Float.NaN;
+            if (Float.isNaN(gpuNow)) {
+                // Powered down: its last reading, marked idle.
+                next.gpuTemp = lastGpuTemp;
+                next.gpuIdle = !Float.isNaN(lastGpuTemp);
+            } else {
+                next.gpuTemp = gpuNow;
+                lastGpuTemp = gpuNow;
+            }
             next.socTemp = other.length > 1 ? celsius(other[1]) : Float.NaN;
             if (parts.length > 5) {
                 long[] ddr = numbers(parts[5].substring(1));

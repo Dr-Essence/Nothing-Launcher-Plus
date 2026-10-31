@@ -98,7 +98,8 @@ final class PerfHud extends View {
         y += 2;
         drawGraph(canvas, x, y + 2 * unit, s.frameTimes);
         y += 18 * unit + line;
-        row(canvas, x, y, "GPU", GPU, percent(s.gpuLoad) + "  " + degrees(s.gpuTemp));
+        row(canvas, x, y, "GPU", GPU, percent(s.gpuLoad) + "  " + degrees(s.gpuTemp)
+                + (s.gpuIdle ? " idle" : ""));
         y += line;
         row(canvas, x, y, "CPU", CPU, percent(s.cpuLoad()) + "  " + degrees(s.cpuTemp));
         y += line;
@@ -212,6 +213,8 @@ final class PerfHud extends View {
         float gpuLoad = -1;
         float cpuTemp = Float.NaN;
         float gpuTemp = Float.NaN;
+        /** The GPU is powered down: {@link #gpuTemp} is its last reading. */
+        boolean gpuIdle;
         float socTemp = Float.NaN;
         float batteryTemp = Float.NaN;
         long ddrMhz;

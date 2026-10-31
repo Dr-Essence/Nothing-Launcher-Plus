@@ -651,7 +651,8 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   - CPU and GPU load rings with their clocks;
   - FPS and frame time in any app (the focused window found on whichever display has one), with the last 40 frames on a Nothing dot screen
     (SurfaceFlinger's present times for the focused window's layer: its SurfaceView in a game
-    or video, else the window itself; a still screen shows 0);
+    or video, else the window itself; with no focused window, as on the lock screen, System
+    UI's; a still screen shows 0);
   - GPU load, clock and temperature; CPU load and hottest core;
   - each cluster's set clock, then every core's load and real clock, as Scene lists them
     ("off" when a core is parked). On this phone every clock file reads the cluster's set
@@ -661,8 +662,8 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
   - SoC temperature, battery temperature and the power drawn from the battery, each on its
     own row.
 
-  Sensors that report a value below −40 °C are off (a powered-down GPU reports −274 °C) and
-  show "—". The files are root-only, so one root shell reads them. Drag the panel to move
+  Sensors that report a value below −40 °C are off: a powered-down GPU reports −274 °C, so
+  the GPU's last real temperature is shown, marked "idle"; other sensors show "—". The files are root-only, so one root shell reads them. Drag the panel to move
   it; it stays where it is left and takes only the touches on itself. It needs "Display over other apps", granted through root
   when it can be. After a reboot it comes back when the Performance page is opened.
 - **PerfMTK profile**: switches [PerfMTK](https://github.com/JUANIMAN/PerfMTK) to Performance,
