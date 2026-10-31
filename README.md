@@ -638,14 +638,24 @@ A **Performance** page appears in the module's menu on a CMF Phone 1 (`ro.produc
 Tetris) and nowhere else. Everything on it was built from what this phone reports (its
 clock, GPU and thermal files, Android's display and game services, PerfMTK's own files).
 
-- **Ndot performance overlay**: a small panel over every app, once a second: each CPU core's
-  clock (cores 0–3 up to 2.0 GHz, 4–7 up to 2.5 GHz; "off" when a core is parked), the GPU's
-  clock and load (MediaTek's GED HAL), and the CPU (hottest core), GPU, SoC (`soc_max`) and
-  battery temperatures. The files are root-only, so one root shell reads them. The panel
-  takes no touches and is drawn at 80% opacity, the most Android lets touches pass through
-  an app's overlay, so games play as usual. It needs "Display over other apps", granted
-  through root when it can be. After a reboot it comes back when the Performance page is
-  opened.
+- **Ndot performance overlay**: a small panel in the top corner of every app, once a second,
+  in MangoHud's style (its row colours and a frame time graph) with
+  [Scene](https://github.com/helloklf/vtools)'s contents and size, drawn by the module (it is
+  not MangoHud's code: MangoHud is a Linux Vulkan / OpenGL layer drawn inside the game, which
+  Android only loads into debuggable apps):
+  - CPU and GPU load rings with their clocks;
+  - FPS and frame time with a graph of the last frames (SurfaceFlinger's present times for
+    the game's layer);
+  - GPU load, clock and temperature; CPU load and hottest core;
+  - each cluster's clock with every core's load ("off" when a core is parked);
+  - RAM and swap use, DDR clock;
+  - SoC and battery temperature, and the power drawn from the battery.
+
+  Sensors that report a value below −40 °C are off (a powered-down GPU reports −274 °C) and
+  show "—". The files are root-only, so one root shell reads them. The panel takes no
+  touches and is drawn at 80% opacity, the most Android lets touches pass through an app's
+  overlay, so games play as usual. It needs "Display over other apps", granted through root
+  when it can be. After a reboot it comes back when the Performance page is opened.
 - **PerfMTK profile**: switches [PerfMTK](https://github.com/JUANIMAN/PerfMTK) to Performance,
   Balanced, Powersave or Powersave+ (`perfmtk <profile>`). PerfMTK's own per-app profiles
   still switch it as apps change. PerfMTK also sets the refresh rate with each profile, so
@@ -723,7 +733,7 @@ The module's code is grouped by where it runs:
 | `xposed` | The entry point (`ModuleEntry`, named in `assets/xposed_init`), hook helpers (`Hooks`: installing a feature so its failure is its own, guarding code the apps call back into), the settings as hooked apps read them (`ConfigStore`) and Nothing's NDot font (`NdotFont`). |
 | `launcher` | Everything in Nothing Launcher: the Smart drawer's folders and covers, the folder menu, landscape, controllers, sounds, dot-matrix icons (`DotIcons`, `IconScreen`) and scrolling names. |
 | `systemui` | The status bar and quick settings: `Clock`, `Battery`, `GreenIcons`, `GreenTexts`, `QuickSettings`, `NetworkSpeed`, all in the lit look of `Led`. |
-| `perf` | CMF Phone 1 only: the device check and root helper (`Device`), the Ndot performance overlay (`OverlayService`) and the per-game 120 fps unlock (`GameUnlock`). |
+| `perf` | CMF Phone 1 only: the device check and root helper (`Device`), the Ndot performance overlay (`OverlayService` reads, `PerfHud` draws) and the per-game 120 fps unlock (`GameUnlock`). |
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |

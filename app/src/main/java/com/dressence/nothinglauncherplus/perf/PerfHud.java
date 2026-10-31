@@ -1,0 +1,229 @@
+package com.dressence.nothinglauncherplus.perf;
+
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
+import android.graphics.Typeface;
+import android.util.TypedValue;
+import android.view.View;
+
+import java.util.Locale;
+
+/**
+ * The performance overlay's panel, drawn by hand: MangoHud's look (coloured row names, a frame
+ * time graph under the FPS) with Scene's contents and size (CPU and GPU load rings, each
+ * cluster's clock with every core's load, RAM and swap, DDR, temperatures), in the Ndot font.
+ */
+final class PerfHud extends View {
+
+    /** MangoHud's default colours for its rows. */
+    private static final int FPS = 0xFFFFFFFF;
+    private static final int GPU = 0xFF2E9762;
+    private static final int CPU = 0xFF2E97CB;
+    private static final int RAM = 0xFFC26693;
+    private static final int TEMP = 0xFFEB5B5B;
+    private static final int GRAPH = 0xFF00FF00;
+    private static final int DIM = 0xFF9E9E9E;
+    private static final int TRACK = 0x55FFFFFF;
+
+    private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF box = new RectF();
+    private final Path graph = new Path();
+    private final float unit;
+    private final float line;
+    private Sample sample;
+
+    PerfHud(Context context, Typeface font) {
+        super(context);
+        unit = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1,
+                context.getResources().getDisplayMetrics());
+        text.setTypeface(font);
+        text.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 9,
+                context.getResources().getDisplayMetrics()));
+        line = text.getFontSpacing();
+        ring.setStyle(Paint.Style.STROKE);
+        ring.setStrokeWidth(3 * unit);
+        ring.setStrokeCap(Paint.Cap.ROUND);
+    }
+
+    void show(Sample next) {
+        sample = next;
+        requestLayout();
+        invalidate();
+    }
+
+    /** Rows of the table, for the panel's height. */
+    private static final int ROWS = 10;
+
+    @Override
+    protected void onMeasure(int widthSpec, int heightSpec) {
+        float pad = 6 * unit;
+        float rings = 40 * unit;
+        float table = text.measureText("0-3 2500MHz 100 100 100 100%");
+        float height = Math.max(2 * rings + 4 * line, ROWS * line + 18 * unit);
+        setMeasuredDimension(Math.round(pad * 3 + rings + table), Math.round(pad * 2 + height));
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        float pad = 6 * unit;
+        fill.setColor(0xB3000000);
+        box.set(0, 0, getWidth(), getHeight());
+        canvas.drawRoundRect(box, 8 * unit, 8 * unit, fill);
+        Sample s = sample;
+        if (s == null) {
+            text.setColor(DIM);
+            canvas.drawText("Reading…", pad, pad + line, text);
+            return;
+        }
+        float size = 40 * unit;
+        float ringY = pad + size / 2 + 2 * unit;
+        drawRing(canvas, pad + size / 2, ringY, size, s.cpuLoad(), CPU, "CPU");
+        text.setColor(DIM);
+        centred(canvas, mhz(s.maxCpuKhz()), pad + size / 2, ringY + size / 2 + line);
+        float gpuY = ringY + size + 2 * line;
+        drawRing(canvas, pad + size / 2, gpuY, size, s.gpuLoad, GPU, "GPU");
+        text.setColor(DIM);
+        centred(canvas, s.gpuKhz > 0 ? mhz(s.gpuKhz) : "—", pad + size / 2,
+                gpuY + size / 2 + line);
+
+        float x = pad * 2 + size;
+        float y = pad + line;
+        row(canvas, x, y, "FPS", FPS, s.fps < 0 ? "—" : String.format(Locale.ROOT,
+                "%.0f  %.1fms", s.fps, s.frameMs));
+        y += 2;
+        drawGraph(canvas, x, y + 2 * unit, s.frameTimes);
+        y += 18 * unit + line;
+        row(canvas, x, y, "GPU", GPU, percent(s.gpuLoad) + "  " + degrees(s.gpuTemp));
+        y += line;
+        row(canvas, x, y, "CPU", CPU, percent(s.cpuLoad()) + "  " + degrees(s.cpuTemp));
+        y += line;
+        cluster(canvas, x, y, "0-3", s, 0);
+        y += line;
+        cluster(canvas, x, y, "4-7", s, 4);
+        y += line;
+        row(canvas, x, y, "RAM", RAM, percent(s.ram) + "  swap " + percent(s.swap));
+        y += line;
+        row(canvas, x, y, "DDR", RAM, s.ddrMhz > 0 ? s.ddrMhz + "MHz" : "—");
+        y += line;
+        row(canvas, x, y, "SoC", TEMP, degrees(s.socTemp) + "  BAT " + degrees(s.batteryTemp));
+        y += line;
+        row(canvas, x, y, "PWR", TEMP, s.watts < 0 ? "—"
+                : String.format(Locale.ROOT, "%.2fW", s.watts));
+    }
+
+    private void drawRing(Canvas canvas, float cx, float cy, float size, float load, int color,
+            String name) {
+        float r = size / 2 - ring.getStrokeWidth();
+        box.set(cx - r, cy - r, cx + r, cy + r);
+        ring.setColor(TRACK);
+        canvas.drawArc(box, 0, 360, false, ring);
+        ring.setColor(color);
+        canvas.drawArc(box, -90, 360 * Math.max(0, Math.min(1, load)), false, ring);
+        text.setColor(FPS);
+        centred(canvas, name, cx, cy + text.getTextSize() / 3);
+    }
+
+    private void cluster(Canvas canvas, float x, float y, String name, Sample s, int first) {
+        StringBuilder loads = new StringBuilder();
+        long khz = 0;
+        for (int i = first; i < first + 4; i++) {
+            khz = Math.max(khz, s.coreKhz[i]);
+            loads.append(s.coreKhz[i] == 0 ? " off" : String.format(Locale.ROOT, " %d",
+                    Math.round(s.coreLoad[i] * 100)));
+        }
+        row(canvas, x, y, name, CPU, (khz > 0 ? mhz(khz) : "off") + loads + "%");
+    }
+
+    private void row(Canvas canvas, float x, float y, String name, int color, String value) {
+        text.setColor(color);
+        canvas.drawText(name, x, y, text);
+        text.setColor(FPS);
+        canvas.drawText(value, x + text.measureText("FPS "), y, text);
+    }
+
+    /** The last frames' times, 0–50 ms tall, newest on the right. */
+    private void drawGraph(Canvas canvas, float x, float y, float[] times) {
+        float width = getWidth() - x - 6 * unit;
+        float height = 16 * unit;
+        fill.setColor(0x33FFFFFF);
+        box.set(x, y, x + width, y + height);
+        canvas.drawRect(box, fill);
+        if (times.length < 2) {
+            return;
+        }
+        graph.reset();
+        for (int i = 0; i < times.length; i++) {
+            float px = x + width * i / (times.length - 1);
+            float py = y + height - height * Math.min(1, times[i] / 50f);
+            if (i == 0) {
+                graph.moveTo(px, py);
+            } else {
+                graph.lineTo(px, py);
+            }
+        }
+        ring.setColor(GRAPH);
+        ring.setStrokeWidth(unit);
+        canvas.drawPath(graph, ring);
+        ring.setStrokeWidth(3 * unit);
+    }
+
+    private void centred(Canvas canvas, String value, float cx, float y) {
+        canvas.drawText(value, cx - text.measureText(value) / 2, y, text);
+    }
+
+    private static String mhz(long khz) {
+        return khz / 1000 + "MHz";
+    }
+
+    private static String percent(float fraction) {
+        return fraction < 0 ? "—" : Math.round(fraction * 100) + "%";
+    }
+
+    private static String degrees(float celsius) {
+        return Float.isNaN(celsius) ? "—" : Math.round(celsius) + "°";
+    }
+
+    /** One second's readings. */
+    static final class Sample {
+        final long[] coreKhz = new long[8];
+        final float[] coreLoad = new float[8];
+        long gpuKhz;
+        float gpuLoad = -1;
+        float cpuTemp = Float.NaN;
+        float gpuTemp = Float.NaN;
+        float socTemp = Float.NaN;
+        float batteryTemp = Float.NaN;
+        long ddrMhz;
+        float ram = -1;
+        float swap = -1;
+        float watts = -1;
+        float fps = -1;
+        float frameMs;
+        float[] frameTimes = new float[0];
+
+        float cpuLoad() {
+            float sum = 0;
+            int online = 0;
+            for (int i = 0; i < 8; i++) {
+                if (coreKhz[i] > 0) {
+                    sum += coreLoad[i];
+                    online++;
+                }
+            }
+            return online == 0 ? -1 : sum / online;
+        }
+
+        long maxCpuKhz() {
+            long max = 0;
+            for (long khz : coreKhz) {
+                max = Math.max(max, khz);
+            }
+            return max;
+        }
+    }
+}

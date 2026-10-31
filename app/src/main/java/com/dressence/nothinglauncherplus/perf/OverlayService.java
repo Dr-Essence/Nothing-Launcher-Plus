@@ -10,7 +10,6 @@ import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.graphics.PixelFormat;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.IBinder;
@@ -18,32 +17,37 @@ import android.os.Looper;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.WindowManager;
-import android.widget.TextView;
 
 import com.dressence.nothinglauncherplus.xposed.NdotFont;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * The Ndot performance overlay (CMF Phone 1): a small panel over everything with each CPU
- * core's clock, the GPU's clock and load, and the CPU, GPU, SoC and battery temperatures,
- * once a second. The clocks and temperatures are root-only on this phone, so one root shell
- * reads them in a loop (the files as found on the phone: cpufreq, MediaTek's GED HAL, the
- * thermal zones by name); the battery's comes from Android. The panel takes no touches and is
- * drawn at 80% opacity, the most Android lets touches pass through an app's overlay, so games
- * underneath play as usual.
+ * The performance overlay (CMF Phone 1): {@link PerfHud} over everything, once a second. The
+ * clocks, loads and temperatures are root-only on this phone, so one root shell reads them in
+ * a loop (the files as found on the phone: cpufreq, /proc/stat, /proc/meminfo, MediaTek's GED
+ * HAL and DVFSRC, the thermal zones by name, the battery's current and voltage) and SurfaceFlinger's
+ * frame times for the game's layer (the first SurfaceView layer drawn through BLAST). The
+ * battery's temperature comes from Android. The panel takes no touches and is drawn at 80%
+ * opacity, the most Android lets touches pass through an app's overlay, so games underneath
+ * play as usual.
  */
 public final class OverlayService extends Service {
 
     private static final String CHANNEL = "overlay";
     private static final int NOTIFICATION = 1;
+    /** Readings below this are a sensor's "off" value (a powered-down GPU says -274 °C). */
+    private static final float NO_READING_C = -40f;
 
     /**
-     * Prints one line a second: "F f0..f7 (kHz, 0 when offline) | G opp kHz | U load ... |
-     * T little0..3 big0-1..big3-2 (m°C) | X gpu soc (m°C)". Thermal zones are found by type.
+     * Each second prints: "F f0..f7 (kHz, 0 when offline) | G opp kHz | U load | T cpu zones
+     * (m°C) | X gpu soc (m°C) | D ddr Hz | B µA µV", then "S" + the per-core /proc/stat lines,
+     * "M" + MemTotal MemAvailable SwapTotal SwapFree (kB), "P" + the game layer's last present
+     * times (ns), and "E" to end the second.
      */
     private static final String SENSORS = ""
             + "Z(){ for z in /sys/class/thermal/thermal_zone*; do"
@@ -52,6 +56,8 @@ public final class OverlayService extends Service {
             + " big-core0-1 big-core0-2 big-core1-1 big-core1-2 big-core2-1 big-core2-2"
             + " big-core3-1 big-core3-2; do CPU=\"$CPU $(Z cpu-$n)\"; done\n"
             + "GPU=$(Z gpu); SOC=$(Z soc_max)\n"
+            + "PS=/sys/class/power_supply/battery\n"
+            + "L=\"\"; n=0\n"
             + "while :; do\n"
             + "  f=\"\"; for c in 0 1 2 3 4 5 6 7; do d=/sys/devices/system/cpu/cpu$c;"
             + " if [ \"$(cat $d/online 2>/dev/null)\" = 0 ]; then f=\"$f 0\";"
@@ -59,12 +65,23 @@ public final class OverlayService extends Service {
             + " done\n"
             + "  t=\"\"; for z in $CPU; do t=\"$t $(cat $z)\"; done\n"
             + "  echo \"F$f|G $(cat /sys/kernel/ged/hal/current_freqency)"
-            + "|U $(cat /sys/kernel/ged/hal/gpu_utilization)|T$t|X $(cat $GPU) $(cat $SOC)\"\n"
-            + "  sleep 1\n"
+            + "|U $(cat /sys/kernel/ged/hal/gpu_utilization)|T$t|X $(cat $GPU) $(cat $SOC)"
+            + "|D $(cat /sys/class/devfreq/mtk-dvfsrc-devfreq/cur_freq)"
+            + "|B $(cat $PS/current_now) $(cat $PS/voltage_now)\"\n"
+            + "  echo \"S $(grep '^cpu[0-7] ' /proc/stat | tr '\\n' ',')\"\n"
+            + "  echo \"M $(grep -E '^(MemTotal|MemAvailable|SwapTotal|SwapFree):' /proc/meminfo"
+            + " | awk '{print $2}' | tr '\\n' ' ')\"\n"
+            + "  [ $((n % 3)) = 0 ] && L=$(dumpsys SurfaceFlinger --list"
+            + " | grep -m1 'SurfaceView\\[.*(BLAST)')\n"
+            + "  [ -n \"$L\" ] && echo \"P $(dumpsys SurfaceFlinger --latency \"$L\""
+            + " | awk 'NR>1 && $2>0 && $2<9000000000000000000 {print $2}' | tail -120"
+            + " | tr '\\n' ' ')\"\n"
+            + "  echo E\n"
+            + "  n=$((n+1)); sleep 1\n"
             + "done\n";
 
     private final Handler main = new Handler(Looper.getMainLooper());
-    private TextView panel;
+    private PerfHud panel;
     private Process reader;
     private volatile boolean running;
 
@@ -128,18 +145,8 @@ public final class OverlayService extends Service {
     }
 
     private void show() {
-        panel = new TextView(this);
         Typeface ndot = NdotFont.get(this);
-        panel.setTypeface(ndot != null ? ndot : Typeface.MONOSPACE);
-        panel.setTextColor(0xFFFFFFFF);
-        panel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-        int pad = dp(6);
-        panel.setPadding(pad, pad / 2, pad, pad / 2);
-        GradientDrawable background = new GradientDrawable();
-        background.setColor(0xCC000000);
-        background.setCornerRadius(dp(8));
-        panel.setBackground(background);
-        panel.setText("Reading…");
+        panel = new PerfHud(this, ndot != null ? ndot : Typeface.MONOSPACE);
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -147,18 +154,21 @@ public final class OverlayService extends Service {
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT);
-        lp.gravity = Gravity.TOP | Gravity.START;
-        lp.x = dp(8);
-        lp.y = dp(36);
+        lp.gravity = Gravity.TOP | Gravity.END;
+        int margin = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8,
+                getResources().getDisplayMetrics()));
+        lp.x = margin;
+        lp.y = margin * 4;
         // Touches only pass through an app's overlay up to this opacity (Android 12+).
         lp.alpha = 0.8f;
         getSystemService(WindowManager.class).addView(panel, lp);
     }
 
-    /** One root shell prints the sensors every second; each line updates the panel. */
+    /** One root shell prints the readings every second; each second updates the panel. */
     private void readSensors() {
         running = true;
         new Thread(() -> {
+            Reader parser = new Reader();
             try {
                 reader = new ProcessBuilder("su").redirectErrorStream(true).start();
                 reader.getOutputStream().write(SENSORS.getBytes(StandardCharsets.UTF_8));
@@ -167,24 +177,17 @@ public final class OverlayService extends Service {
                         reader.getInputStream(), StandardCharsets.UTF_8));
                 String line;
                 while (running && (line = in.readLine()) != null) {
-                    String text = format(line, batteryTemperature());
-                    if (text != null) {
+                    PerfHud.Sample sample = parser.line(line, batteryTemperature());
+                    if (sample != null) {
                         main.post(() -> {
                             if (panel != null) {
-                                panel.setText(text);
+                                panel.show(sample);
                             }
                         });
                     }
                 }
             } catch (Exception e) {
-                // Root refused or the shell ended: the panel says so.
-            }
-            if (running) {
-                main.post(() -> {
-                    if (panel != null) {
-                        panel.setText("No root: overlay stopped");
-                    }
-                });
+                // Root refused or the shell ended: the panel keeps "Reading…".
             }
         }, "performance overlay").start();
     }
@@ -199,58 +202,162 @@ public final class OverlayService extends Service {
         return tenths == Integer.MIN_VALUE ? Float.NaN : tenths / 10f;
     }
 
-    /** The panel's three lines from one sensor line; null if the line is not one. */
-    static String format(String line, float battery) {
-        String[] parts = line.split("\\|");
-        if (parts.length != 5 || !parts[0].startsWith("F")) {
+    /** Turns the shell's lines into one {@link PerfHud.Sample} a second. */
+    static final class Reader {
+        private final long[] lastBusy = new long[8];
+        private final long[] lastTotal = new long[8];
+        private long lastFrame;
+        private PerfHud.Sample next = new PerfHud.Sample();
+
+        /** The finished second's sample on its "E" line, else null. */
+        PerfHud.Sample line(String line, float battery) {
+            if (line.startsWith("F")) {
+                main(line);
+            } else if (line.startsWith("S ")) {
+                stat(line.substring(2));
+            } else if (line.startsWith("M ")) {
+                long[] m = numbers(line.substring(2));
+                if (m.length == 4 && m[0] > 0) {
+                    next.ram = 1f - (float) m[1] / m[0];
+                    next.swap = m[2] > 0 ? 1f - (float) m[3] / m[2] : -1;
+                }
+            } else if (line.startsWith("P ")) {
+                frames(numbers(line.substring(2)));
+            } else if (line.equals("E")) {
+                PerfHud.Sample done = next;
+                done.batteryTemp = battery;
+                next = new PerfHud.Sample();
+                return done;
+            }
             return null;
         }
-        long[] cores = numbers(parts[0].substring(1));
-        long[] gpu = numbers(parts[1].substring(1));
-        long[] load = numbers(parts[2].substring(1));
-        long[] cpuTemps = numbers(parts[3].substring(1));
-        long[] other = numbers(parts[4].substring(1));
-        StringBuilder out = new StringBuilder("CPU");
-        for (int i = 0; i < cores.length; i++) {
-            out.append(i == 4 ? "  |" : " ").append(cores[i] == 0 ? "off"
-                    : String.format(Locale.ROOT, "%.1f", cores[i] / 1_000_000f));
-        }
-        out.append(" GHz\nGPU ")
-                .append(gpu.length > 1 ? gpu[1] / 1000 + " MHz" : "?")
-                .append("  ").append(load.length > 0 ? load[0] + "%" : "?");
-        long cpuMax = Long.MIN_VALUE;
-        for (long t : cpuTemps) {
-            cpuMax = Math.max(cpuMax, t);
-        }
-        out.append("\nCPU ").append(celsius(cpuMax))
-                .append("  GPU ").append(other.length > 0 ? celsius(other[0]) : "?")
-                .append("  SoC ").append(other.length > 1 ? celsius(other[1]) : "?")
-                .append("  BAT ").append(Float.isNaN(battery) ? "?"
-                        : String.format(Locale.ROOT, "%.0f°", battery));
-        return out.toString();
-    }
 
-    private static String celsius(long milli) {
-        return milli == Long.MIN_VALUE ? "?" : Math.round(milli / 1000f) + "°";
-    }
-
-    private static long[] numbers(String text) {
-        String[] words = text.trim().split("\\s+");
-        long[] out = new long[words.length];
-        int n = 0;
-        for (String word : words) {
-            try {
-                long value = Long.parseLong(word);
-                out[n++] = value;
-            } catch (NumberFormatException e) {
-                // Not a number (empty reading): left out.
+        private void main(String line) {
+            String[] parts = line.split("\\|");
+            if (parts.length < 5) {
+                return;
+            }
+            long[] cores = numbers(parts[0].substring(1));
+            System.arraycopy(cores, 0, next.coreKhz, 0, Math.min(8, cores.length));
+            long[] gpu = numbers(parts[1].substring(1));
+            next.gpuKhz = gpu.length > 1 ? gpu[1] : 0;
+            long[] load = numbers(parts[2].substring(1));
+            next.gpuLoad = load.length > 0 ? load[0] / 100f : -1;
+            float hottest = Float.NaN;
+            for (long t : numbers(parts[3].substring(1))) {
+                float c = celsius(t);
+                if (!Float.isNaN(c) && (Float.isNaN(hottest) || c > hottest)) {
+                    hottest = c;
+                }
+            }
+            next.cpuTemp = hottest;
+            long[] other = numbers(parts[4].substring(1));
+            next.gpuTemp = other.length > 0 ? celsius(other[0]) : Float.NaN;
+            next.socTemp = other.length > 1 ? celsius(other[1]) : Float.NaN;
+            if (parts.length > 5) {
+                long[] ddr = numbers(parts[5].substring(1));
+                next.ddrMhz = ddr.length > 0 ? ddr[0] / 1_000_000 : 0;
+            }
+            if (parts.length > 6) {
+                long[] power = numbers(parts[6].substring(1));
+                // µA × µV; the sign of the current only says charging or not.
+                next.watts = power.length == 2
+                        ? Math.abs(power[0] * 1e-6f * (power[1] * 1e-6f)) : -1;
             }
         }
-        return java.util.Arrays.copyOf(out, n);
-    }
 
-    private int dp(int value) {
-        return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value,
-                getResources().getDisplayMetrics()));
+        /** "cpuN user nice system idle iowait irq softirq steal …," per online core. */
+        private void stat(String text) {
+            for (String core : text.split(",")) {
+                String[] words = core.trim().split("\\s+");
+                if (words.length < 8 || !words[0].startsWith("cpu")) {
+                    continue;
+                }
+                int i;
+                try {
+                    i = Integer.parseInt(words[0].substring(3));
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+                if (i < 0 || i >= 8) {
+                    continue;
+                }
+                long total = 0;
+                for (int w = 1; w < words.length; w++) {
+                    total += parse(words[w]);
+                }
+                long idle = parse(words[4]) + parse(words[5]);
+                long busy = total - idle;
+                long dTotal = total - lastTotal[i];
+                if (lastTotal[i] > 0 && dTotal > 0) {
+                    next.coreLoad[i] = Math.max(0, Math.min(1,
+                            (float) (busy - lastBusy[i]) / dTotal));
+                }
+                lastBusy[i] = busy;
+                lastTotal[i] = total;
+            }
+        }
+
+        /** FPS and frame times from the game layer's last present times (ns). */
+        private void frames(long[] times) {
+            if (times.length < 2) {
+                return;
+            }
+            long newest = times[times.length - 1];
+            if (newest == lastFrame) {
+                next.fps = 0; // Nothing new presented this second.
+                return;
+            }
+            lastFrame = newest;
+            int count = 0;
+            List<Float> gaps = new ArrayList<>();
+            for (int i = times.length - 1; i > 0; i--) {
+                if (newest - times[i - 1] > 1_000_000_000L) {
+                    break;
+                }
+                count++;
+            }
+            for (int i = 1; i < times.length; i++) {
+                gaps.add((times[i] - times[i - 1]) / 1_000_000f);
+            }
+            next.fps = count;
+            next.frameMs = count > 0 ? 1000f / count : 0;
+            next.frameTimes = new float[gaps.size()];
+            for (int i = 0; i < gaps.size(); i++) {
+                next.frameTimes[i] = gaps.get(i);
+            }
+        }
+
+        private static float celsius(long milli) {
+            float c = milli / 1000f;
+            return c < NO_READING_C ? Float.NaN : c;
+        }
+
+        private static long parse(String word) {
+            try {
+                return Long.parseLong(word);
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }
+
+        static long[] numbers(String text) {
+            String trimmed = text.trim();
+            if (trimmed.isEmpty()) {
+                return new long[0];
+            }
+            String[] words = trimmed.split("\\s+");
+            long[] out = new long[words.length];
+            int n = 0;
+            for (String word : words) {
+                try {
+                    long value = Long.parseLong(word);
+                    out[n++] = value;
+                } catch (NumberFormatException e) {
+                    // Not a number (an empty reading): left out.
+                }
+            }
+            return java.util.Arrays.copyOf(out, n);
+        }
     }
 }
