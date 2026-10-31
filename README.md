@@ -472,6 +472,10 @@ Around the home screen:
   sensor's side (`SharedNotificationContainer.updateConstraints`) is widened to end the column
   16dp short of the turned icon, so no notification, however many or however tall, reaches
   the circle; placed again whenever the icon's spot changes.
+  **Charging line, turned**: Nothing centers the lock screen's charging / status line across
+  the screen; turned, it ran over the bottom of Nothing's widgets (charging text at y 952, the
+  widgets to 999), on the lock screen and the always-on display. With the halves, it is
+  centered in the other half, under the notifications and the fingerprint icon.
   **Shade over the turned lock screen**: System UI's falsing check (BrightLine) keeps the
   screen's size and dpi from when it started (portrait: 1080 x 2400) and its distance check
   sets its thresholds from them once, so turned, vertical swipes were measured against the

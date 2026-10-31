@@ -66,7 +66,9 @@ final class DebugReport {
             + "( k=0; dz=0; while [ $(date +%%s) -lt $END ] && [ ! -e $STOP ]; do"
             + " if dumpsys power | grep -q 'mWakefulness=Dozing'; then"
             + " if [ $dz = 0 ]; then dz=1; k=$((k+1)); sleep 1; screencap -p $D/aod$k.png;"
-            + " timeout 10 uiautomator dump $D/aod$k.xml >/dev/null 2>&1; fi; else dz=0; fi;"
+            + " until mkdir $D/.ui 2>/dev/null; do sleep 0.2; done;"
+            + " timeout 10 uiautomator dump $D/aod$k.xml >/dev/null 2>&1; rmdir $D/.ui; fi;"
+            + " else dz=0; fi;"
             + " sleep 0.5; done ) &\n"
             + "AOD=$!\n"
             + "i=1\n"
@@ -80,7 +82,10 @@ final class DebugReport {
             + "  dumpsys window windows > $D/window_windows$i.txt 2>&1\n"
             // Every view on screen with its bounds, the lock screen and always-on display too
             // (cmd window dump-visible-window-views failed here: "Failed transaction").
-            + "  timeout 20 uiautomator dump $D/ui$i.xml >/dev/null 2>&1\n"
+            // One view dump at a time: two at once (this and the always-on display's) end one
+            // of them ("UiAutomationService already registered", DebuG6).
+            + "  until mkdir $D/.ui 2>/dev/null; do sleep 0.2; done\n"
+            + "  timeout 20 uiautomator dump $D/ui$i.xml >/dev/null 2>&1; rmdir $D/.ui\n"
             // What the overlay times for FPS: the focused window, the layer picked for it (as
             // OverlayService picks it) and that layer's frame times, raw.
             + "  { W=$(dumpsys window | grep mCurrentFocus | grep -v =null | head -1"

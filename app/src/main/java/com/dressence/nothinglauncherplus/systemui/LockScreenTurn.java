@@ -89,6 +89,10 @@ final class LockScreenTurn {
     private static final String CLS_TRANSITION_TYPE = "com.android.systemui.keyguard.ui.view"
             + ".layout.blueprints.transitions.IntraBlueprintTransition$Type";
     /** Nothing's lock screen pieces kept to the left half beside the notifications. */
+    /** The lock screen's charging / status line (Nothing's indication area). */
+    private static final String INDICATION = "keyguard_indication_area";
+    /** ConstraintSet's MATCH_PARENT width, as Nothing gives the indication area. */
+    private static final int MATCH_PARENT = -1;
     private static final String[] LEFT_HALF = {"lockscreen_clock_view", "keyguard_slice_view",
             "nt_widget_host_view_container"};
     /** ConstraintSet sides and guideline orientation. */
@@ -755,7 +759,7 @@ final class LockScreenTurn {
         Hooks.log("fingerprint touch: " + n + " hooks");
     }
 
-    /** Nothing's clock across the whole lock screen again, as Nothing lays it out. */
+    /** Nothing's clock and charging line across the whole lock screen, as Nothing has them. */
     private static void wholeWidth(android.content.Context context, Object set) {
         Resources res = context.getResources();
         int id = res.getIdentifier("lockscreen_clock_view", "id", context.getPackageName());
@@ -765,6 +769,13 @@ final class LockScreenTurn {
         }
         XposedHelpers.callMethod(set, "connect", id, START, PARENT, START);
         XposedHelpers.callMethod(set, "connect", id, END, PARENT, END);
+        int indication = res.getIdentifier(INDICATION, "id", context.getPackageName());
+        if (indication != 0 && contains(known, indication)) {
+            // Nothing's: across the screen, as wide as it (DefaultIndicationAreaSection).
+            XposedHelpers.callMethod(set, "constrainWidth", indication, MATCH_PARENT);
+            XposedHelpers.callMethod(set, "connect", indication, START, PARENT, START);
+            XposedHelpers.callMethod(set, "connect", indication, END, PARENT, END);
+        }
     }
 
     /** Whether the screen is turned so the fingerprint sensor is on the left (270 degrees). */
@@ -1012,6 +1023,23 @@ final class LockScreenTurn {
                     // stuck out past the left edge (logged at -1008..1180): the half's width.
                     XposedHelpers.callMethod(set, "constrainWidth", id, 0);
                 }
+            }
+        }
+        // The charging / status line under it all: Nothing centers it across the screen
+        // (DefaultIndicationAreaSection), which turned put it over the widgets' bottom
+        // (DebuG6: "37% • Charging rapidly" at 975..1384 x 952..1056, the widgets to y 999
+        // in the half 85..1180), on the lock screen and the always-on display. It goes to
+        // the other half, under the notifications and the fingerprint icon, which leave the
+        // bottom free; its width follows the half (Nothing's is the parent's).
+        int indication = res.getIdentifier(INDICATION, "id", pkg);
+        if (indication != 0 && contains(known, indication)) {
+            XposedHelpers.callMethod(set, "constrainWidth", indication, 0);
+            if (mirrored) {
+                XposedHelpers.callMethod(set, "connect", indication, START, PARENT, START);
+                XposedHelpers.callMethod(set, "connect", indication, END, guide, START);
+            } else {
+                XposedHelpers.callMethod(set, "connect", indication, START, guide, END);
+                XposedHelpers.callMethod(set, "connect", indication, END, PARENT, END);
             }
         }
     }
