@@ -640,7 +640,7 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
 
 - **Ndot performance overlay**: a small panel in the top corner of every app, once a second,
   in MangoHud's style (its row colours and a frame time graph) with
-  [Scene](https://github.com/helloklf/vtools)'s contents and size, drawn by the module (it is
+  Scene's contents and size, drawn by the module (it is
   not MangoHud's code: MangoHud is a Linux Vulkan / OpenGL layer drawn inside the game, which
   Android only loads into debuggable apps):
   - CPU and GPU load rings with their clocks;
