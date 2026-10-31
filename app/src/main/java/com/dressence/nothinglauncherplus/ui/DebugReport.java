@@ -90,6 +90,18 @@ final class DebugReport {
             + "for z in /sys/class/thermal/thermal_zone*; do echo \"$z $(cat $z/type)"
             + " $(cat $z/temp) $(ls -Z $z/temp)\"; done >> $H 2>&1\n"
             + "ls -lZ /sys/class/power_supply/battery/ >> $H 2>&1\n"
+            // Each core's clock from every source this phone has, three times (Scene shows a
+            // different clock per core of a cluster; scaling_cur_freq is the cluster's).
+            + "for k in 1 2 3; do for c in 0 1 2 3 4 5 6 7; do d=/sys/devices/system/cpu/cpu$c;"
+            + " echo \"cpu$c cpuinfo_cur=$(cat $d/cpufreq/cpuinfo_cur_freq 2>&1)"
+            + " scaling_cur=$(cat $d/cpufreq/scaling_cur_freq 2>&1)\"; done; sleep 0.3;"
+            + " done >> $H 2>&1\n"
+            + "ls -laZ /proc/cpufreq /sys/kernel/cpufreq* /proc/cpu_loading /sys/devices/system/"
+            + "cpu/cpufreq /sys/kernel/fpsgo/fbt /proc/mtk_scheduler >> $H 2>&1\n"
+            + "head -c 3000 /proc/cpu_loading >> $H 2>&1\n"
+            // Scene (com.omarea.vtools), to see where its overlay reads each core's clock.
+            + "for a in $(pm path com.omarea.vtools | sed 's/^package://'); do"
+            + " cp $a $D/scene-$(basename $a); done 2>/dev/null\n"
             // Nothing's Game Bar, to fit the module's game options into it.
             + "for a in $(pm path com.nothing.ntgamedashboard | sed 's/^package://'); do"
             + " cp $a $D/ntgamedashboard-$(basename $a); done 2>/dev/null\n"
