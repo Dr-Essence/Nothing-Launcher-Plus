@@ -1,5 +1,6 @@
 package com.dressence.nothinglauncherplus.launcher;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.view.View;
 
@@ -11,9 +12,9 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
 /**
- * On phones the app drawer's background is the launcher scrim tinted with
- * {@code AllAppsState#getWorkspaceScrimColor}; scaling that colour's alpha lets the wallpaper
- * show through while the folder tiles stay opaque.
+ * On phones the app drawer's background is the launcher scrim tinted with Nothing's drawer
+ * scrim colour ({@code AllAppsState#getWorkspaceScrimColor}); scaling that colour's alpha lets
+ * the wallpaper show through while the folder tiles stay opaque.
  */
 final class DrawerBackground {
 
@@ -21,28 +22,32 @@ final class DrawerBackground {
             "com.android.launcher3.uioverrides.states.AllAppsState";
     private static final String CLS_LAUNCHER = "com.android.launcher3.Launcher";
     private static final String CLS_LAUNCHER_STATE = "com.android.launcher3.LauncherState";
+    /** Nothing's launcher colours (ThemeColors), and the drawer scrim colour it gives. */
+    private static final String CLS_THEME_COLOURS = "p7.e";
+    private static final String SCRIM_COLOUR = "nt_all_apps_scrim_color_nt_mono";
 
     static void install(ClassLoader cl, ConfigStore store) {
         Class<?> allAppsState = XposedHelpers.findClass(CLS_ALL_APPS_STATE, cl);
         Class<?> launcherClass = XposedHelpers.findClass(CLS_LAUNCHER, cl);
-        XposedHelpers.findAndHookMethod(allAppsState, "getWorkspaceScrimColor", launcherClass,
-                new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) {
-                        int opacity = store.get().drawerOpacity;
-                        if (opacity < 100) {
-                            int color = (Integer) param.getResult();
-                            int alpha = Color.alpha(color) * opacity / 100;
-                            param.setResult((color & 0x00FFFFFF) | (alpha << 24));
+        boolean atSource = hookScrimColour(cl, store);
+        if (!atSource) {
+            XposedHelpers.findAndHookMethod(allAppsState, "getWorkspaceScrimColor",
+                    launcherClass, new XC_MethodHook() {
+                        @Override
+                        protected void afterHookedMethod(MethodHookParam param) {
+                            int opacity = store.get().drawerOpacity;
+                            if (opacity < 100) {
+                                param.setResult(faded((Integer) param.getResult(), opacity));
+                            }
                         }
-                    }
-                });
+                    });
+        }
 
         // The drawer's search (Nothing's NTLauncherAllAppsContainerView) paints its own colours
         // over that scrim: its sheet (foregroundPaint), its scrim and header protection, and the
         // search results' background, all picked in updateCustomColor (and its constructor).
         // They take the drawer's opacity too, so the search does not rise as a solid black
-        // panel over a see-through drawer; so does Launcher3's strip under the search bar.
+        // panel over a see-through drawer.
         Class<?> search = XposedHelpers.findClassIfExists(SmartDrawer.CLS_ALL_APPS_CONTAINER, cl);
         if (search != null) {
             XC_MethodHook colours = new XC_MethodHook() {
@@ -75,8 +80,6 @@ final class DrawerBackground {
         });
     }
 
-    private static final String NAV_SCRIM = "nlplus.navScrimColor";
-
     /** Nothing's drawer search colours at the drawer's opacity ({@code opacity} percent). */
     private static void searchColours(Object container, int opacity) {
         if (opacity >= 100) {
@@ -91,23 +94,50 @@ final class DrawerBackground {
             XposedHelpers.setIntField(container, name,
                     faded(XposedHelpers.getIntField(container, name), opacity));
         }
-        // Launcher3's strip under the search bar, over the gesture bar (the navigation bar
-        // scrim, mNavBarScrimPaint): set once, so faded from the colour it was given.
-        android.graphics.Paint strip = (android.graphics.Paint) XposedHelpers.getObjectField(
-                container, "mNavBarScrimPaint");
-        if (strip != null) {
-            Object given = XposedHelpers.getAdditionalInstanceField(container, NAV_SCRIM);
-            if (given == null) {
-                given = strip.getColor();
-                XposedHelpers.setAdditionalInstanceField(container, NAV_SCRIM, given);
-            }
-            strip.setColor(faded((Integer) given, opacity));
-        }
         View results = (View) XposedHelpers.callMethod(container, "getSearchRecyclerView");
         if (results != null && results.getBackground() != null) {
             results.getBackground().mutate().setAlpha(255 * opacity / 100);
         }
         ((View) container).invalidate();
+    }
+
+    /**
+     * The drawer's scrim colour where Nothing reads it (ThemeColors p7.e#e(Context):
+     * nt_all_apps_scrim_color_nt_mono). Besides the drawer's background (AllAppsState), its
+     * Compose search reads it directly: the search bar (DrawerSearchBar) paints it from the
+     * bar's middle to its bottom, a band under the bar that rises with the keyboard (it is
+     * padded by the keyboard's height), and the search page's theme background is that colour.
+     * Faded here, all of them follow the drawer's opacity. The method is taken only when it
+     * really gives that colour; otherwise the drawer's background is faded where
+     * AllAppsState gives it, as before. False when not hooked.
+     */
+    private static boolean hookScrimColour(ClassLoader cl, ConfigStore store) {
+        Class<?> colours = XposedHelpers.findClassIfExists(CLS_THEME_COLOURS, cl);
+        java.lang.reflect.Method method = colours == null ? null
+                : XposedHelpers.findMethodExactIfExists(colours, "e", Context.class);
+        if (method == null || method.getReturnType() != int.class) {
+            Hooks.log("drawer scrim colour: not found, background faded by its state");
+            return false;
+        }
+        XposedBridge.hookMethod(method, new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                int opacity = store.get().drawerOpacity;
+                Context context = (Context) param.args[0];
+                if (opacity >= 100 || context == null) {
+                    return;
+                }
+                Hooks.guard("drawer scrim colour", () -> {
+                    int id = context.getResources().getIdentifier(SCRIM_COLOUR, "color",
+                            context.getPackageName());
+                    int colour = (Integer) param.getResult();
+                    if (id != 0 && context.getColor(id) == colour) {
+                        param.setResult(faded(colour, opacity));
+                    }
+                }).run();
+            }
+        });
+        return true;
     }
 
     private static int faded(int color, int opacity) {

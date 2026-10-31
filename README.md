@@ -687,8 +687,14 @@ second), and the loader waits for idle at most three seconds per step.
   and shown again by its own reset when the list comes back.
 - **Drawer search** follows the drawer's opacity: Nothing paints its search's sheet, scrim,
   header and results' background itself (`updateCustomColor`), so it rose as a solid black panel
-  over a see-through drawer; Launcher3's strip under the search bar, over the gesture bar (its
-  navigation bar scrim), takes it too.
+  over a see-through drawer. Its Compose search bar paints a band in the drawer's scrim colour
+  from the bar's middle down, which rises with the keyboard, and its search page uses that colour
+  as its background: the colour is faded where Nothing reads it, so they follow the opacity too.
+- **Drawer search after a turn**: turned in place, Launcher3 saves its state
+  (`onSaveInstanceState` in `onHandleConfigurationChanged`) and androidx drops the launcher's
+  lifecycle to "created" while it stays on screen; Nothing's Compose search only updates while
+  "started", so it took typing but showed no results until the launcher was left. The lifecycle
+  is put back where it was after the turn.
 - **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
   many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
   sheet gives the list at least four rows, which squeezed the name off a landscape screen).

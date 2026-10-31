@@ -24,6 +24,7 @@ public final class Launcher {
     private static final int IDLE_WAIT_SECONDS = 3;
 
     private static boolean receiverRegistered;
+    private static final String TURN_LIFECYCLE = "nlplus.turnLifecycle";
 
     private Launcher() {
     }
@@ -39,13 +40,55 @@ public final class Launcher {
         new LandscapeSurfaces(cl, store).install();
         Hooks.install("landscape folder sheet", () -> new FolderSheetLandscape(cl).install());
         Hooks.install("landscape widget picker", () -> new WidgetPickerLandscape(cl, store).install());
-        Hooks.install("drawer search trace", () -> DrawerSearchTrace.install(cl, store));
+        Hooks.install("lifecycle after a turn", () -> hookTurnLifecycle(cl));
         Hooks.install("controller", () -> Gamepad.install(cl, store));
         Hooks.install("dot-matrix icons", () -> DotIcons.install(cl, store));
         Hooks.install("scrolling app names", () -> LabelScroll.install(cl, store));
         LauncherSounds.install(cl, store);
         Hooks.install("reload receiver", () -> hookReloadReceiver(cl, store));
         Hooks.install("loader idle wait", () -> hookLoaderIdleWait(cl));
+    }
+
+    /**
+     * Turned in place (the launcher handles a rotation itself, Launcher.onHandleConfigurationChanged),
+     * Launcher3 saves its state with onSaveInstanceState(new Bundle()), and androidx's
+     * ComponentActivity.onSaveInstanceState drops the activity's lifecycle to CREATED on any
+     * save: ON_PAUSE and ON_STOP while the launcher is still resumed on screen, with nothing to
+     * raise it again until it really pauses and resumes. Nothing's Compose views collect their
+     * state only while STARTED (collectAsStateWithLifecycle): after a turn the drawer search
+     * took typing but its results never showed (DebuG9: lifecycle CREATED at the turn, no
+     * ON_START until the launcher was left). The save stays; the lifecycle is put back where
+     * it was before it.
+     */
+    private static void hookTurnLifecycle(ClassLoader cl) {
+        XposedHelpers.findAndHookMethod(CLS_LAUNCHER, cl, "onHandleConfigurationChanged",
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        Hooks.guard("lifecycle before a turn", () ->
+                                XposedHelpers.setAdditionalInstanceField(param.thisObject,
+                                        TURN_LIFECYCLE, XposedHelpers.callMethod(
+                                                XposedHelpers.callMethod(param.thisObject,
+                                                        "getLifecycle"),
+                                                "getCurrentState"))).run();
+                    }
+
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Hooks.guard("lifecycle after a turn", () -> {
+                            Object before = XposedHelpers.removeAdditionalInstanceField(
+                                    param.thisObject, TURN_LIFECYCLE);
+                            Object lifecycle = XposedHelpers.callMethod(param.thisObject,
+                                    "getLifecycle");
+                            Object now = XposedHelpers.callMethod(lifecycle, "getCurrentState");
+                            if (before instanceof Enum && now instanceof Enum
+                                    && ((Enum<?>) now).ordinal() < ((Enum<?>) before).ordinal()
+                                    && !((Activity) param.thisObject).isFinishing()) {
+                                XposedHelpers.callMethod(lifecycle, "setCurrentState", before);
+                            }
+                        }).run();
+                    }
+                });
     }
 
     /**
