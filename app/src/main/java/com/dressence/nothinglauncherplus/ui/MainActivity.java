@@ -312,10 +312,9 @@ public class MainActivity extends Activity {
                     config.livingWorldsSounds = checked;
                     store.save(this);
                 });
-        ui.switchRow("Living Worlds turning and landscape", "Turns without flashing; in"
-                + " landscape the whole scene over a soft blur of itself instead of a zoomed"
-                + " slice", config.livingWorldsLandscape, checked -> {
-                    config.livingWorldsLandscape = checked;
+        ui.switchRow("Living Worlds smooth turning", "The live wallpaper turns without"
+                + " flashing or starting over", config.livingWorldsTurn, checked -> {
+                    config.livingWorldsTurn = checked;
                     store.save(this);
                 });
 

@@ -23,7 +23,7 @@ import de.robv.android.xposed.XposedHelpers;
 
 /**
  * Living Worlds (2.12.74) as a live wallpaper: its sounds on the home screen and in the app
- * drawer, a seamless turn, and the whole scene in landscape (see resizeInPlace, LANDSCAPE_JS).
+ * drawer, and a seamless turn (see resizeInPlace).
  *
  * <p>Sounds: Living Worlds' ambient sounds on the home screen and in the app drawer. Each of its 12 worlds has its own sounds, played by its JavaScript (sounds.js:
  * Sounds.cycle sends "playSound" with the tracks, fades and volumes of the moment) and by its
@@ -56,29 +56,9 @@ public final class LivingWorlds {
     private static final String MANAGER = "nlplus.sounds";
     private static final String SHOWN = "nlplus.shown";
     private static final String ENABLED_AT = "nlplus.enabledAt";
-    private static final long ENABLE_EVERY_MS = 1000;
+    private static final long ENABLE_EVERY_MS = 3000;
     private static final String SOUNDS_JS = "window.App&&App.store&&App.allowSounds"
             + "&&!App.store.get().playSounds&&App.store.set({playSounds:true});";
-    /**
-     * Landscape: the whole scene (Living Worlds' own fit, coverMode off) over a blurred,
-     * dimmed copy of the live scene filling the screen; portrait: the scene as it was set.
-     * The copy is a 36x48 canvas drawn from the scene every third frame and stretched by CSS
-     * (keeping the scene's 345:455 shape), so it costs little. Set up once per page load.
-     */
-    private static final String LANDSCAPE_JS = "(function(){if(!window.App||!App.store"
-            + "||!App.$canvas||window.__nlpL)return;window.__nlpL=1;"
-            + "var c=App.store.get().coverMode;"
-            + "var bg=document.createElement('canvas');bg.width=36;bg.height=48;"
-            + "bg.style.cssText='position:fixed;left:-5vw;width:110vw;height:145vw;"
-            + "top:calc(50vh - 72.5vw);z-index:-1;pointer-events:none;display:none;"
-            + "filter:blur(16px) brightness(0.55)';"
-            + "document.body.insertBefore(bg,document.body.firstChild);"
-            + "var g=bg.getContext('2d'),n=0,land=null;"
-            + "(function f(){requestAnimationFrame(f);var l=innerWidth>innerHeight;"
-            + "if(l!==land){if(land===false)c=App.store.get().coverMode;land=l;"
-            + "bg.style.display=l?'block':'none';App.store.set({coverMode:l?false:c});}"
-            + "if(l&&n++%3===0){try{g.drawImage(App.$canvas[0],0,0,36,48);}catch(e){}}})();"
-            + "})();";
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     /** The one engine that may sound: the last to become visible (main thread). */
@@ -93,17 +73,14 @@ public final class LivingWorlds {
         Class<?> managerClass = XposedHelpers.findClass(CLS_SOUNDS, cl);
         Class<?> specClass = XposedHelpers.findClass(CLS_SPEC, cl);
 
-        // Each frame the wallpaper draws (its JavaScript calls drawFrame): Ambient Sounds on,
-        // and the landscape view set up, in its JavaScript.
+        // Each frame the wallpaper draws (its JavaScript calls drawFrame): Ambient Sounds on in
+        // its JavaScript.
         XposedHelpers.findAndHookMethod(CLS_JS, cl, "drawFrame", new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
                 Object engine = XposedHelpers.getObjectField(param.thisObject, "myActivity");
-                String js = (store.get().livingWorldsSounds && !isPreview(engine)
-                        ? SOUNDS_JS : "") + (store.get().livingWorldsLandscape
-                        ? LANDSCAPE_JS : "");
-                if (!js.isEmpty()) {
-                    inject(engine, js);
+                if (store.get().livingWorldsSounds && !isPreview(engine)) {
+                    inject(engine, SOUNDS_JS);
                 }
             }
         });
@@ -112,7 +89,7 @@ public final class LivingWorlds {
         XposedHelpers.findAndHookMethod(engineClass, "createPresentation", new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
-                if (store.get().livingWorldsLandscape && !REBUILDING.get()) {
+                if (store.get().livingWorldsTurn && !REBUILDING.get()) {
                     Hooks.guard("living worlds turn", () -> {
                         if (resizeInPlace(param.thisObject)) {
                             param.setResult(null);
