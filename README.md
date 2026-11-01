@@ -759,6 +759,34 @@ long-press shortcut removed, placed icons greyed). Each opens an invisible activ
 (`ui.RunningServices`) that asks system_server for the page, as recents' memory button does,
 or opens developer options when the system does not answer.
 
+### Task manager in Running services
+
+*Home screen → Task manager in Running services* (on by default; Settings in the module's
+LSPosed scope). Nothing's own Developer options → Running services page becomes a task
+manager; nothing of it is replaced:
+
+- Under Nothing's memory bar, a header in Nothing's dot-matrix look (NDot 57, dot meters lit
+  red past 80%): CPU load and the two clusters' clocks, memory and swap in use, network speed
+  down and up, temperatures (battery; CPU and GPU where the thermal HAL answers Settings) and
+  the five processes using the most CPU, system processes included.
+- On each row, under Nothing's summary: the process's CPU share and its app's network use
+  today.
+- A long-press on a row: package, process, PID/UID, memory, CPU, network today, and *Stop
+  background* or *Force stop*. Stopping is rated: Android's own processes (UID under 10000),
+  persistent apps, the home screen, the keyboard, telephony, Bluetooth and Google Play
+  services are *dangerous to stop* and ask again; other system apps warn that a feature may
+  stop until they start again. Android itself and Settings cannot be force stopped from here.
+
+What Settings' process may read decided the sources (a probe on the phone): it runs as the
+system user and holds FORCE_STOP_PACKAGES, KILL_BACKGROUND_PROCESSES, DUMP and
+READ_NETWORK_USAGE_HISTORY, and reads /proc/stat, /proc/meminfo and cpufreq; GPU load, the
+thermal zones, /proc/net and other processes' /proc files are closed to it. So per-process CPU
+comes from Android's CPU tracker (the `cpuinfo` service's dump, allowed by DUMP), network use
+from NetworkStatsManager, speeds from the traffic counters. Figures refresh every 2 s off the
+main thread while the page is open. The hooks use Settings 16.0.0's obfuscated names
+(`RunningProcessesView.a`, row holder `A1`); a Settings update that renames them turns the
+task manager off and leaves Nothing's page as it is.
+
 ### Gaming launcher with a controller
 
 *Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any
@@ -933,6 +961,7 @@ The module's code is grouped by where it runs:
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), Settings screens opened on a feature's behalf (`SystemShortcuts`) and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
+| `settings` | Developer options → Running services as a task manager, in Settings (`TaskManager`, `TaskHeader`, `TaskStats`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
 | `ui` | The module's settings app: a menu of pages (App drawer, Home screen, Sound, Status bar & quick settings, Lock screen, System font, Backup, Diagnostics). |
 

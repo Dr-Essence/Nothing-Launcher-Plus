@@ -291,6 +291,13 @@ public class MainActivity extends Activity {
                     config.recentsMemory = checked;
                     store.save(this);
                 });
+        ui.switchRow("Task manager in Running services", "CPU, temperatures,"
+                + " memory, swap and network on top; each process's CPU and network; long-press"
+                + " a process to stop it · Settings in the module's LSPosed scope",
+                config.taskManager, checked -> {
+                    config.taskManager = checked;
+                    store.save(this);
+                });
         ui.switchRow("Running services shortcut", "A Running services icon to place on the home"
                 + " screen (in the widget list, like Settings shortcut) and on this app's"
                 + " long-press · the quick settings tile is in the tile editor",
