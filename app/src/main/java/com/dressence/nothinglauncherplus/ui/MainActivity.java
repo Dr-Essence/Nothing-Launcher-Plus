@@ -312,6 +312,12 @@ public class MainActivity extends Activity {
                     config.livingWorldsSounds = checked;
                     store.save(this);
                 });
+        ui.switchRow("Living Worlds turning and landscape", "Turns without flashing; in"
+                + " landscape the whole scene over a soft blur of itself instead of a zoomed"
+                + " slice", config.livingWorldsLandscape, checked -> {
+                    config.livingWorldsLandscape = checked;
+                    store.save(this);
+                });
 
         ui.section("Launcher");
         ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,

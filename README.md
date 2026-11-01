@@ -805,6 +805,24 @@ when the wallpaper is replaced; the wallpaper picker's preview is silent. With a
 set no Living Worlds engine runs, so nothing plays. Should two engines run at once, only the
 last shown is heard.
 
+### Living Worlds turning and landscape
+
+*Home screen → Living Worlds turning and landscape* (on by default). Living Worlds' default
+wallpaper drawing ("Alt wallpaper tech", from Android 8) shows a WebView in a Presentation on
+a virtual display over the wallpaper's surface, and at every surface change (each turn)
+`createPresentation` tore both down and built them again: the page reloaded, the wallpaper went
+blank and started over. The module resizes the virtual display in place and lays the WebView
+out to the new size; the page goes on and Living Worlds' own resize (it checks the window size
+each frame) fits the scene. Should Android dismiss the Presentation because its display changed
+size, Living Worlds' own rebuild runs as before (the log says which happened).
+
+Every world ships only as a 345×455 crop of the desktop program's 640×480 art (the
+`*.LBM.cropped.json` scenes; the full pictures are not in the app), and *Zoom to fill* scaled
+it to a landscape screen's width, showing about a third of it. In landscape the whole scene now
+fits the height (Living Worlds' own fit, `coverMode` off) over a blurred, dimmed copy of the
+live scene filling the screen, so the sides carry its colours and motion; the copy is a 36×48
+canvas drawn every third frame and stretched by CSS. Portrait is as Living Worlds sets it.
+
 ### Gaming launcher with a controller
 
 *Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any
@@ -979,7 +997,7 @@ The module's code is grouped by where it runs:
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), Settings screens opened on a feature's behalf (`SystemShortcuts`) and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
-| `wallpaper` | Living Worlds' sounds with its live wallpaper (`LivingWorldsSounds`). |
+| `wallpaper` | Living Worlds' live wallpaper: its sounds, seamless turns, the whole scene in landscape (`LivingWorlds`). |
 | `settings` | Developer options → Running services as a task manager, in Settings (`TaskManager`, `TaskHeader`, `TaskStats`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
 | `ui` | The module's settings app: a menu of pages (App drawer, Home screen, Sound, Status bar & quick settings, Lock screen, System font, Backup, Diagnostics). |

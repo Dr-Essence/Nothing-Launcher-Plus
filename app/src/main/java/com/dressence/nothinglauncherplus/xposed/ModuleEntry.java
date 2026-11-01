@@ -9,7 +9,7 @@ import com.dressence.nothinglauncherplus.perf.GameUnlock;
 import com.dressence.nothinglauncherplus.system.OrientationProbe;
 import com.dressence.nothinglauncherplus.settings.TaskManager;
 import com.dressence.nothinglauncherplus.system.ControllerHome;
-import com.dressence.nothinglauncherplus.wallpaper.LivingWorldsSounds;
+import com.dressence.nothinglauncherplus.wallpaper.LivingWorlds;
 import com.dressence.nothinglauncherplus.system.RotationSensor;
 import com.dressence.nothinglauncherplus.system.SystemShortcuts;
 import com.dressence.nothinglauncherplus.system.SystemFonts;
@@ -52,9 +52,9 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
             SystemUi.install(cl, new ConfigStore());
         } else if ("com.android.settings".equals(pkg)) {
             Hooks.install("task manager", () -> TaskManager.install(cl, new ConfigStore()));
-        } else if (LivingWorldsSounds.PKG.equals(pkg)) {
-            Hooks.install("living worlds sounds",
-                    () -> LivingWorldsSounds.install(cl, new ConfigStore()));
+        } else if (LivingWorlds.PKG.equals(pkg)) {
+            Hooks.install("living worlds",
+                    () -> LivingWorlds.install(cl, new ConfigStore()));
         } else if (HeliBoardGamepad.PKG.equals(pkg)) {
             Hooks.install("heliboard gamepad",
                     () -> HeliBoardGamepad.install(cl, new ConfigStore()));
