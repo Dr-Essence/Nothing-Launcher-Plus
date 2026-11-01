@@ -142,6 +142,22 @@ final class PaletteCycleSounds {
     private static java.lang.ref.WeakReference<Object> current =
             new java.lang.ref.WeakReference<>(null);
     private static AudioTrack player;
+    /** Hidden: faded out and paused, resumed where it was. */
+    private static boolean paused;
+    /** Counts what was asked for, so only the newest prepared sound starts. */
+    private static int generations;
+    private static float target;
+    /** Decoded loops kept, so a sound comes back at once (the last few). */
+    private static final Map<String, SeamlessLoop.Pcm> DECODED =
+            new java.util.LinkedHashMap<String, SeamlessLoop.Pcm>(4, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, SeamlessLoop.Pcm> e) {
+                    return size() > 3;
+                }
+            };
+    private static final long FADE_IN_MS = 2000;
+    private static final long RESUME_MS = 600;
+    private static final long FADE_OUT_MS = 500;
     private static String playing;
     private static ValueAnimator fade;
     private static Context appContext;
@@ -180,7 +196,7 @@ final class PaletteCycleSounds {
             protected void beforeHookedMethod(MethodHookParam param) {
                 XposedHelpers.setAdditionalInstanceField(param.thisObject, SHOWN, false);
                 if (current.get() == param.thisObject) {
-                    Hooks.guard("palette cycle sound", () -> stop()).run();
+                    Hooks.guard("palette cycle sound", () -> release()).run();
                 }
             }
         });
@@ -219,7 +235,11 @@ final class PaletteCycleSounds {
             Hooks.log("palette cycle sound: " + decision);
         }
         if (sound == null) {
-            stop();
+            if (seen || !store.get().paletteCycleSounds) {
+                release(); // No sound for what shows, or turned off.
+            } else {
+                silence(); // Hidden: paused, resumed where it was.
+            }
             return;
         }
         play((String) sound[0], (Float) sound[1]);
@@ -263,12 +283,26 @@ final class PaletteCycleSounds {
     }
 
     private static void play(String sound, float volume) {
-        if (sound.equals(playing) && player != null) {
-            fadeTo(volume);
+        target = volume;
+        if (sound.equals(playing)) {
+            if (player != null && paused) {
+                player.play();
+                paused = false;
+                Hooks.log("palette cycle sound: resumed " + sound);
+                fadeTo(volume, RESUME_MS);
+            } else if (player != null) {
+                fadeTo(volume, FADE_IN_MS);
+            }
+            return; // Playing, or still being prepared.
+        }
+        release();
+        playing = sound;
+        int generation = ++generations;
+        SeamlessLoop.Pcm cached = DECODED.get(sound);
+        if (cached != null) {
+            start(sound, cached, generation);
             return;
         }
-        stop();
-        playing = sound;
         // demos/<demo>/audio/<name>: kept per demo, as both have files of the same names.
         String[] parts = sound.split("/");
         File file = new File(new File(appContext.getCacheDir(), "nlplus-sounds"),
@@ -286,7 +320,10 @@ final class PaletteCycleSounds {
                 return;
             }
             Hooks.log("palette cycle: sound " + sound + ": " + pcm.report);
-            MAIN.post(Hooks.guard("palette cycle sound start", () -> start(sound, pcm, volume)));
+            MAIN.post(Hooks.guard("palette cycle sound start", () -> {
+                DECODED.put(sound, pcm);
+                start(sound, pcm, generation);
+            }));
         }));
     }
 
@@ -311,51 +348,98 @@ final class PaletteCycleSounds {
         return part.renameTo(file);
     }
 
-    private static void start(String sound, SeamlessLoop.Pcm pcm, float volume) {
-        if (!sound.equals(playing)) {
-            return; // Changed while it downloaded.
+    /** Starts {@code pcm} if it is still the newest asked for (only one plays). */
+    private static void start(String sound, SeamlessLoop.Pcm pcm, int generation) {
+        if (generation != generations || !sound.equals(playing) || player != null) {
+            return; // Something newer was asked for meanwhile.
         }
         try {
             AudioTrack track = SeamlessLoop.track(pcm);
-            track.play();
             player = track;
+            paused = false;
             lastVolume = 0;
-            fadeTo(volume);
+            track.play();
+            Hooks.log("palette cycle sound: started " + sound);
+            fadeTo(target, FADE_IN_MS);
+            Object shown = current.get();
+            if (shown != null && !HomeShown.get()) {
+                silence(); // Left while it was prepared.
+            }
         } catch (Throwable t) {
             Hooks.log("palette cycle: sound " + sound + " not played: " + t);
             playing = null;
         }
     }
 
-    /** Fades out (half a second) and releases the sound. */
-    private static void stop() {
-        AudioTrack mp = player;
+    /** Fades out (half a second) and pauses the sound, kept to resume where it was. */
+    private static void silence() {
+        AudioTrack track = player;
+        if (track == null || paused) {
+            return;
+        }
+        paused = true;
+        Hooks.log("palette cycle sound: paused " + playing);
+        fadeOut(track, true, () -> {
+            if (paused && player == track) {
+                track.pause();
+            }
+        });
+    }
+
+    /** Fades out and frees the sound (another sound, none, or turned off). */
+    private static void release() {
+        AudioTrack track = player;
+        String was = playing;
         player = null;
         playing = null;
+        paused = false;
+        generations++;
+        if (track != null) {
+            Hooks.log("palette cycle sound: released " + was);
+            fadeOut(track, false, () -> {
+                track.stop();
+                track.release();
+            });
+        }
+    }
+
+    /**
+     * Fades {@code track} out, then runs {@code then}. A pause's fade-out is the current
+     * fade, which coming back cancels; a released sound's runs on its own to its end.
+     */
+    private static void fadeOut(AudioTrack track, boolean cancellable, Runnable then) {
         if (fade != null) {
             fade.cancel();
             fade = null;
         }
-        if (mp != null) {
-            ValueAnimator out = ValueAnimator.ofFloat(lastVolume, 0f).setDuration(500);
-            lastVolume = 0;
-            out.addUpdateListener(a -> mp.setVolume((Float) a.getAnimatedValue()));
-            out.addListener(new android.animation.AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(android.animation.Animator animation) {
-                    mp.stop();
-                    mp.release();
-                }
-            });
-            out.start();
+        ValueAnimator out = ValueAnimator.ofFloat(lastVolume, 0f).setDuration(FADE_OUT_MS);
+        if (!cancellable) {
+            lastVolume = 0; // The next sound starts from silence.
         }
+        out.addUpdateListener(a -> {
+            float v = (Float) a.getAnimatedValue();
+            track.setVolume(v);
+            if (cancellable) {
+                lastVolume = v; // A resume fades up from here.
+            }
+        });
+        out.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                Hooks.guard("palette cycle sound fade", then).run();
+            }
+        });
+        if (cancellable) {
+            fade = out;
+        }
+        out.start();
     }
 
     /** The playing sound's volume, as last set by a fade (main thread). */
     private static float lastVolume;
 
-    /** Fades the playing sound to {@code volume} over 2 s, as the demo fades in. */
-    private static void fadeTo(float volume) {
+    /** Fades the playing sound to {@code volume} over {@code ms}. */
+    private static void fadeTo(float volume, long ms) {
         AudioTrack mp = player;
         if (mp == null) {
             return;
@@ -363,7 +447,7 @@ final class PaletteCycleSounds {
         if (fade != null) {
             fade.cancel();
         }
-        fade = ValueAnimator.ofFloat(lastVolume, volume).setDuration(2000);
+        fade = ValueAnimator.ofFloat(lastVolume, volume).setDuration(ms);
         fade.addUpdateListener(a -> {
             float v = (Float) a.getAnimatedValue();
             lastVolume = v;
