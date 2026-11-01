@@ -59,6 +59,7 @@ public final class Config {
     public static final String KEY_LIVING_WORLDS_SOUNDS = "living_worlds_sounds";
     public static final String KEY_LIVING_WORLDS_TURN = "living_worlds_turn";
     public static final String KEY_PALETTE_CYCLE_SOUNDS = "palette_cycle_sounds";
+    public static final String KEY_PALETTE_CYCLE_LANDSCAPE_Y = "palette_cycle_landscape_y";
     public static final String KEY_CONTROLLER_HOME_APP = "controller_home_app";
     public static final String KEY_LOCK_ROTATION = "lock_rotation";
     public static final String KEY_AOD_ROTATION = "aod_rotation";
@@ -171,6 +172,8 @@ public final class Config {
     public boolean livingWorldsTurn = true;
     /** Palette Cycle's worlds with the web demo's sounds on home and the drawer. */
     public boolean paletteCycleSounds = true;
+    /** Palette Cycle in landscape: where on the picture, 0 top .. 100 bottom. */
+    public int paletteCycleLandscapeY = 50;
     /** While a game controller is connected, home is the gaming launcher below. */
     public boolean controllerHome = false;
     /** Package of the gaming launcher ("" none picked). */
@@ -345,6 +348,8 @@ public final class Config {
         livingWorldsSounds = in.bool(KEY_LIVING_WORLDS_SOUNDS, true);
         livingWorldsTurn = in.bool(KEY_LIVING_WORLDS_TURN, true);
         paletteCycleSounds = in.bool(KEY_PALETTE_CYCLE_SOUNDS, true);
+        paletteCycleLandscapeY = Math.max(0, Math.min(100,
+                in.number(KEY_PALETTE_CYCLE_LANDSCAPE_Y, 50)));
         controllerHomeApp = in.text(KEY_CONTROLLER_HOME_APP, "");
         lockRotation = in.bool(KEY_LOCK_ROTATION, false);
         aodRotation = in.bool(KEY_AOD_ROTATION, true);
@@ -390,6 +395,7 @@ public final class Config {
         out.bool(KEY_LIVING_WORLDS_SOUNDS, livingWorldsSounds);
         out.bool(KEY_LIVING_WORLDS_TURN, livingWorldsTurn);
         out.bool(KEY_PALETTE_CYCLE_SOUNDS, paletteCycleSounds);
+        out.number(KEY_PALETTE_CYCLE_LANDSCAPE_Y, paletteCycleLandscapeY);
         out.text(KEY_CONTROLLER_HOME_APP, controllerHomeApp);
         out.bool(KEY_LOCK_ROTATION, lockRotation);
         out.bool(KEY_AOD_ROTATION, aodRotation);

@@ -848,6 +848,22 @@ The module plays the sound of what Palette Cycle shows (its `changeImage`), down
 phone once into Palette Cycle's cache, and heard only while the wallpaper shows on the home
 screen or in the app drawer, as Living Worlds' sounds are.
 
+### Palette Cycle framing and cycling
+
+- *Home screen → Palette Cycle in landscape*: a slider from the top of the picture (sky) to
+  the bottom (water, ground), 50 by default. Palette Cycle keeps one pan for both
+  orientations, so landscape showed the portrait pan's height, usually the top. The window it
+  draws (`getOffsetImage`) is moved to the slider's height as it is drawn; its own pan and
+  settings are left as they are, and portrait is its own.
+- Monolith Plains and Winter Manor (`VW3BASIC`, `V12BASIC`) are only 345×455 scenes on a
+  640×480 sheet in the web demo ("missing 640x480 LBM for december", its `scenes.js`): the
+  rest is flat beige and black filler. The window is kept inside the real scene, zooming in as
+  little as needed, so the filler is never drawn.
+- Palette Cycle 2.3.1 works its colour cycles' time in single-precision floats, which lose
+  steps after a few hours of running, so the colours stutter and stop. Its author moved it to
+  doubles on 2026-10-31 (commit `8fbddbb`, unreleased); the module does the same
+  (`Cycle.getCycleAmount`).
+
 ### Gaming launcher with a controller
 
 *Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any
@@ -1022,7 +1038,7 @@ The module's code is grouped by where it runs:
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), Settings screens opened on a feature's behalf (`SystemShortcuts`) and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
-| `wallpaper` | Living Worlds' live wallpaper: its sounds and seamless turns (`LivingWorlds`); Palette Cycle's downloads and sounds (`PaletteCycle`, `PaletteCycleSounds`). |
+| `wallpaper` | Living Worlds' live wallpaper: its sounds and seamless turns (`LivingWorlds`); Palette Cycle's downloads and sounds (`PaletteCycle`, `PaletteCycleSounds`), its framing and cycling (`PaletteCycleView`). |
 | `settings` | Developer options → Running services as a task manager, in Settings (`TaskManager`, `TaskHeader`, `TaskStats`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
 | `ui` | The module's settings app: a menu of pages (App drawer, Home screen, Sound, Status bar & quick settings, Lock screen, System font, Backup, Diagnostics). |

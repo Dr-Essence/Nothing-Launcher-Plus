@@ -319,6 +319,14 @@ public class MainActivity extends Activity {
                     config.paletteCycleSounds = checked;
                     store.save(this);
                 });
+        addSliderRow(ui, "Palette Cycle in landscape", config.paletteCycleLandscapeY,
+                value -> value <= 15 ? "Top of the picture (sky)"
+                        : value >= 85 ? "Bottom of the picture (water, ground)"
+                        : "Middle of the picture (" + value + "%)",
+                value -> {
+                    config.paletteCycleLandscapeY = value;
+                    store.save(this);
+                });
         ui.switchRow("Living Worlds smooth turning", "The live wallpaper turns without"
                 + " flashing or starting over", config.livingWorldsTurn, checked -> {
                     config.livingWorldsTurn = checked;
