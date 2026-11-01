@@ -787,6 +787,24 @@ main thread while the page is open. The hooks use Settings 16.0.0's obfuscated n
 (`RunningProcessesView.a`, row holder `A1`); a Settings update that renames them turns the
 task manager off and leaves Nothing's page as it is.
 
+### Living Worlds sounds on the home screen
+
+*Home screen → Living Worlds sounds* (on by default; Living Worlds in the module's LSPosed
+scope). Living Worlds 2.12.74 plays each of its 12 worlds' ambient sounds in the app only: its
+live wallpaper's JavaScript runs with fixed settings that have no *Ambient Sounds*
+(`Storage.wallpaperItems`), so it asks for none, and the wallpaper's message handler
+(`MyLWPService$JSInterface.postMessage`) only handles `setSceneKey`. The module turns Ambient
+Sounds on in the wallpaper's JavaScript (as the app's switch does, again every few seconds since
+a world change reloads it) and hands its `playSound` messages to a `SoundManager` of the app's
+own. The sounds therefore come from the app's own sound code for the world and time the
+wallpaper draws, with its fades and volumes, as in the app.
+
+They play only while the wallpaper is seen on the home screen or in the app drawer: they stop
+when an app covers it, on the lock screen until the phone is unlocked, with the screen off, and
+when the wallpaper is replaced; the wallpaper picker's preview is silent. With another wallpaper
+set no Living Worlds engine runs, so nothing plays. Should two engines run at once, only the
+last shown is heard.
+
 ### Gaming launcher with a controller
 
 *Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any
@@ -961,6 +979,7 @@ The module's code is grouped by where it runs:
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), Settings screens opened on a feature's behalf (`SystemShortcuts`) and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
+| `wallpaper` | Living Worlds' sounds with its live wallpaper (`LivingWorldsSounds`). |
 | `settings` | Developer options → Running services as a task manager, in Settings (`TaskManager`, `TaskHeader`, `TaskStats`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
 | `ui` | The module's settings app: a menu of pages (App drawer, Home screen, Sound, Status bar & quick settings, Lock screen, System font, Backup, Diagnostics). |

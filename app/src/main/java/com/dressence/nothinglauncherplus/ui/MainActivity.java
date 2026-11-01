@@ -304,6 +304,15 @@ public class MainActivity extends Activity {
                 RunningServices.shortcutsOn(this),
                 checked -> RunningServices.setShortcuts(this, checked));
 
+        ui.section("Wallpaper");
+        ui.switchRow("Living Worlds sounds", "Its ambient sounds play while its live wallpaper"
+                + " is on the home screen or app drawer, as in the app; never with other"
+                + " wallpapers · Living Worlds in the module's LSPosed scope",
+                config.livingWorldsSounds, checked -> {
+                    config.livingWorldsSounds = checked;
+                    store.save(this);
+                });
+
         ui.section("Launcher");
         ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,
                 null, v -> restartLauncher());
