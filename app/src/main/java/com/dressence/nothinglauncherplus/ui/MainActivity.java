@@ -319,6 +319,14 @@ public class MainActivity extends Activity {
                     config.paletteCycleSounds = checked;
                     store.save(this);
                 });
+        addSliderRow(ui, "Living Worlds in landscape", config.livingWorldsLandscapeY,
+                value -> value <= 15 ? "Top of the scene (sky)"
+                        : value >= 85 ? "Bottom of the scene (water, ground)"
+                        : "Middle of the scene (" + value + "%)",
+                value -> {
+                    config.livingWorldsLandscapeY = value;
+                    store.save(this);
+                });
         addSliderRow(ui, "Palette Cycle in landscape", config.paletteCycleLandscapeY,
                 value -> value <= 15 ? "Top of the picture (sky)"
                         : value >= 85 ? "Bottom of the picture (water, ground)"

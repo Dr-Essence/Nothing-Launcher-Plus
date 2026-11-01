@@ -58,6 +58,7 @@ public final class Config {
     public static final String KEY_TASK_MANAGER = "task_manager";
     public static final String KEY_LIVING_WORLDS_SOUNDS = "living_worlds_sounds";
     public static final String KEY_LIVING_WORLDS_TURN = "living_worlds_turn";
+    public static final String KEY_LIVING_WORLDS_LANDSCAPE_Y = "living_worlds_landscape_y";
     public static final String KEY_PALETTE_CYCLE_SOUNDS = "palette_cycle_sounds";
     public static final String KEY_PALETTE_CYCLE_LANDSCAPE_Y = "palette_cycle_landscape_y";
     public static final String KEY_CONTROLLER_HOME_APP = "controller_home_app";
@@ -173,6 +174,8 @@ public final class Config {
     public boolean livingWorldsSounds = true;
     /** Living Worlds turns without a flash. */
     public boolean livingWorldsTurn = true;
+    /** Living Worlds in landscape: where on the scene, 0 top .. 100 bottom (50 its own). */
+    public int livingWorldsLandscapeY = 50;
     /** Palette Cycle's worlds with the web demo's sounds on home and the drawer. */
     public boolean paletteCycleSounds = true;
     /** Palette Cycle in landscape: where on the picture, 0 top .. 100 bottom. */
@@ -350,6 +353,8 @@ public final class Config {
         taskManager = in.bool(KEY_TASK_MANAGER, true);
         livingWorldsSounds = in.bool(KEY_LIVING_WORLDS_SOUNDS, true);
         livingWorldsTurn = in.bool(KEY_LIVING_WORLDS_TURN, true);
+        livingWorldsLandscapeY = Math.max(0, Math.min(100,
+                in.number(KEY_LIVING_WORLDS_LANDSCAPE_Y, 50)));
         paletteCycleSounds = in.bool(KEY_PALETTE_CYCLE_SOUNDS, true);
         paletteCycleLandscapeY = Math.max(0, Math.min(100,
                 in.number(KEY_PALETTE_CYCLE_LANDSCAPE_Y, 50)));
@@ -397,6 +402,7 @@ public final class Config {
         out.bool(KEY_TASK_MANAGER, taskManager);
         out.bool(KEY_LIVING_WORLDS_SOUNDS, livingWorldsSounds);
         out.bool(KEY_LIVING_WORLDS_TURN, livingWorldsTurn);
+        out.number(KEY_LIVING_WORLDS_LANDSCAPE_Y, livingWorldsLandscapeY);
         out.bool(KEY_PALETTE_CYCLE_SOUNDS, paletteCycleSounds);
         out.number(KEY_PALETTE_CYCLE_LANDSCAPE_Y, paletteCycleLandscapeY);
         out.text(KEY_CONTROLLER_HOME_APP, controllerHomeApp);

@@ -818,6 +818,13 @@ size, Living Worlds' own rebuild runs as before (the log says which happened). L
 the scene as Living Worlds fits it: every world ships only as a 345×455 crop of the desktop
 program's 640×480 art (the `*.LBM.cropped.json` scenes; the full pictures are not in the app).
 
+*Home screen → Living Worlds in landscape*: a slider from the top of the scene (sky) to the
+bottom (water, ground), 50 by default, which is Living Worlds' own centring. Its `App.resize`
+places the scene centred top to bottom; it is wrapped so that, in landscape, the scene's top
+follows the slider after its own sizing (portrait is its own). Filling a landscape screen's
+width takes about 7× the 345-wide scene, which shows a third of its height; showing more would
+leave bars at the sides, as the art is no wider.
+
 ### Palette Cycle downloads
 
 Palette Cycle (`rak.pixellwp`, F-Droid 2.3.1; in the module's LSPosed scope) shows Mark

@@ -23,7 +23,7 @@ import de.robv.android.xposed.XposedHelpers;
 
 /**
  * Living Worlds (2.12.74) as a live wallpaper: its sounds on the home screen and in the app
- * drawer, and a seamless turn (see resizeInPlace).
+ * drawer, a seamless turn (see resizeInPlace) and its landscape position (positionJs).
  *
  * <p>Sounds: Living Worlds' ambient sounds on the home screen and in the app drawer. Each of its 12 worlds has its own sounds, played by its JavaScript (sounds.js:
  * Sounds.cycle sends "playSound" with the tracks, fades and volumes of the moment) and by its
@@ -57,6 +57,25 @@ public final class LivingWorlds {
     private static final String SHOWN = "nlplus.shown";
     private static final String ENABLED_AT = "nlplus.enabledAt";
     private static final long ENABLE_EVERY_MS = 3000;
+    /**
+     * Landscape position: Living Worlds' App.resize places the scene centred top to bottom
+     * (top = 0.5 x (screen height - scene height)); wrapped so that, in landscape, the top
+     * follows the module's slider (window.__nlpY, 0 = the scene's top, 1 = its bottom). Its
+     * own sizing runs first; portrait is its own. Set up once per page load; a new slider
+     * value re-runs its resize.
+     */
+    private static String positionJs(int percent) {
+        return "(function(){if(!window.App||!App.resize)return;window.__nlpY=" + (percent / 100f)
+                + ";if(!App.__nlpR){var o=App.resize;App.__nlpR=1;App.resize=function(){"
+                + "o.apply(this,arguments);try{if(this.engine&&this.$canvas"
+                + "&&innerWidth>innerHeight){var s=this.store.get(),b=this.engine.getWidth(),"
+                + "c=this.engine.getHeight(),d=innerWidth/b,e=innerHeight/c,"
+                + "f=s.coverMode?Math.max(d,e):Math.min(d,e);"
+                + "this.$canvas.css({top:window.__nlpY*(innerHeight-c*f)});}}catch(x){}};}"
+                + "if(App.__nlpLastY!==window.__nlpY){App.__nlpLastY=window.__nlpY;"
+                + "if(App.engine)App.resize();}})();";
+    }
+
     private static final String SOUNDS_JS = "window.App&&App.store&&App.allowSounds"
             + "&&!App.store.get().playSounds&&App.store.set({playSounds:true});";
 
@@ -73,15 +92,14 @@ public final class LivingWorlds {
         Class<?> managerClass = XposedHelpers.findClass(CLS_SOUNDS, cl);
         Class<?> specClass = XposedHelpers.findClass(CLS_SPEC, cl);
 
-        // Each frame the wallpaper draws (its JavaScript calls drawFrame): Ambient Sounds on in
-        // its JavaScript.
+        // Each frame the wallpaper draws (its JavaScript calls drawFrame): Ambient Sounds on, and
+        // the landscape position, in its JavaScript.
         XposedHelpers.findAndHookMethod(CLS_JS, cl, "drawFrame", new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
                 Object engine = XposedHelpers.getObjectField(param.thisObject, "myActivity");
-                if (store.get().livingWorldsSounds && !isPreview(engine)) {
-                    inject(engine, SOUNDS_JS);
-                }
+                inject(engine, (store.get().livingWorldsSounds && !isPreview(engine)
+                        ? SOUNDS_JS : "") + positionJs(store.get().livingWorldsLandscapeY));
             }
         });
 
