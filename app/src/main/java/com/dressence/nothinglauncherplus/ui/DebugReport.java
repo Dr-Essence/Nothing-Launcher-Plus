@@ -178,15 +178,20 @@ final class DebugReport {
             // Nothing Launcher's home screen database (its items: icons, folders, widgets and
             // where they are), with its write-ahead log, to tell items lost from items placed
             // where a page does not show them. Copied, never changed.
-            // It is kept in device-protected storage (user_de), where Launcher3 keeps it.
-            + "mkdir -p $D/launcher; for f in $(find /data/user_de/0/com.nothing.launcher"
-            + " /data/data/com.nothing.launcher -path '*databases/*' 2>/dev/null);"
-            + " do cp \"$f\" $D/launcher/ 2>/dev/null; echo \"$f\"; done > $D/launcher/files.txt"
-            + " 2>&1\n"
-            // Where its data really is, if not there: Android's record and both folders.
-            + "(dumpsys package com.nothing.launcher | grep -iE 'dataDir|codePath|userId=';"
-            + " id; ls -laR /data/user_de/0/com.nothing.launcher /data/data/com.nothing.launcher"
-            + " 2>&1 | head -400) > $D/launcher/folders.txt 2>&1\n"
+            // Root's shell here runs in a mount namespace of its own, where Android 11+ hides
+            // other apps' data folders (DebuG15: both "No such file or directory", though
+            // dumpsys gives /data/user/0/com.nothing.launcher): it is read from init's mount
+            // namespace, where they are, and passed through /data/local/tmp (the same in both).
+            + "mkdir -p $D/launcher; rm -rf /data/local/tmp/nlplus-launcher;"
+            + " mkdir -p /data/local/tmp/nlplus-launcher\n"
+            + "nsenter -t 1 -m -- sh -c 'for d in user user_de; do"
+            + " for f in /data/$d/0/com.nothing.launcher/databases/*; do [ -f \"$f\" ] &&"
+            + " cp \"$f\" \"/data/local/tmp/nlplus-launcher/$d.${f##*/}\" && echo \"$f\";"
+            + " done; done;"
+            + " ls -laR /data/user/0/com.nothing.launcher /data/user_de/0/com.nothing.launcher"
+            + " 2>&1 | head -400' > $D/launcher/files.txt 2>&1\n"
+            + "cp /data/local/tmp/nlplus-launcher/* $D/launcher/ 2>/dev/null;"
+            + " rm -rf /data/local/tmp/nlplus-launcher\n"
             // The window manager (rotation, its sensor, the lock screen's orientation).
             + "mkdir -p $D/framework; cp /system/framework/services.jar $D/framework/ 2>/dev/null\n"
             + "mkdir -p $D/surfaceflinger; cp /system/bin/surfaceflinger $D/surfaceflinger/;"

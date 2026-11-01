@@ -549,9 +549,9 @@ Around the home screen:
   without that check, so the pill came back in landscape. That one resize is skipped while
   the bar is hidden.
 - A **live wallpaper** that turns with the home screen draws its first frames after a turn
-  itself: one that rebuilds its renderer for the new size (Living Worlds does) shows black,
-  or a white frame, until it has drawn, most visibly when going home in portrait after the
-  home screen was last in landscape. That is the wallpaper's own redraw.
+  itself: one that rebuilds its renderer for the new size shows black, or a white frame, until
+  it has drawn. That is the wallpaper's own redraw (Living Worlds' is replaced by the module's
+  framing, see *Living Worlds smooth turning*).
 - **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
 
 ### Landscape grid
@@ -808,24 +808,30 @@ last shown is heard.
 ### Living Worlds smooth turning
 
 *Home screen → Living Worlds smooth turning* (on by default). Living Worlds' default wallpaper
-drawing ("Alt wallpaper tech", from Android 8) shows a WebView in a Presentation on a virtual
-display over the wallpaper's surface, and at every surface change (each turn)
-`createPresentation` tore both down and built them again: the page reloaded, the wallpaper went
-blank and started over. The module resizes the virtual display in place and lays the WebView
-out to the new size; the page goes on and Living Worlds' own resize (it checks the window size
-each frame) fits the scene. Should Android dismiss the Presentation because its display changed
-size, Living Worlds' own rebuild runs as before (the log says which happened). Its WebView and
-Presentation window are given the page's own black background (they were white until the page
-painted: a white rectangle on each turn), and Living Worlds' `App.resize` runs at once after the
-resize rather than at its next size check. Landscape shows
-the scene as Living Worlds fits it: every world ships only as a 345×455 crop of the desktop
-program's 640×480 art (the `*.LBM.cropped.json` scenes; the full pictures are not in the app).
+drawing ("Alt wallpaper tech", from Android 8) shows its page in a WebView on a virtual display
+the size of the wallpaper's surface, and at every surface change (each turn)
+`createPresentation` tore both down and built them again: the page reloaded and started over.
+Even resized in place, the page lays itself out again a few frames after its display changed
+size, so each turn first showed the old layout in the new shape (DebuG15's video: a black side
+going to landscape, the bottom half black for about half a second coming back).
 
-*Home screen → Living Worlds in landscape*: a slider from the top of the scene (sky) to the
-bottom (water, ground), 50 by default, which is Living Worlds' own centring. Its `App.resize`
-places the scene centred top to bottom; it is wrapped so that, in landscape, the scene's top
-follows the slider after its own sizing (portrait is its own). Filling a landscape screen's
-width takes about 7× the 345-wide scene, which shows a third of its height; showing more would
+So the page no longer changes size at all. It is given a display of exactly its scene's size
+(345×455 at density 160: one page pixel per display pixel, so Living Worlds' own `App.resize`
+fits the scene at scale 1), and the module draws its frames on the wallpaper's surface with
+`App.resize`'s own framing worked out for the surface: zoomed to fill ("Zoom to fill screen",
+Living Worlds' switch) or fitted, the same sideways anchor it gives February, July and
+December, and pixels kept sharp as its `image-rendering: pixelated` keeps them. A turn draws
+the last frame again at once for the new size, before Android shows the wallpaper: the first
+frame in landscape is already the landscape picture, filling the screen, with no black and no
+reload. The page draws about 16× fewer pixels than at screen size; scaling it up is one GPU
+draw. Should a phone be unable to draw the page's frames, the log says so and Living Worlds'
+own drawing is used. With the switch off, Living Worlds draws as it always has.
+
+*Home screen → Living Worlds in landscape* (with smooth turning on): a slider from the top of
+the scene (sky) to the bottom (water, ground), 50 by default, which is Living Worlds' own
+centring. Every world ships only as a 345×455 crop of the desktop program's 640×480 art (the
+`*.LBM.cropped.json` scenes; the full pictures are not in the app), so filling a landscape
+screen's width takes about 7× the scene, which shows a third of its height; showing more would
 leave bars at the sides, as the art is no wider.
 
 ### Palette Cycle downloads
@@ -1054,7 +1060,7 @@ The module's code is grouped by where it runs:
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), Settings screens opened on a feature's behalf (`SystemShortcuts`) and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
-| `wallpaper` | Living Worlds' live wallpaper: its sounds and seamless turns (`LivingWorlds`); Palette Cycle's downloads and sounds (`PaletteCycle`, `PaletteCycleSounds`), its framing and cycling (`PaletteCycleView`). |
+| `wallpaper` | Living Worlds' live wallpaper: its sounds (`LivingWorlds`) and its framing and turns (`LivingWorldsView`); Palette Cycle's downloads and sounds (`PaletteCycle`, `PaletteCycleSounds`), its framing and cycling (`PaletteCycleView`). |
 | `settings` | Developer options → Running services as a task manager, in Settings (`TaskManager`, `TaskHeader`, `TaskStats`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
 | `ui` | The module's settings app: a menu of pages (App drawer, Home screen, Sound, Status bar & quick settings, Lock screen, System font, Backup, Diagnostics). |

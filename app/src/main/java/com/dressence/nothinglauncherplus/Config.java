@@ -172,7 +172,7 @@ public final class Config {
     public boolean taskManager = true;
     /** Living Worlds' ambient sounds on the home screen and in the app drawer. */
     public boolean livingWorldsSounds = true;
-    /** Living Worlds turns without a flash. */
+    /** Living Worlds framed by the module: a turn is only a new framing. */
     public boolean livingWorldsTurn = true;
     /** Living Worlds in landscape: where on the scene, 0 top .. 100 bottom (50 its own). */
     public int livingWorldsLandscapeY = 50;

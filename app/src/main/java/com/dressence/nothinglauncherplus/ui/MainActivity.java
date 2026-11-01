@@ -335,8 +335,9 @@ public class MainActivity extends Activity {
                     config.paletteCycleLandscapeY = value;
                     store.save(this);
                 });
-        ui.switchRow("Living Worlds smooth turning", "The live wallpaper turns without"
-                + " flashing or starting over", config.livingWorldsTurn, checked -> {
+        ui.switchRow("Living Worlds smooth turning", "The module frames the live wallpaper:"
+                + " turning only zooms it to the new screen, never black or starting over ·"
+                + " the landscape slider needs it", config.livingWorldsTurn, checked -> {
                     config.livingWorldsTurn = checked;
                     store.save(this);
                 });

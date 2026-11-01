@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.view.SurfaceHolder;
 import android.webkit.WebView;
 
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
@@ -23,9 +24,10 @@ import de.robv.android.xposed.XposedHelpers;
 
 /**
  * Living Worlds (2.12.74) as a live wallpaper: its sounds on the home screen and in the app
- * drawer, a seamless turn (see resizeInPlace) and its landscape position (positionJs).
+ * drawer, and its picture framed by the module (LivingWorldsView: a turn is only a new framing,
+ * with the landscape slider).
  *
- * <p>Sounds: Living Worlds' ambient sounds on the home screen and in the app drawer. Each of its 12 worlds has its own sounds, played by its JavaScript (sounds.js:
+ * <p>Sounds: each of its 12 worlds has its own sounds, played by its JavaScript (sounds.js:
  * Sounds.cycle sends "playSound" with the tracks, fades and volumes of the moment) and by its
  * Android side (SoundManager, Sound: MediaPlayer on assets/sound/*.m4a). The app plays them;
  * the live wallpaper does not, twice over: its JavaScript runs with fixed settings that have no
@@ -57,25 +59,6 @@ public final class LivingWorlds {
     private static final String SHOWN = "nlplus.shown";
     private static final String ENABLED_AT = "nlplus.enabledAt";
     private static final long ENABLE_EVERY_MS = 3000;
-    /**
-     * Landscape position: Living Worlds' App.resize places the scene centred top to bottom
-     * (top = 0.5 x (screen height - scene height)); wrapped so that, in landscape, the top
-     * follows the module's slider (window.__nlpY, 0 = the scene's top, 1 = its bottom). Its
-     * own sizing runs first; portrait is its own. Set up once per page load; a new slider
-     * value re-runs its resize.
-     */
-    private static String positionJs(int percent) {
-        return "(function(){if(!window.App||!App.resize)return;window.__nlpY=" + (percent / 100f)
-                + ";if(!App.__nlpR){var o=App.resize;App.__nlpR=1;App.resize=function(){"
-                + "o.apply(this,arguments);try{if(this.engine&&this.$canvas"
-                + "&&innerWidth>innerHeight){var s=this.store.get(),b=this.engine.getWidth(),"
-                + "c=this.engine.getHeight(),d=innerWidth/b,e=innerHeight/c,"
-                + "f=s.coverMode?Math.max(d,e):Math.min(d,e);"
-                + "this.$canvas.css({top:window.__nlpY*(innerHeight-c*f)});}}catch(x){}};}"
-                + "if(App.__nlpLastY!==window.__nlpY){App.__nlpLastY=window.__nlpY;"
-                + "if(App.engine)App.resize();}})();";
-    }
-
     private static final String SOUNDS_JS = "window.App&&App.store&&App.allowSounds"
             + "&&!App.store.get().playSounds&&App.store.set({playSounds:true});";
 
@@ -92,14 +75,15 @@ public final class LivingWorlds {
         Class<?> managerClass = XposedHelpers.findClass(CLS_SOUNDS, cl);
         Class<?> specClass = XposedHelpers.findClass(CLS_SPEC, cl);
 
-        // Each frame the wallpaper draws (its JavaScript calls drawFrame): Ambient Sounds on, and
-        // the landscape position, in its JavaScript.
+        // Each frame the wallpaper draws (its JavaScript calls drawFrame): Ambient Sounds on, in
+        // its JavaScript.
         XposedHelpers.findAndHookMethod(CLS_JS, cl, "drawFrame", new XC_MethodHook() {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
                 Object engine = XposedHelpers.getObjectField(param.thisObject, "myActivity");
-                inject(engine, (store.get().livingWorldsSounds && !isPreview(engine)
-                        ? SOUNDS_JS : "") + positionJs(store.get().livingWorldsLandscapeY));
+                if (store.get().livingWorldsSounds && !isPreview(engine)) {
+                    inject(engine, SOUNDS_JS);
+                }
             }
         });
 
@@ -130,19 +114,31 @@ public final class LivingWorlds {
             }
         });
 
-        // Turning: the virtual display resized in place, not rebuilt (no reload, no flash).
+        // The page on a display of its scene's size, framed by the module: a turn (each surface
+        // change calls createPresentation) is only a new framing, never a rebuild.
         XposedHelpers.findAndHookMethod(engineClass, "createPresentation", new XC_MethodHook() {
             @Override
             protected void beforeHookedMethod(MethodHookParam param) {
-                if (store.get().livingWorldsTurn && !REBUILDING.get()) {
-                    Hooks.guard("living worlds turn", () -> {
-                        if (resizeInPlace(param.thisObject)) {
-                            param.setResult(null);
-                        }
-                    }).run();
+                Object engine = param.thisObject;
+                if (!store.get().livingWorldsTurn) {
+                    LivingWorldsView.surfaceGoing(engine); // Living Worlds' own from now on.
+                    return;
                 }
+                Hooks.guard("living worlds framing", () -> {
+                    if (LivingWorldsView.present(engine, store)) {
+                        param.setResult(null);
+                    }
+                }).run();
             }
         });
+        XposedHelpers.findAndHookMethod(engineClass, "onSurfaceDestroyed", SurfaceHolder.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        Hooks.guard("living worlds surface", () ->
+                                LivingWorldsView.surfaceGoing(param.thisObject)).run();
+                    }
+                });
 
         // Its "playSound" messages: to the engine's own SoundManager.
         XposedHelpers.findAndHookMethod(CLS_JS, cl, "postMessage", String.class,
@@ -188,6 +184,8 @@ public final class LivingWorlds {
                         Object engine = param.thisObject;
                         store.reloadIfChanged(); // The switch, as last set.
                         XposedHelpers.setAdditionalInstanceField(engine, SHOWN, param.args[0]);
+                        Hooks.guard("living worlds shown", () -> LivingWorldsView.setVisible(
+                                engine, Boolean.TRUE.equals(param.args[0]))).run();
                         Object was = current.get();
                         if (Boolean.TRUE.equals(param.args[0]) && !isPreview(engine)
                                 && was != engine) {
@@ -239,69 +237,6 @@ public final class LivingWorlds {
                     () -> web.evaluateJavascript(js, null)));
         }
     }
-
-    /**
-     * Living Worlds' "Alt wallpaper tech" (its default from Android 8) draws a WebView in a
-     * Presentation on a virtual display over the wallpaper's surface; at each surface change
-     * (a turn) createPresentation tore both down and built them again, reloading the page:
-     * the wallpaper went blank and started over. Here the display is resized to the new size
-     * and the WebView laid out to it; the page goes on, and its own resize (window size
-     * checked each frame) fits the scene. Android may dismiss a Presentation whose display
-     * changes size; if the WebView has left its window shortly after, Living Worlds' own
-     * rebuild runs as before. True when resized here.
-     */
-    private static boolean resizeInPlace(Object engine) {
-        android.hardware.display.VirtualDisplay display =
-                (android.hardware.display.VirtualDisplay) XposedHelpers.getObjectField(engine,
-                        "myVirtualDisplay");
-        WebView web = (WebView) XposedHelpers.getObjectField(engine, "myWebView");
-        android.view.SurfaceHolder holder = (android.view.SurfaceHolder)
-                XposedHelpers.getObjectField(engine, "myHolder");
-        int width = XposedHelpers.getIntField(engine, "myWidth");
-        int height = XposedHelpers.getIntField(engine, "myHeight");
-        if (display == null || web == null || holder == null || width <= 0 || height <= 0
-                || !web.isAttachedToWindow()) {
-            return false; // First build, or nothing to keep: Living Worlds builds it.
-        }
-        android.view.Display shown = display.getDisplay();
-        android.graphics.Point size = new android.graphics.Point();
-        shown.getRealSize(size);
-        if (size.x == width && size.y == height) {
-            return true; // Same size: nothing to do.
-        }
-        display.setSurface(holder.getSurface());
-        display.resize(width, height, 160);
-        android.view.ViewGroup.LayoutParams lp = web.getLayoutParams();
-        if (lp != null) {
-            lp.width = width;
-            lp.height = height;
-            web.setLayoutParams(lp);
-        }
-        // Its own fit at once, not at its next size check (every other frame).
-        web.evaluateJavascript("window.App&&App.engine&&App.resize&&App.resize()", null);
-        Hooks.log("living worlds: turned in place to " + width + "x" + height);
-        web.postDelayed(Hooks.guard("living worlds turn check", () -> {
-            if (!web.isAttachedToWindow() && XposedHelpers.getObjectField(engine,
-                    "myWebView") == web && XposedHelpers.getObjectField(engine,
-                    "myHolder") != null) {
-                Hooks.log("living worlds: presentation dismissed after resizing; rebuilt");
-                rebuild(engine);
-            }
-        }), 400);
-        return true;
-    }
-
-    /** Living Worlds' own rebuild (createPresentation, not resized here). */
-    private static void rebuild(Object engine) {
-        REBUILDING.set(true);
-        try {
-            XposedHelpers.callMethod(engine, "createPresentation");
-        } finally {
-            REBUILDING.set(false);
-        }
-    }
-
-    private static final ThreadLocal<Boolean> REBUILDING = ThreadLocal.withInitial(() -> false);
 
     /** The engine's SoundManager (the app's), made on the main thread on first use. */
     private static Object manager(Object engine, Class<?> managerClass) {
