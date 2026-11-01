@@ -15,6 +15,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 import com.dressence.nothinglauncherplus.xposed.Hooks;
 
@@ -24,7 +25,7 @@ import de.robv.android.xposed.XposedHelpers;
 /**
  * Memory in recents, as custom ROMs show it (crDroid's MemInfoView, Infinity X): how much
  * memory is free of the phone's total, and swap below it when the phone has swap (zram); a
- * tap opens Developer options, where Running services is. It takes
+ * tap opens Running services (Developer options' page, opened by the system). It takes
  * Nothing's Screenshot button's look (background, colours, padding, focus), so it matches.
  *
  * <p>It is one more button in recents' row of action buttons (Screenshot, Split:
@@ -104,13 +105,28 @@ final class RecentsRam {
     }
 
     /**
-     * Developer options, which lists Running services. Nothing's Settings has no
-     * Settings$DevRunningServicesActivity (crDroid's way in): it cannot be started, not even by
-     * the system (DebuG10, DebuG11: START result -92, class not found).
+     * Running services, opened by system_server (SystemShortcuts: Nothing's Settings has it
+     * only as a fragment Developer options opens in SubSettings, which the launcher may not
+     * start). With no answer from the system (its part loads at a reboot after updating, or it
+     * found no such screen), developer options, which lists Running services.
      */
     private static void openRunningServices(Context context) {
-        context.startActivity(new Intent(android.provider.Settings
-                .ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        context.sendOrderedBroadcast(
+                new Intent(Config.ACTION_RUNNING_SERVICES).setPackage("android"), null,
+                new android.content.BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context c, Intent intent) {
+                        if (getResultCode() == android.app.Activity.RESULT_OK) {
+                            return;
+                        }
+                        Hooks.log("recents memory: no answer from the system; developer"
+                                + " options instead");
+                        Hooks.guard("recents developer options", () -> context.startActivity(
+                                new Intent(android.provider.Settings
+                                        .ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))).run();
+                    }
+                }, null, android.app.Activity.RESULT_CANCELED, null, null);
     }
 
     private static synchronized Handler worker() {

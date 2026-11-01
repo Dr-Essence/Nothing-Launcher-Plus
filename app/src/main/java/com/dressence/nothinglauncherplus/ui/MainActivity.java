@@ -283,7 +283,7 @@ public class MainActivity extends Activity {
 
         ui.section("Recents");
         ui.switchRow("Memory in recents", "Free and total memory beside Screenshot; tap it for"
-                + " Developer options (Running services)",
+                + " Running services",
                 config.recentsMemory, checked -> {
                     config.recentsMemory = checked;
                     store.save(this);

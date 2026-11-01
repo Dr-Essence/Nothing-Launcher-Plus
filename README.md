@@ -739,10 +739,14 @@ taking the Screenshot button's background, colours, padding and focus, so it loo
 fades, hides and moves with the row by Nothing's own animation. The figures are read off the
 main thread every 3 s, only while the button is on screen.
 
-A tap opens Developer options, where Running services is listed. crDroid's recents opens
-Running services itself (`Settings$DevRunningServicesActivity`), but Nothing's Settings has no
-such activity: it cannot be started, not even by the system (START result -92, class not
-found).
+A tap opens Running services. In Nothing's Settings it is only a fragment
+(`com.android.settings.applications.RunningServices`) that Developer options opens in
+`SubSettings`: there is no `Settings$DevRunningServicesActivity` (crDroid's way in, START
+result -92), and `Settings$RunningServicesActivity` shows the app list. `SubSettings` needs
+`LAUNCH_SUBSETTINGS` (preinstalled|signature), which Nothing Launcher does not ask for, so the
+launcher asks system_server (`SystemShortcuts`), which is not held to it, to open the fragment
+there as Developer options does. With no answer from the system (it loads its part at a reboot
+after updating), developer options opens instead.
 
 ### Gaming launcher with a controller
 
@@ -915,7 +919,7 @@ The module's code is grouped by where it runs:
 | `launcher` | Everything in Nothing Launcher: the Smart drawer's folders and covers, the folder menu, landscape, controllers, sounds, dot-matrix icons (`DotIcons`, `IconScreen`) and scrolling names. |
 | `systemui` | The status bar and quick settings: `Clock`, `Battery`, `GreenIcons`, `GreenTexts`, `QuickSettings`, `NetworkSpeed`, all in the lit look of `Led`. |
 | `perf` | CMF Phone 1 only: the device check and root helper (`Device`), the Ndot performance overlay (`OverlayService` reads, `PerfHud` draws) and the per-game 120 fps unlock (`GameUnlock`), the Game Bar's buttons (`GameBar`, in the Game Bar; `GameBarReceiver`, in the module app). |
-| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`) and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
+| `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), Settings screens opened on a feature's behalf (`SystemShortcuts`) and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
