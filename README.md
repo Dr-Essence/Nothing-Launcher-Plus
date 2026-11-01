@@ -845,7 +845,10 @@ half a second out):
   stay silent.
 
 The module plays the sound of what Palette Cycle shows (its `changeImage`), downloaded on the
-phone once into Palette Cycle's cache, and heard only while the wallpaper shows on the home
+phone once into Palette Cycle's cache. Each loops with no gap (`SeamlessLoop`): replayed as a
+file, an MP3 stops, plays its padding and trailing silence and starts again; here it is decoded
+once, the silence at both ends cut, its last 0.3 s cross-faded into its start, and played by an
+`AudioTrack` looping over its own buffer, end into start sample for sample. It is and heard only while the wallpaper shows on the home
 screen or in the app drawer, as Living Worlds' sounds are.
 
 ### Palette Cycle framing and cycling

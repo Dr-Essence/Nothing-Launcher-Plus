@@ -6,8 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.media.AudioAttributes;
-import android.media.MediaPlayer;
+import android.media.AudioTrack;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -30,7 +29,7 @@ import de.robv.android.xposed.XposedHelpers;
 /**
  * Palette Cycle's worlds with their sounds, as the Living Worlds web demo they come from plays
  * them (effectgames.com/demos/worlds: scenes.js gives each world and weather its sound and
- * volume, main.js plays audio/{sound}.mp3 looping, fading in over 2 s to that volume, default
+ * volume, main.js plays audio/{sound}.mp3 looping (here with no gap: SeamlessLoop), fading in over 2 s to that volume, default
  * 0.5, and out over half a second when the world changes). Palette Cycle has no sound at all.
  *
  * <p>The sound follows the world Palette Cycle shows (its changeImage: world, weather and
@@ -142,7 +141,7 @@ final class PaletteCycleSounds {
 
     private static java.lang.ref.WeakReference<Object> current =
             new java.lang.ref.WeakReference<>(null);
-    private static MediaPlayer player;
+    private static AudioTrack player;
     private static String playing;
     private static ValueAnimator fade;
     private static Context appContext;
@@ -264,7 +263,15 @@ final class PaletteCycleSounds {
             if (!file.exists() && !download(sound, file)) {
                 return;
             }
-            MAIN.post(Hooks.guard("palette cycle sound start", () -> start(sound, file, volume)));
+            SeamlessLoop.Pcm pcm;
+            try {
+                pcm = SeamlessLoop.prepare(file);
+            } catch (Throwable t) {
+                Hooks.log("palette cycle: sound " + sound + " not decoded: " + t);
+                file.delete(); // A broken download: fetched again next time.
+                return;
+            }
+            MAIN.post(Hooks.guard("palette cycle sound start", () -> start(sound, pcm, volume)));
         }));
     }
 
@@ -289,33 +296,25 @@ final class PaletteCycleSounds {
         return part.renameTo(file);
     }
 
-    private static void start(String sound, File file, float volume) {
+    private static void start(String sound, SeamlessLoop.Pcm pcm, float volume) {
         if (!sound.equals(playing)) {
             return; // Changed while it downloaded.
         }
         try {
-            MediaPlayer mp = new MediaPlayer();
-            mp.setAudioAttributes(new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
-            mp.setDataSource(file.getPath());
-            mp.setLooping(true);
-            mp.setVolume(0, 0);
-            mp.prepare();
-            mp.start();
-            player = mp;
+            AudioTrack track = SeamlessLoop.track(pcm);
+            track.play();
+            player = track;
             lastVolume = 0;
             fadeTo(volume);
         } catch (Throwable t) {
             Hooks.log("palette cycle: sound " + sound + " not played: " + t);
-            file.delete(); // A broken download: fetched again next time.
             playing = null;
         }
     }
 
     /** Fades out (half a second) and releases the sound. */
     private static void stop() {
-        MediaPlayer mp = player;
+        AudioTrack mp = player;
         player = null;
         playing = null;
         if (fade != null) {
@@ -325,13 +324,11 @@ final class PaletteCycleSounds {
         if (mp != null) {
             ValueAnimator out = ValueAnimator.ofFloat(lastVolume, 0f).setDuration(500);
             lastVolume = 0;
-            out.addUpdateListener(a -> {
-                float v = (Float) a.getAnimatedValue();
-                mp.setVolume(v, v);
-            });
+            out.addUpdateListener(a -> mp.setVolume((Float) a.getAnimatedValue()));
             out.addListener(new android.animation.AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(android.animation.Animator animation) {
+                    mp.stop();
                     mp.release();
                 }
             });
@@ -344,7 +341,7 @@ final class PaletteCycleSounds {
 
     /** Fades the playing sound to {@code volume} over 2 s, as the demo fades in. */
     private static void fadeTo(float volume) {
-        MediaPlayer mp = player;
+        AudioTrack mp = player;
         if (mp == null) {
             return;
         }
@@ -356,7 +353,7 @@ final class PaletteCycleSounds {
             float v = (Float) a.getAnimatedValue();
             lastVolume = v;
             if (player == mp) {
-                mp.setVolume(v, v);
+                mp.setVolume(v);
             }
         });
         fade.start();
