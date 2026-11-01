@@ -15,7 +15,6 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
 import com.dressence.nothinglauncherplus.xposed.Hooks;
 
@@ -25,7 +24,7 @@ import de.robv.android.xposed.XposedHelpers;
 /**
  * Memory in recents, as custom ROMs show it (crDroid's MemInfoView, Infinity X): how much
  * memory is free of the phone's total, and swap below it when the phone has swap (zram); a
- * tap opens Android's running services (Developer options → Running services). It takes
+ * tap opens Developer options, where Running services is. It takes
  * Nothing's Screenshot button's look (background, colours, padding, focus), so it matches.
  *
  * <p>It is one more button in recents' row of action buttons (Screenshot, Split:
@@ -74,6 +73,7 @@ final class RecentsRam {
         View screenshot = screenshotId != 0 ? buttons.findViewById(screenshotId) : null;
         if (screenshot instanceof TextView) {
             TextView shot = (TextView) screenshot;
+            ram.screenshot = new java.lang.ref.WeakReference<>(shot);
             ram.setTypeface(shot.getTypeface());
             ram.setTextColor(shot.getTextColors());
             ram.lineSize = shot.getTextSize();
@@ -104,32 +104,13 @@ final class RecentsRam {
     }
 
     /**
-     * Opened by system_server (SystemShortcuts): Android 15+ lets an app open another app's
-     * activity only with an intent that matches its intent filter, and Nothing's Settings
-     * refused the launcher's (DebuG10: START result -92, "does your intent not match its
-     * declared intent-filter"); the system is not held to that.
+     * Developer options, which lists Running services. Nothing's Settings has no
+     * Settings$DevRunningServicesActivity (crDroid's way in): it cannot be started, not even by
+     * the system (DebuG10, DebuG11: START result -92, class not found).
      */
     private static void openRunningServices(Context context) {
-        Hooks.log("recents memory: tapped, asking the system for Running services");
-        context.sendOrderedBroadcast(
-                new Intent(Config.ACTION_RUNNING_SERVICES).setPackage("android"), null,
-                new android.content.BroadcastReceiver() {
-                    @Override
-                    public void onReceive(Context c, Intent intent) {
-                        if (getResultCode() == android.app.Activity.RESULT_OK) {
-                            return;
-                        }
-                        // No answer: the system part is not loaded (a reboot after updating
-                        // loads it). Developer options, which lists Running services, can be
-                        // opened by its public action.
-                        Hooks.log("recents memory: the system did not answer (reboot after"
-                                + " updating?); opening developer options");
-                        Hooks.guard("recents developer options", () -> context.startActivity(
-                                new Intent(android.provider.Settings
-                                        .ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))).run();
-                    }
-                }, null, android.app.Activity.RESULT_CANCELED, null, null);
+        context.startActivity(new Intent(android.provider.Settings
+                .ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
     }
 
     private static synchronized Handler worker() {
@@ -139,6 +120,33 @@ final class RecentsRam {
             worker = new Handler(thread.getLooper());
         }
         return worker;
+    }
+
+    /** Diagnostic: a view's background, its tint, state and the colour it draws mid-view. */
+    private static String describe(View view) {
+        android.graphics.drawable.Drawable bg = view.getBackground();
+        StringBuilder out = new StringBuilder();
+        out.append(view.getWidth()).append('x').append(view.getHeight())
+                .append(" bgTint=").append(view.getBackgroundTintList())
+                .append(" state=").append(java.util.Arrays.toString(view.getDrawableState()))
+                .append(" bg=").append(bg);
+        if (bg instanceof android.graphics.drawable.LayerDrawable) {
+            android.graphics.drawable.LayerDrawable layers =
+                    (android.graphics.drawable.LayerDrawable) bg;
+            for (int i = 0; i < layers.getNumberOfLayers(); i++) {
+                out.append(" layer").append(i).append('#').append(layers.getId(i)).append('=')
+                        .append(layers.getDrawable(i));
+            }
+        }
+        if (bg != null && view.getWidth() > 0 && view.getHeight() > 0) {
+            android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(
+                    view.getWidth(), view.getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
+            bg.draw(new android.graphics.Canvas(bitmap));
+            out.append(" drawsMid=#").append(Integer.toHexString(
+                    bitmap.getPixel(view.getWidth() / 2, view.getHeight() / 2)));
+            bitmap.recycle();
+        }
+        return out.toString();
     }
 
     /** Swap total and free, in bytes, from /proc/meminfo (zeros when there is none). */
@@ -185,6 +193,8 @@ final class RecentsRam {
         private final Runnable refresh = this::refresh;
         private boolean shown;
         private boolean stateLogged;
+        /** Nothing's Screenshot button, to compare backgrounds in the diagnostic. */
+        java.lang.ref.WeakReference<TextView> screenshot;
         /** Nothing's Screenshot text size; two lines (memory, swap) are drawn smaller. */
         float lineSize = 36f;
 
@@ -208,11 +218,11 @@ final class RecentsRam {
             shown = isVisible;
             if (isVisible && !stateLogged) {
                 stateLogged = true;
-                // Diagnostic: the button showed a filled teal background (DebuG10, 11).
-                Hooks.log("recents memory: shown focused=" + isFocused() + " pressed="
-                        + isPressed() + " selected=" + isSelected() + " activated="
-                        + isActivated() + " background=" + getBackground() + " state="
-                        + java.util.Arrays.toString(getDrawableState()));
+                // Diagnostic: the button draws a teal fill Screenshot does not, while neither
+                // focused nor pressed (DebuG11); both backgrounds, as drawn, are compared.
+                TextView shot = screenshot != null ? screenshot.get() : null;
+                post(() -> Hooks.log("recents memory: ram " + describe(this) + " | screenshot "
+                        + (shot != null ? describe(shot) : "none")));
             }
             Handler handler = worker();
             handler.removeCallbacks(refresh);
