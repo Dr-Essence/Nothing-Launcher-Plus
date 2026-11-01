@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A memory chip: Running services (quick settings tile and shortcut). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7,5h10a2,2 0,0 1,2 2v10a2,2 0,0 1,-2 2H7a2,2 0,0 1,-2 -2V7a2,2 0,0 1,2 -2zM7.5,7.5v9h9v-9zM9,1h2v3H9zM13,1h2v3h-2zM9,20h2v3H9zM13,20h2v3h-2zM1,9h3v2H1zM1,13h3v2H1zM20,9h3v2h-3zM20,13h3v2h-3zM10,10h4v4h-4z" />
+</vector>

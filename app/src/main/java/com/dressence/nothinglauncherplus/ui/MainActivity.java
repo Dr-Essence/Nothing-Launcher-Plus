@@ -46,6 +46,9 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         store = new SettingsStore(this);
+        if (RunningServices.shortcutsOn(this)) {
+            RunningServices.setShortcuts(this, true); // The icon's long-press shortcut.
+        }
     }
 
     @Override
@@ -288,6 +291,11 @@ public class MainActivity extends Activity {
                     config.recentsMemory = checked;
                     store.save(this);
                 });
+        ui.switchRow("Running services shortcut", "A Running services icon to place on the home"
+                + " screen (in the widget list, like Settings shortcut) and on this app's"
+                + " long-press · the quick settings tile is in the tile editor",
+                RunningServices.shortcutsOn(this),
+                checked -> RunningServices.setShortcuts(this, checked));
 
         ui.section("Launcher");
         ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,

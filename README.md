@@ -748,6 +748,17 @@ launcher asks system_server (`SystemShortcuts`), which is not held to it, to ope
 there as Developer options does. With no answer from the system (it loads its part at a reboot
 after updating), developer options opens instead.
 
+### Running services tile and shortcut
+
+Running services also opens from a quick settings tile (*Running services*, in the tile
+editor) and from a shortcut: the module is listed where launchers offer shortcuts (Launcher3's
+widget list), as Settings offers its own *Settings shortcut*, and placing it puts a Running
+services icon on the home screen; the module icon's long-press has it too. *Home screen →
+Running services shortcut* turns the shortcuts off (the shortcut entry is disabled, the
+long-press shortcut removed, placed icons greyed). Each opens an invisible activity
+(`ui.RunningServices`) that asks system_server for the page, as recents' memory button does,
+or opens developer options when the system does not answer.
+
 ### Gaming launcher with a controller
 
 *Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any

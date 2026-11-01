@@ -55,6 +55,41 @@
 
         <activity android:name=".ui.EmojiPickerActivity" />
 
+        <!-- Opens Developer options' Running services (tile, shortcuts); shows nothing. -->
+        <activity
+            android:name=".ui.RunningServices"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:label="Running services"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- Listed where launchers offer shortcuts, as Settings' own "Settings shortcut". -->
+        <activity
+            android:name=".ui.RunningServices$CreateShortcut"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="Running services"
+            android:icon="@drawable/ic_running_services"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.CREATE_SHORTCUT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".ui.RunningServicesTile"
+            android:exported="true"
+            android:label="Running services"
+            android:icon="@drawable/ic_running_services"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Exported for Nothing's Game Bar, which starts it (the system may, while the module is
              in the background); it only shows or hides the module's own overlay. -->
         <service
