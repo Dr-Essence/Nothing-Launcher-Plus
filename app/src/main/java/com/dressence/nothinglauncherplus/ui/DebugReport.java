@@ -183,6 +183,10 @@ final class DebugReport {
             + " /data/data/com.nothing.launcher -path '*databases/*' 2>/dev/null);"
             + " do cp \"$f\" $D/launcher/ 2>/dev/null; echo \"$f\"; done > $D/launcher/files.txt"
             + " 2>&1\n"
+            // Where its data really is, if not there: Android's record and both folders.
+            + "(dumpsys package com.nothing.launcher | grep -iE 'dataDir|codePath|userId=';"
+            + " id; ls -laR /data/user_de/0/com.nothing.launcher /data/data/com.nothing.launcher"
+            + " 2>&1 | head -400) > $D/launcher/folders.txt 2>&1\n"
             // The window manager (rotation, its sensor, the lock screen's orientation).
             + "mkdir -p $D/framework; cp /system/framework/services.jar $D/framework/ 2>/dev/null\n"
             + "mkdir -p $D/surfaceflinger; cp /system/bin/surfaceflinger $D/surfaceflinger/;"
