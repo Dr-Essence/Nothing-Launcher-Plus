@@ -110,7 +110,26 @@ final class RecentsRam {
      * declared intent-filter"); the system is not held to that.
      */
     private static void openRunningServices(Context context) {
-        context.sendBroadcast(new Intent(Config.ACTION_RUNNING_SERVICES).setPackage("android"));
+        Hooks.log("recents memory: tapped, asking the system for Running services");
+        context.sendOrderedBroadcast(
+                new Intent(Config.ACTION_RUNNING_SERVICES).setPackage("android"), null,
+                new android.content.BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context c, Intent intent) {
+                        if (getResultCode() == android.app.Activity.RESULT_OK) {
+                            return;
+                        }
+                        // No answer: the system part is not loaded (a reboot after updating
+                        // loads it). Developer options, which lists Running services, can be
+                        // opened by its public action.
+                        Hooks.log("recents memory: the system did not answer (reboot after"
+                                + " updating?); opening developer options");
+                        Hooks.guard("recents developer options", () -> context.startActivity(
+                                new Intent(android.provider.Settings
+                                        .ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))).run();
+                    }
+                }, null, android.app.Activity.RESULT_CANCELED, null, null);
     }
 
     private static synchronized Handler worker() {
@@ -165,6 +184,7 @@ final class RecentsRam {
         private final Handler main = new Handler(Looper.getMainLooper());
         private final Runnable refresh = this::refresh;
         private boolean shown;
+        private boolean stateLogged;
         /** Nothing's Screenshot text size; two lines (memory, swap) are drawn smaller. */
         float lineSize = 36f;
 
@@ -186,6 +206,14 @@ final class RecentsRam {
         public void onVisibilityAggregated(boolean isVisible) {
             super.onVisibilityAggregated(isVisible);
             shown = isVisible;
+            if (isVisible && !stateLogged) {
+                stateLogged = true;
+                // Diagnostic: the button showed a filled teal background (DebuG10, 11).
+                Hooks.log("recents memory: shown focused=" + isFocused() + " pressed="
+                        + isPressed() + " selected=" + isSelected() + " activated="
+                        + isActivated() + " background=" + getBackground() + " state="
+                        + java.util.Arrays.toString(getDrawableState()));
+            }
             Handler handler = worker();
             handler.removeCallbacks(refresh);
             if (isVisible) {

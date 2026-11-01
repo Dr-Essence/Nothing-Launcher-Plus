@@ -48,7 +48,9 @@ public final class SystemShortcuts {
         context.registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent intent) {
+                Hooks.log("running services: asked");
                 Hooks.guard("running services", () -> openRunningServices(context)).run();
+                setResultCode(android.app.Activity.RESULT_OK); // Answered: the caller waits.
             }
         }, new IntentFilter(Config.ACTION_RUNNING_SERVICES), Context.RECEIVER_EXPORTED);
     }
@@ -61,6 +63,7 @@ public final class SystemShortcuts {
         try {
             try {
                 start(context, new Intent().setComponent(RUNNING_SERVICES), user);
+                Hooks.log("running services: opened");
             } catch (Throwable t) {
                 Hooks.log("running services: " + t + "; developer options instead");
                 start(context, new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
