@@ -830,14 +830,23 @@ addresses, read as they are now served.
 
 ### Palette Cycle sounds
 
-*Home screen → Palette Cycle sounds* (on by default). Palette Cycle has no sound; the Living
-Worlds web demo its worlds come from gives each world and weather a looping ambient sound
-(`scenes.js`: sound and volume; `main.js`: `audio/{sound}.mp3`, looping, 2 s fade in to the
-volume, 0.5 by default, half a second out). The module plays the sound of the world Palette
-Cycle shows (its `changeImage`: world, weather, time-of-day script), downloaded on the phone
-once into Palette Cycle's cache, and heard only while the wallpaper shows on the home screen or
-in the app drawer, as Living Worlds' sounds are. March has no sound in the demo; Canvas Cycle's
-single pictures have none either.
+*Home screen → Palette Cycle sounds* (on by default). Palette Cycle has no sound; the two web
+demos its pictures come from give them looping ambient sounds, played the same way by both
+(`main.js`: `audio/{sound}.mp3`, looping, 2 s fade in to the scene's volume, 0.5 by default,
+half a second out):
+
+- its 22 worlds (time of day and weather) take the Living Worlds demo's (`demos/worlds/
+  scenes.js`; March has none there);
+- its 48 single pictures: 35 take the Canvas Cycle demo's (`demos/canvascycle/scenes.js`;
+  V01 writes `maxVolumd`, which the demo does not read, so it plays at 0.5); V05AM, V25 and
+  V26 are not in that list but are the same paintings the Living Worlds demo gives V13,
+  V25HEAT and V13; V05PM, V25PM, V26PM and V26NIGHT, the same paintings at other times, are
+  given those (not from either demo); V12, V18 and V21–V24 have no sound in either demo and
+  stay silent.
+
+The module plays the sound of what Palette Cycle shows (its `changeImage`), downloaded on the
+phone once into Palette Cycle's cache, and heard only while the wallpaper shows on the home
+screen or in the app drawer, as Living Worlds' sounds are.
 
 ### Gaming launcher with a controller
 

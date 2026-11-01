@@ -37,8 +37,9 @@ import de.robv.android.xposed.XposedHelpers;
  * time-of-day script), downloaded on the phone once and kept in Palette Cycle's cache. Heard
  * only while the wallpaper shows on the home screen or in the app drawer: not over apps, on
  * the lock screen until unlocked, with the screen off, in the picker's preview, nor with
- * another wallpaper set (no Palette Cycle engine runs); one engine at a time. Pictures that
- * are not worlds (Canvas Cycle's single images) are silent, as the demo has no sound for them.
+ * another wallpaper set (no Palette Cycle engine runs); one engine at a time. Its single
+ * pictures (the Canvas Cycle demo's) take that demo's sounds (demos/canvascycle: scenes.js,
+ * main.js, the same playing); see the table for the few in neither demo's list.
  */
 final class PaletteCycleSounds {
 
@@ -46,7 +47,9 @@ final class PaletteCycleSounds {
             "rak.pixellwp.cycling.wallpaperService.CyclingWallpaperService$CyclingWallpaperEngine";
     private static final String CLS_CHANGING =
             "rak.pixellwp.cycling.wallpaperService.ImageChangingKt";
-    private static final String AUDIO = "https://www.effectgames.com/demos/worlds/audio/";
+    private static final String WORLDS_AUDIO = "https://www.effectgames.com/demos/worlds/audio/";
+    private static final String CANVAS_AUDIO =
+            "https://www.effectgames.com/demos/canvascycle/audio/";
     private static final float DEFAULT_VOLUME = 0.5f;
 
     /** scenes.js: world (base image) and script → sound and its volume. */
@@ -75,10 +78,62 @@ final class PaletteCycleSounds {
         put("V16RAIN", "novrainscpt", "V16RAIN", DEFAULT_VOLUME);
         put("V12BASIC", "DECCLRSCPT", "V13", DEFAULT_VOLUME);
         // March (VW3BASIC, MARCLRSCPT) has no sound in the demo.
+
+        // Canvas Cycle demo (demos/canvascycle/scenes.js): single pictures, each its sound and
+        // volume. V01 writes "maxVolumd", which the demo does not read: it plays at 0.5.
+        single("V08AM", CANVAS_AUDIO, "V08", 0.25f); // Jungle Waterfall - Morning
+        single("V29", CANVAS_AUDIO, "V29", DEFAULT_VOLUME); // Seascape - Day
+        single("V19", CANVAS_AUDIO, "V19", DEFAULT_VOLUME); // Mountain Stream - Morning
+        single("V26SNOW", CANVAS_AUDIO, "V05RAIN", 0.25f); // Winter Forest - Snow
+        single("V08RAIN", CANVAS_AUDIO, "V08RAIN", DEFAULT_VOLUME); // Jungle Waterfall - Rain
+        single("V14", CANVAS_AUDIO, "V14", 1.0f); // Mountain Storm - Day
+        single("V30", CANVAS_AUDIO, "V30", 0.25f); // Deep Forest - Day
+        single("V04", CANVAS_AUDIO, "V04", DEFAULT_VOLUME); // Highland Ruins - Rain
+        single("V07", CANVAS_AUDIO, "V07", DEFAULT_VOLUME); // Rough Seas - Day
+        single("V20", CANVAS_AUDIO, "V20", DEFAULT_VOLUME); // Crystal Caves - Day
+        single("V05RAIN", CANVAS_AUDIO, "V05RAIN", DEFAULT_VOLUME); // Haunted Castle Ruins - Rain
+        single("V08PM", CANVAS_AUDIO, "V08", 0.25f); // Jungle Waterfall - Night
+        single("V16RAIN", CANVAS_AUDIO, "V16RAIN", DEFAULT_VOLUME); // Mirror Pond - Rain
+        single("V19AURA", CANVAS_AUDIO, "V19", DEFAULT_VOLUME); // Mountain Stream - Night
+        single("CORAL", CANVAS_AUDIO, "CORAL", 0.25f); // Aquarius - Day
+        single("V15", CANVAS_AUDIO, "V15", DEFAULT_VOLUME); // Harbor Town - Night
+        single("V30RAIN", CANVAS_AUDIO, "V30RAIN", DEFAULT_VOLUME); // Deep Forest - Rain
+        single("V02", CANVAS_AUDIO, "V02", 1.0f); // Mountain Fortress - Dusk
+        single("V28", CANVAS_AUDIO, "V28", DEFAULT_VOLUME); // Water City Gates - Fog
+        single("V29PM", CANVAS_AUDIO, "V29", DEFAULT_VOLUME); // Seascape - Sunset
+        single("V16", CANVAS_AUDIO, "V16", DEFAULT_VOLUME); // Mirror Pond - Morning
+        single("V01", CANVAS_AUDIO, "V29", DEFAULT_VOLUME); // Island Fires - Dusk
+        single("V09", CANVAS_AUDIO, "V09", 1.0f); // Forest Edge - Day
+        single("V16PM", CANVAS_AUDIO, "V16", DEFAULT_VOLUME); // Mirror Pond - Afternoon
+        single("V08", CANVAS_AUDIO, "V08", 0.25f); // Jungle Waterfall - Afternoon
+        single("V03", CANVAS_AUDIO, "V03", DEFAULT_VOLUME); // Swamp Cathedral - Day
+        single("V05HAUNT", CANVAS_AUDIO, "V05HAUNT", DEFAULT_VOLUME); // Haunted Castle Ruins - Night
+        single("V10", CANVAS_AUDIO, "V10", DEFAULT_VOLUME); // Deep Swamp - Day
+        single("V11AM", CANVAS_AUDIO, "V02", 1.0f); // Approaching Storm - Day
+        single("V13", CANVAS_AUDIO, "V13", DEFAULT_VOLUME); // Pond Ripples - Dawn
+        single("V17", CANVAS_AUDIO, "V17", 0.25f); // Ice Wind - Day
+        single("V19PM", CANVAS_AUDIO, "V19", DEFAULT_VOLUME); // Mountain Stream - Afternoon
+        single("V25HEAT", CANVAS_AUDIO, "V25HEAT", DEFAULT_VOLUME); // Desert Heat Wave - Day
+        single("V27", CANVAS_AUDIO, "V25HEAT", DEFAULT_VOLUME); // Magic Marsh Cave - Night
+        single("V29FOG", CANVAS_AUDIO, "V29", DEFAULT_VOLUME); // Seascape - Fog
+        // Pictures not in Canvas Cycle's list: the Living Worlds demo's sound for the same
+        // painting (its scenes.js), then other times of day of that painting given its sound
+        // (not from either demo). V12, V18, V21-V24 have none in either demo: silent.
+        single("V05AM", WORLDS_AUDIO, "V13", DEFAULT_VOLUME);
+        single("V25", WORLDS_AUDIO, "V25HEAT", DEFAULT_VOLUME);
+        single("V26", WORLDS_AUDIO, "V13", DEFAULT_VOLUME);
+        single("V05PM", WORLDS_AUDIO, "V13", DEFAULT_VOLUME);
+        single("V25PM", WORLDS_AUDIO, "V25HEAT", DEFAULT_VOLUME);
+        single("V26PM", WORLDS_AUDIO, "V13", DEFAULT_VOLUME);
+        single("V26NIGHT", WORLDS_AUDIO, "V13", DEFAULT_VOLUME);
     }
 
     private static void put(String world, String script, String sound, float volume) {
-        SOUNDS.put(world + "/" + script, new Object[] {sound, volume});
+        SOUNDS.put(world + "/" + script, new Object[] {WORLDS_AUDIO + sound, volume});
+    }
+
+    private static void single(String picture, String folder, String sound, float volume) {
+        SOUNDS.put(picture, new Object[] {folder + sound, volume});
     }
 
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
@@ -184,12 +239,14 @@ final class PaletteCycleSounds {
 
     private static Object[] soundOf(Object engine) {
         Object image = XposedHelpers.getObjectField(engine, "currentImage");
-        if (image == null || !XposedHelpers.getBooleanField(image, "isTimeline")) {
+        if (image == null) {
             return null;
         }
-        String world = (String) XposedHelpers.getObjectField(image, "imageId");
-        String script = (String) XposedHelpers.getObjectField(image, "script");
-        return SOUNDS.get(world + "/" + script);
+        String picture = (String) XposedHelpers.getObjectField(image, "imageId");
+        if (XposedHelpers.getBooleanField(image, "isTimeline")) {
+            return SOUNDS.get(picture + "/" + XposedHelpers.getObjectField(image, "script"));
+        }
+        return SOUNDS.get(picture);
     }
 
     private static void play(String sound, float volume) {
@@ -199,7 +256,10 @@ final class PaletteCycleSounds {
         }
         stop();
         playing = sound;
-        File file = new File(new File(appContext.getCacheDir(), "nlplus-sounds"), sound + ".mp3");
+        // demos/<demo>/audio/<name>: kept per demo, as both have files of the same names.
+        String[] parts = sound.split("/");
+        File file = new File(new File(appContext.getCacheDir(), "nlplus-sounds"),
+                parts[parts.length - 3] + "-" + parts[parts.length - 1] + ".mp3");
         DOWNLOADS.execute(Hooks.guard("palette cycle sound download", () -> {
             if (!file.exists() && !download(sound, file)) {
                 return;
@@ -214,7 +274,7 @@ final class PaletteCycleSounds {
             dir.mkdirs();
         }
         File part = new File(file.getPath() + ".part");
-        try (InputStream in = new URL(AUDIO + sound + ".mp3").openStream();
+        try (InputStream in = new URL(sound + ".mp3").openStream();
              FileOutputStream out = new FileOutputStream(part)) {
             byte[] buffer = new byte[64 * 1024];
             int n;
