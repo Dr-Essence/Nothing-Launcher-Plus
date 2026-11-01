@@ -7,6 +7,7 @@ import com.dressence.nothinglauncherplus.perf.Device;
 import com.dressence.nothinglauncherplus.perf.GameBar;
 import com.dressence.nothinglauncherplus.perf.GameUnlock;
 import com.dressence.nothinglauncherplus.system.OrientationProbe;
+import com.dressence.nothinglauncherplus.settings.TaskManagerProbe;
 import com.dressence.nothinglauncherplus.system.ControllerHome;
 import com.dressence.nothinglauncherplus.system.RotationSensor;
 import com.dressence.nothinglauncherplus.system.SystemShortcuts;
@@ -48,6 +49,8 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
             Launcher.install(cl, new ConfigStore());
         } else if (Config.SYSTEMUI_PKG.equals(pkg)) {
             SystemUi.install(cl, new ConfigStore());
+        } else if ("com.android.settings".equals(pkg)) {
+            Hooks.install("task manager probe", () -> TaskManagerProbe.install(cl));
         } else if (HeliBoardGamepad.PKG.equals(pkg)) {
             Hooks.install("heliboard gamepad",
                     () -> HeliBoardGamepad.install(cl, new ConfigStore()));

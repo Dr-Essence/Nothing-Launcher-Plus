@@ -8,5 +8,6 @@
         <item>com.nothing.cardservice</item>
         <item>helium314.keyboard</item>
         <item>com.nothing.ntgamedashboard</item>
+        <item>com.android.settings</item>
     </string-array>
 </resources>
