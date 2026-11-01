@@ -814,7 +814,10 @@ display over the wallpaper's surface, and at every surface change (each turn)
 blank and started over. The module resizes the virtual display in place and lays the WebView
 out to the new size; the page goes on and Living Worlds' own resize (it checks the window size
 each frame) fits the scene. Should Android dismiss the Presentation because its display changed
-size, Living Worlds' own rebuild runs as before (the log says which happened). Landscape shows
+size, Living Worlds' own rebuild runs as before (the log says which happened). Its WebView and
+Presentation window are given the page's own black background (they were white until the page
+painted: a white rectangle on each turn), and Living Worlds' `App.resize` runs at once after the
+resize rather than at its next size check. Landscape shows
 the scene as Living Worlds fits it: every world ships only as a 345×455 crop of the desktop
 program's 640×480 art (the `*.LBM.cropped.json` scenes; the full pictures are not in the app).
 

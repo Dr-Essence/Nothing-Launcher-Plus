@@ -103,6 +103,33 @@ public final class LivingWorlds {
             }
         });
 
+        // Black behind the page, as the page itself is (html, body: background black): the
+        // WebView and its Presentation window were white until the page painted, a white
+        // rectangle on each turn.
+        XposedHelpers.findAndHookMethod(engineClass, "createWebView", Context.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        WebView web = (WebView) XposedHelpers.getObjectField(param.thisObject,
+                                "myWebView");
+                        if (web != null) {
+                            web.setBackgroundColor(android.graphics.Color.BLACK);
+                        }
+                    }
+                });
+        XposedHelpers.findAndHookMethod(engineClass, "createPresentation", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                WebView web = (WebView) XposedHelpers.getObjectField(param.thisObject,
+                        "myWebView");
+                if (web != null) {
+                    Hooks.guard("living worlds black", () -> {
+                        web.getRootView().setBackgroundColor(android.graphics.Color.BLACK);
+                    }).run();
+                }
+            }
+        });
+
         // Turning: the virtual display resized in place, not rebuilt (no reload, no flash).
         XposedHelpers.findAndHookMethod(engineClass, "createPresentation", new XC_MethodHook() {
             @Override
@@ -250,6 +277,8 @@ public final class LivingWorlds {
             lp.height = height;
             web.setLayoutParams(lp);
         }
+        // Its own fit at once, not at its next size check (every other frame).
+        web.evaluateJavascript("window.App&&App.engine&&App.resize&&App.resize()", null);
         Hooks.log("living worlds: turned in place to " + width + "x" + height);
         web.postDelayed(Hooks.guard("living worlds turn check", () -> {
             if (!web.isAttachedToWindow() && XposedHelpers.getObjectField(engine,

@@ -178,8 +178,10 @@ final class DebugReport {
             // Nothing Launcher's home screen database (its items: icons, folders, widgets and
             // where they are), with its write-ahead log, to tell items lost from items placed
             // where a page does not show them. Copied, never changed.
-            + "mkdir -p $D/launcher; cp /data/data/com.nothing.launcher/databases/* $D/launcher/"
-            + " 2>/dev/null; ls -la /data/data/com.nothing.launcher/databases > $D/launcher/files.txt"
+            // It is kept in device-protected storage (user_de), where Launcher3 keeps it.
+            + "mkdir -p $D/launcher; for f in $(find /data/user_de/0/com.nothing.launcher"
+            + " /data/data/com.nothing.launcher -path '*databases/*' 2>/dev/null);"
+            + " do cp \"$f\" $D/launcher/ 2>/dev/null; echo \"$f\"; done > $D/launcher/files.txt"
             + " 2>&1\n"
             // The window manager (rotation, its sensor, the lock screen's orientation).
             + "mkdir -p $D/framework; cp /system/framework/services.jar $D/framework/ 2>/dev/null\n"
