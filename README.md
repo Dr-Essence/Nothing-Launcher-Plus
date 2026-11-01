@@ -818,6 +818,16 @@ size, Living Worlds' own rebuild runs as before (the log says which happened). L
 the scene as Living Worlds fits it: every world ships only as a 345×455 crop of the desktop
 program's 640×480 art (the `*.LBM.cropped.json` scenes; the full pictures are not in the app).
 
+### Palette Cycle downloads
+
+Palette Cycle (`rak.pixellwp`, F-Droid 2.3.1; in the module's LSPosed scope) shows Mark
+Ferrari's full 640×480 worlds, downloaded on the phone from effectgames.com. Its addresses
+(`http://…/scene.php`, `http://…/image.php`) now answer with a short "moved" notice, which it
+cannot read, so every download failed. Its author fixed this on 2026-10-31 (commit `b88f93a`,
+not yet released); the module applies the same change to the installed app: the current
+`https://www.effectgames.com/demos/worlds/cache/…js` and `…/canvascycle/images/….LBM.json`
+addresses, read as they are now served.
+
 ### Gaming launcher with a controller
 
 *Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any
@@ -992,7 +1002,7 @@ The module's code is grouped by where it runs:
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), Settings screens opened on a feature's behalf (`SystemShortcuts`) and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
-| `wallpaper` | Living Worlds' live wallpaper: its sounds and seamless turns (`LivingWorlds`). |
+| `wallpaper` | Living Worlds' live wallpaper: its sounds and seamless turns (`LivingWorlds`); Palette Cycle's downloads (`PaletteCycle`). |
 | `settings` | Developer options → Running services as a task manager, in Settings (`TaskManager`, `TaskHeader`, `TaskStats`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
 | `ui` | The module's settings app: a menu of pages (App drawer, Home screen, Sound, Status bar & quick settings, Lock screen, System font, Backup, Diagnostics). |

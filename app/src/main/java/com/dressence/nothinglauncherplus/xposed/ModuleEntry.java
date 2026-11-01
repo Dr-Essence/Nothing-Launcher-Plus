@@ -10,6 +10,7 @@ import com.dressence.nothinglauncherplus.system.OrientationProbe;
 import com.dressence.nothinglauncherplus.settings.TaskManager;
 import com.dressence.nothinglauncherplus.system.ControllerHome;
 import com.dressence.nothinglauncherplus.wallpaper.LivingWorlds;
+import com.dressence.nothinglauncherplus.wallpaper.PaletteCycle;
 import com.dressence.nothinglauncherplus.system.RotationSensor;
 import com.dressence.nothinglauncherplus.system.SystemShortcuts;
 import com.dressence.nothinglauncherplus.system.SystemFonts;
@@ -55,6 +56,8 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
         } else if (LivingWorlds.PKG.equals(pkg)) {
             Hooks.install("living worlds",
                     () -> LivingWorlds.install(cl, new ConfigStore()));
+        } else if (PaletteCycle.PKG.equals(pkg)) {
+            Hooks.install("palette cycle downloads", () -> PaletteCycle.install(cl));
         } else if (HeliBoardGamepad.PKG.equals(pkg)) {
             Hooks.install("heliboard gamepad",
                     () -> HeliBoardGamepad.install(cl, new ConfigStore()));
