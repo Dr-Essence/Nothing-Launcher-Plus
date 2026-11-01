@@ -77,6 +77,8 @@ public final class PaletteCycle {
                         image);
                 try {
                     java.net.URLConnection connection = new java.net.URL(url).openConnection();
+                    connection.setConnectTimeout(15_000); // A stalled server never hangs it.
+                    connection.setReadTimeout(30_000);
                     connection.setRequestProperty("Accept-Encoding", "gzip");
                     java.io.InputStream in = connection.getInputStream();
                     if ("gzip".equalsIgnoreCase(connection.getContentEncoding())) {

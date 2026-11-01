@@ -668,7 +668,10 @@ second), and the loader waits for idle at most three seconds per step.
 - An item added in landscape, or moved onto another page there, goes to a free spot of the
   portrait page: the launcher deletes items that overlap or leave the grid when it next loads,
   so every landscape write is checked against the portrait page. The page is then arranged
-  again in place, without reloading the launcher.
+  again in place, without reloading the launcher. The launcher reads an item's cells for its
+  database row later, on its own thread, so the row itself is kept inside the portrait page
+  where it is written (moves and new items): a landscape cell past the portrait grid never
+  reaches the database, whichever thread runs first.
 - **Widget picker** in landscape: Nothing sizes its cards and previews as fractions of the
   screen's width and height (a card is 45% of the width), so on the turned screen a profile made
   for it drew every card and preview about 1090 px wide on a 1080 px high screen, cut off at the

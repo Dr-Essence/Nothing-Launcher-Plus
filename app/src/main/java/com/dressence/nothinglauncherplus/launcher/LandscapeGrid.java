@@ -1341,7 +1341,8 @@ final class LandscapeGrid {
      * them. In landscape, a write that keeps an item on its page is an edit of the landscape
      * page: its row keeps the portrait cells and spans (portrait is not changed by it) and its
      * landscape place is remembered. A write that moves it elsewhere (another page, a folder)
-     * is left as it is, and its portrait copy is dropped.
+     * drops its portrait copy, and a desktop row keeps its cells inside the portrait page
+     * (keepInPortrait), as does a new item's row.
      */
     private void hookDatabase() {
         XposedHelpers.findAndHookMethod(CLS_MODEL_DB, cl, "update",
@@ -1352,7 +1353,7 @@ final class LandscapeGrid {
                         android.content.ContentValues values =
                                 (android.content.ContentValues) param.args[0];
                         String where = (String) param.args[1];
-                        if (values == null || where == null || portraitPlaces.isEmpty()) {
+                        if (values == null || where == null) {
                             return;
                         }
                         java.util.regex.Matcher m = ITEM_ROW.matcher(where);
@@ -1360,32 +1361,104 @@ final class LandscapeGrid {
                             return;
                         }
                         int id = Integer.parseInt(m.group(1));
-                        int[] p = portraitPlaces.get(id);
-                        if (p == null || current() == null) {
+                        Grid grid = current();
+                        if (grid == null) {
                             return;
                         }
-                        Integer container = values.getAsInteger("container");
-                        Integer screen = values.getAsInteger("screen");
-                        if ((container != null && container != p[0])
-                                || (screen != null && screen != p[1])) {
-                            portraitPlaces.remove(id); // Moved off its page: a real move.
-                            return;
+                        if (!keepPortraitPlace(values, id)) {
+                            keepInPortrait(values, id, grid);
                         }
-                        if (values.containsKey("cellX")) {
-                            values.put("cellX", p[2]);
-                        }
-                        if (values.containsKey("cellY")) {
-                            values.put("cellY", p[3]);
-                        }
-                        if (values.containsKey("spanX")) {
-                            values.put("spanX", p[4]);
-                        }
-                        if (values.containsKey("spanY")) {
-                            values.put("spanY", p[5]);
-                        }
-                        main.post(Hooks.guard("landscape place", () -> rememberShown(id, p[1])));
                     }
                 });
+        // An item added in landscape: its new row, as for a move.
+        XposedHelpers.findAndHookMethod(CLS_MODEL_DB, cl, "insert",
+                android.content.ContentValues.class, new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        android.content.ContentValues values =
+                                (android.content.ContentValues) param.args[0];
+                        Integer id = values == null ? null : values.getAsInteger("_id");
+                        Grid grid = id == null ? null : current();
+                        if (grid != null) {
+                            keepInPortrait(values, id, grid);
+                        }
+                    }
+                });
+    }
+
+    /** An edit of an item on its own landscape page: its row keeps its portrait place. */
+    private boolean keepPortraitPlace(android.content.ContentValues values, int id) {
+        int[] p = portraitPlaces.get(id);
+        if (p == null) {
+            return false;
+        }
+        Integer container = values.getAsInteger("container");
+        Integer screen = values.getAsInteger("screen");
+        if ((container != null && container != p[0]) || (screen != null && screen != p[1])) {
+            portraitPlaces.remove(id); // Moved off its page: a real move.
+            return false;
+        }
+        if (values.containsKey("cellX")) {
+            values.put("cellX", p[2]);
+        }
+        if (values.containsKey("cellY")) {
+            values.put("cellY", p[3]);
+        }
+        if (values.containsKey("spanX")) {
+            values.put("spanX", p[4]);
+        }
+        if (values.containsKey("spanY")) {
+            values.put("spanY", p[5]);
+        }
+        main.post(Hooks.guard("landscape place", () -> rememberShown(id, p[1])));
+        return true;
+    }
+
+    /**
+     * Any other desktop row written in landscape (an item moved to another page, or added):
+     * its cells are kept inside the portrait page in the row itself. The launcher reads an
+     * item's cells for the row on its model thread, later than the move (ModelWriter's
+     * UpdateItemRunnable), so a landscape cell past the portrait grid could reach the
+     * database, and the launcher deletes such rows when it next loads in portrait
+     * (LoaderCursor.checkItemPlacement). Same clamp as afterWrite gives the model.
+     */
+    private void keepInPortrait(android.content.ContentValues values, int id, Grid grid) {
+        if (!values.containsKey("cellX") && !values.containsKey("cellY")) {
+            return;
+        }
+        Object model = bgDataModel;
+        Object item = model == null ? null : XposedHelpers.callMethod(
+                XposedHelpers.getObjectField(model, "itemsIdMap"), "get", id);
+        Integer container = values.getAsInteger("container");
+        int where = container != null ? container
+                : item != null ? XposedHelpers.getIntField(item, "container") : 0;
+        if (where != CONTAINER_DESKTOP) {
+            return;
+        }
+        Integer spanXValue = values.getAsInteger("spanX");
+        Integer spanYValue = values.getAsInteger("spanY");
+        int spanX = spanXValue != null ? spanXValue
+                : item != null ? XposedHelpers.getIntField(item, "spanX") : 1;
+        int spanY = spanYValue != null ? spanYValue
+                : item != null ? XposedHelpers.getIntField(item, "spanY") : 1;
+        Integer x = values.getAsInteger("cellX");
+        Integer y = values.getAsInteger("cellY");
+        if (x != null) {
+            int fit = Math.max(0, Math.min(x, grid.columns - Math.min(spanX, grid.columns)));
+            if (fit != x) {
+                values.put("cellX", fit);
+                Hooks.log("landscape grid: row " + id + " kept on the portrait page (x " + x
+                        + " -> " + fit + ")");
+            }
+        }
+        if (y != null) {
+            int fit = Math.max(0, Math.min(y, grid.rows - Math.min(spanY, grid.rows)));
+            if (fit != y) {
+                values.put("cellY", fit);
+                Hooks.log("landscape grid: row " + id + " kept on the portrait page (y " + y
+                        + " -> " + fit + ")");
+            }
+        }
     }
 
     /**

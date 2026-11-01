@@ -210,6 +210,11 @@ public final class TaskManager {
 
     private enum Danger { APP, SYSTEM, CRITICAL }
 
+    /**
+     * The row's details. Its fields are read here (main thread); what asks Android (package,
+     * memory: getProcessMemoryInfo collects the process's PSS, a slow binder call) is read on
+     * the worker, and the dialog shown back on the main thread.
+     */
     private static void details(Context context, Object item) {
         Object process = process(item);
         if (process == null) {
@@ -221,38 +226,48 @@ public final class TaskManager {
         PackageItemInfo info = (PackageItemInfo) XposedHelpers.getObjectField(process, "c");
         String pkg = info != null ? info.packageName : processName;
         CharSequence label = (CharSequence) XposedHelpers.getObjectField(item, "d");
-        PackageManager pm = context.getPackageManager();
-        ApplicationInfo app = null;
-        try {
-            app = pm.getApplicationInfo(pkg, 0);
-        } catch (PackageManager.NameNotFoundException e) {
-            // A process with no package of its own name: judged by its uid.
-        }
-        Danger danger = danger(context, pkg, uid, app);
-        ActivityManager am = context.getSystemService(ActivityManager.class);
-        StringBuilder message = new StringBuilder();
-        message.append("Package  ").append(pkg)
-                .append("\nProcess  ").append(processName)
-                .append("\nPID ").append(pid).append("  ·  UID ").append(uid);
-        if (pid > 0) {
+        Handler main = new Handler(Looper.getMainLooper());
+        worker().post(Hooks.guard("task manager details read", () -> {
+            PackageManager pm = context.getPackageManager();
+            ApplicationInfo found = null;
             try {
-                Debug.MemoryInfo[] mem = am.getProcessMemoryInfo(new int[] {pid});
-                message.append("\nRAM  ").append(Formatter.formatShortFileSize(context,
-                        mem[0].getTotalPss() * 1024L));
-            } catch (Throwable t) {
-                // Unknown.
+                found = pm.getApplicationInfo(pkg, 0);
+            } catch (PackageManager.NameNotFoundException e) {
+                // A process with no package of its own name: judged by its uid.
             }
-        }
-        Float cpu = pid > 0 ? STATS.cpuOf(pid) : null;
-        message.append("\nCPU  ").append(cpu == null ? "0%"
-                : String.format(Locale.ROOT, "%.1f%%", cpu));
-        long[] net = STATS.netOf(uid);
-        if (net != null) {
-            message.append("\nNetwork today  ↓ ")
-                    .append(Formatter.formatShortFileSize(context, net[0])).append("  ↑ ")
-                    .append(Formatter.formatShortFileSize(context, net[1]));
-        }
-        message.append("\n\n").append(warning(danger));
+            ApplicationInfo app = found;
+            Danger danger = danger(context, pkg, uid, app);
+            ActivityManager am = context.getSystemService(ActivityManager.class);
+            StringBuilder message = new StringBuilder();
+            message.append("Package  ").append(pkg)
+                    .append("\nProcess  ").append(processName)
+                    .append("\nPID ").append(pid).append("  ·  UID ").append(uid);
+            if (pid > 0) {
+                try {
+                    Debug.MemoryInfo[] mem = am.getProcessMemoryInfo(new int[] {pid});
+                    message.append("\nRAM  ").append(Formatter.formatShortFileSize(context,
+                            mem[0].getTotalPss() * 1024L));
+                } catch (Throwable t) {
+                    // Unknown.
+                }
+            }
+            Float cpu = pid > 0 ? STATS.cpuOf(pid) : null;
+            message.append("\nCPU  ").append(cpu == null ? "0%"
+                    : String.format(Locale.ROOT, "%.1f%%", cpu));
+            long[] net = STATS.netOf(uid);
+            if (net != null) {
+                message.append("\nNetwork today  ↓ ")
+                        .append(Formatter.formatShortFileSize(context, net[0])).append("  ↑ ")
+                        .append(Formatter.formatShortFileSize(context, net[1]));
+            }
+            message.append("\n\n").append(warning(danger));
+            main.post(Hooks.guard("task manager details", () ->
+                    showDetails(context, label, pkg, app, danger, am, message)));
+        }));
+    }
+
+    private static void showDetails(Context context, CharSequence label, String pkg,
+            ApplicationInfo app, Danger danger, ActivityManager am, CharSequence message) {
         AlertDialog.Builder builder = new AlertDialog.Builder(context)
                 .setTitle(label != null ? label : pkg)
                 .setMessage(message)

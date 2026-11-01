@@ -128,6 +128,7 @@ final class LockScreenTurn {
     /** The notification container and its last updateConstraints args (main thread). */
     private static Object notifications;
     private static Object[] notificationArgs;
+    private static ConfigStore settings;
 
     private LockScreenTurn() {
     }
@@ -154,6 +155,7 @@ final class LockScreenTurn {
         keepNothingLayout(cl, store);
         turnFingerprint(cl, store);
         landscapeBouncer(cl, store);
+        settings = store;
         mirrorNotifications(cl, store);
         layOutOnFlip(cl, store);
         logFingerprint(cl, store);
@@ -433,7 +435,7 @@ final class LockScreenTurn {
      * The bouncer's fingerprint icon (Nothing centers it across and sets only its top, for
      * portrait): over the sensor's turned spot, as the lock screen's icon.
      */
-    private static void turnBouncerIcon(Object section) {
+    private static void turnBouncerIcon(Object section, boolean on) {
         int[] spot = turnedSpot;
         android.view.WindowManager wm = (android.view.WindowManager)
                 XposedHelpers.getObjectField(section, "windowManager");
@@ -444,8 +446,8 @@ final class LockScreenTurn {
         }
         android.widget.FrameLayout.LayoutParams lp =
                 (android.widget.FrameLayout.LayoutParams) icon.getLayoutParams();
-        if (spot == null || wm.getDefaultDisplay().getRotation() != spot[2]) {
-            // Nothing's own placement (centered across, its top set): Nothing never sets the
+        if (!on || spot == null || wm.getDefaultDisplay().getRotation() != spot[2]) {
+            // Nothing's own placement (also when the lock screen no longer turns) (centered across, its top set): Nothing never sets the
             // left margin, so the one set here for landscape goes (it had pushed the icon
             // off the screen, logged at x 3017).
             if (lp.leftMargin != 0) {
@@ -469,7 +471,7 @@ final class LockScreenTurn {
      * portrait) sat between the landscape bouncer's two halves, over its message: left out in
      * landscape, back as Nothing had it when the screen turns back.
      */
-    private static void landscapeBouncerLock(Object section) {
+    private static void landscapeBouncerLock(Object section, boolean on) {
         View lock = (View) XposedHelpers.getObjectField(section, "bouncerlockIconContainer");
         android.view.WindowManager wm = (android.view.WindowManager)
                 XposedHelpers.getObjectField(section, "windowManager");
@@ -477,8 +479,8 @@ final class LockScreenTurn {
             return;
         }
         int rotation = wm.getDefaultDisplay().getRotation();
-        boolean turned = rotation == android.view.Surface.ROTATION_90
-                || rotation == android.view.Surface.ROTATION_270;
+        boolean turned = on && (rotation == android.view.Surface.ROTATION_90
+                || rotation == android.view.Surface.ROTATION_270);
         String key = "nlplus.hiddenLock";
         if (turned && lock.getVisibility() == View.VISIBLE) {
             lock.setVisibility(View.GONE);
@@ -595,12 +597,11 @@ final class LockScreenTurn {
                     new XC_MethodHook() {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) {
-                            if (!store.get().lockRotation) {
-                                return;
-                            }
+                            // Off: what was changed for landscape goes back to Nothing's.
+                            boolean on = store.get().lockRotation;
                             try {
-                                turnBouncerIcon(param.thisObject);
-                                landscapeBouncerLock(param.thisObject);
+                                turnBouncerIcon(param.thisObject, on);
+                                landscapeBouncerLock(param.thisObject, on);
                             } catch (Throwable t) {
                                 Hooks.log("lock screen bouncer: " + t);
                             }
@@ -615,12 +616,13 @@ final class LockScreenTurn {
                 XposedBridge.hookAllMethods(c, "updateConstraints", new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) {
-                        if (!store.get().lockRotation || param.args.length != 1) {
+                        if (param.args.length != 1) {
                             return;
                         }
                         try {
-                            messageMargin((View) param.thisObject,
-                                    Boolean.TRUE.equals(param.args[0]));
+                            // Off: Nothing's margin back (messageMargin restores it).
+                            messageMargin((View) param.thisObject, store.get().lockRotation
+                                    && Boolean.TRUE.equals(param.args[0]));
                         } catch (Throwable t) {
                             Hooks.log("lock screen bouncer: " + t);
                         }
@@ -835,8 +837,15 @@ final class LockScreenTurn {
                         XposedHelpers.callMethod(state, "addCallback", java.lang.reflect.Proxy
                                 .newProxyInstance(cl, new Class<?>[] {listenerClass},
                                         (proxy, method, args) -> {
-                                            if (method.getName().equals("onStateChanged")) {
-                                                layOutNotifications();
+                                            if (method.getName().equals("onStateChanged")
+                                                    && args != null && args.length == 1
+                                                    && Integer.valueOf(STATE_KEYGUARD)
+                                                            .equals(args[0])) {
+                                                // Into the lock screen only; guarded: this
+                                                // runs inside SystemUI's state dispatch.
+                                                Hooks.guard("lock screen notifications",
+                                                        LockScreenTurn::layOutNotifications)
+                                                        .run();
                                             }
                                             return method.getReturnType() == boolean.class
                                                     ? Boolean.FALSE : null;
@@ -912,12 +921,34 @@ final class LockScreenTurn {
         return Math.max(0, Math.min(clear, container.getWidth() / 2));
     }
 
-    /** SystemUI's notification placement, done again with its last arguments. */
+    /**
+     * SystemUI's notification placement, done again (the fingerprint icon's spot changed, or
+     * the lock screen came back, so the clearance is placed for it): with its last margins,
+     * which change only with the configuration (and a new configuration places them anew),
+     * but the notifications' alpha as it is now, never an earlier one (SystemUI fades them
+     * through this same call). Only while the turned lock screen is in use, in landscape.
+     */
     private static void layOutNotifications() {
-        if (notifications != null) {
-            XposedHelpers.callMethod(notifications, "updateConstraints",
-                    (Object[]) notificationArgs);
+        Object container = notifications;
+        Object[] args = notificationArgs;
+        ConfigStore store = settings;
+        if (container == null || args == null || args.length != 6 || store == null
+                || !store.get().lockRotation) {
+            return;
         }
+        View view = (View) container;
+        if (view.getResources().getConfiguration().orientation
+                != android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            return;
+        }
+        Object[] now = args.clone();
+        int nssl = view.getResources().getIdentifier("notification_stack_scroller", "id",
+                view.getContext().getPackageName());
+        View stack = nssl != 0 ? view.findViewById(nssl) : null;
+        if (stack != null) {
+            now[5] = stack.getAlpha();
+        }
+        XposedHelpers.callMethod(container, "updateConstraints", now);
     }
 
     /**

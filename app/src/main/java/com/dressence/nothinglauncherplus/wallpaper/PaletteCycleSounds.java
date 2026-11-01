@@ -333,7 +333,17 @@ final class PaletteCycleSounds {
             dir.mkdirs();
         }
         File part = new File(file.getPath() + ".part");
-        try (InputStream in = new URL(sound + ".mp3").openStream();
+        java.net.URLConnection connection;
+        try {
+            connection = new URL(sound + ".mp3").openConnection();
+            // One download at a time: a stalled server must not hold back every later sound.
+            connection.setConnectTimeout(15_000);
+            connection.setReadTimeout(30_000);
+        } catch (Throwable t) {
+            Hooks.log("palette cycle: sound " + sound + " not downloaded: " + t);
+            return false;
+        }
+        try (InputStream in = connection.getInputStream();
              FileOutputStream out = new FileOutputStream(part)) {
             byte[] buffer = new byte[64 * 1024];
             int n;

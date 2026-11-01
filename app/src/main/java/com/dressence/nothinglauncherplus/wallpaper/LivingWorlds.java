@@ -93,6 +93,18 @@ public final class LivingWorlds {
         XposedHelpers.findAndHookMethod(engineClass, "createWebView", Context.class,
                 new XC_MethodHook() {
                     @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        // Living Worlds' "Alt wallpaper tech" turned off (updatePreferences sets
+                        // myUsePresentation before this): it draws on the surface itself from
+                        // now on, so the module's framing lets go of it first.
+                        if (!XposedHelpers.getBooleanField(param.thisObject,
+                                "myUsePresentation")) {
+                            Hooks.guard("living worlds own drawing", () ->
+                                    LivingWorldsView.surfaceGoing(param.thisObject)).run();
+                        }
+                    }
+
+                    @Override
                     protected void afterHookedMethod(MethodHookParam param) {
                         WebView web = (WebView) XposedHelpers.getObjectField(param.thisObject,
                                 "myWebView");
@@ -171,7 +183,7 @@ public final class LivingWorlds {
                         }
                         Object chosen = specs;
                         MAIN.post(Hooks.guard("living worlds play", () ->
-                                XposedHelpers.callMethod(manager(engine, managerClass), "play",
+                                XposedHelpers.callMethod(manager(engine, managerClass, store), "play",
                                         chosen)));
                     }
                 });
@@ -239,13 +251,13 @@ public final class LivingWorlds {
     }
 
     /** The engine's SoundManager (the app's), made on the main thread on first use. */
-    private static Object manager(Object engine, Class<?> managerClass) {
+    private static Object manager(Object engine, Class<?> managerClass, ConfigStore store) {
         Object manager = XposedHelpers.getAdditionalInstanceField(engine, MANAGER);
         if (manager == null) {
             Context context = (Context) XposedHelpers.getObjectField(engine, "myContext");
             manager = XposedHelpers.newInstance(managerClass, context);
             XposedHelpers.setAdditionalInstanceField(engine, MANAGER, manager);
-            listenForUnlock(engine, managerClass, context);
+            listenForUnlock(managerClass, context, store);
             boolean audible = shouldPlay(engine, context);
             if (!audible) {
                 XposedHelpers.callMethod(manager, "stop");
@@ -254,16 +266,34 @@ public final class LivingWorlds {
         return manager;
     }
 
-    /** Leaving the lock screen does not change the wallpaper's visibility: unlocking does. */
-    private static void listenForUnlock(Object engine, Class<?> managerClass, Context context) {
-        HomeShown.listen(context, () -> audible(engine, managerClass, null));
+    private static boolean listening;
+
+    /**
+     * Leaving the lock screen does not change the wallpaper's visibility: unlocking does, and
+     * so does the launcher being shown or left. Listened for once per process, for the one
+     * engine that may sound (current): engines replaced since are neither kept nor woken, and
+     * the switch is read again each time, so sounds turned off stay off.
+     */
+    private static void listenForUnlock(Class<?> managerClass, Context context,
+            ConfigStore store) {
+        if (listening) {
+            return;
+        }
+        listening = true;
+        Runnable changed = () -> {
+            Object engine = current.get();
+            if (engine != null) {
+                store.reloadIfChanged();
+                audible(engine, managerClass, store);
+            }
+        };
+        HomeShown.listen(context, changed);
         IntentFilter filter = new IntentFilter(Intent.ACTION_USER_PRESENT);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
-        context.registerReceiver(new BroadcastReceiver() {
+        context.getApplicationContext().registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context c, Intent intent) {
-                Hooks.guard("living worlds unlock", () -> audible(engine, managerClass, null))
-                        .run();
+                Hooks.guard("living worlds unlock", changed).run();
             }
         }, filter);
     }
@@ -282,8 +312,7 @@ public final class LivingWorlds {
             return; // No sound asked for yet.
         }
         Context context = (Context) XposedHelpers.getObjectField(engine, "myContext");
-        boolean on = (store == null || store.get().livingWorldsSounds)
-                && shouldPlay(engine, context);
+        boolean on = store.get().livingWorldsSounds && shouldPlay(engine, context);
         XposedHelpers.callMethod(manager, on ? "start" : "stop");
     }
 }
