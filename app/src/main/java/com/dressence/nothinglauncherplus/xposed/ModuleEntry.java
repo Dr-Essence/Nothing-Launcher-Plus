@@ -57,7 +57,7 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
             Hooks.install("living worlds",
                     () -> LivingWorlds.install(cl, new ConfigStore()));
         } else if (PaletteCycle.PKG.equals(pkg)) {
-            Hooks.install("palette cycle downloads", () -> PaletteCycle.install(cl));
+            Hooks.install("palette cycle downloads", () -> PaletteCycle.install(cl, new ConfigStore()));
         } else if (HeliBoardGamepad.PKG.equals(pkg)) {
             Hooks.install("heliboard gamepad",
                     () -> HeliBoardGamepad.install(cl, new ConfigStore()));

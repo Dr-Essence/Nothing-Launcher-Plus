@@ -1,0 +1,304 @@
+package com.dressence.nothinglauncherplus.wallpaper;
+
+import android.animation.ValueAnimator;
+import android.app.KeyguardManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
+import android.os.Handler;
+import android.os.Looper;
+
+import com.dressence.nothinglauncherplus.xposed.ConfigStore;
+import com.dressence.nothinglauncherplus.xposed.Hooks;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedBridge;
+import de.robv.android.xposed.XposedHelpers;
+
+/**
+ * Palette Cycle's worlds with their sounds, as the Living Worlds web demo they come from plays
+ * them (effectgames.com/demos/worlds: scenes.js gives each world and weather its sound and
+ * volume, main.js plays audio/{sound}.mp3 looping, fading in over 2 s to that volume, default
+ * 0.5, and out over half a second when the world changes). Palette Cycle has no sound at all.
+ *
+ * <p>The sound follows the world Palette Cycle shows (its changeImage: world, weather and
+ * time-of-day script), downloaded on the phone once and kept in Palette Cycle's cache. Heard
+ * only while the wallpaper shows on the home screen or in the app drawer: not over apps, on
+ * the lock screen until unlocked, with the screen off, in the picker's preview, nor with
+ * another wallpaper set (no Palette Cycle engine runs); one engine at a time. Pictures that
+ * are not worlds (Canvas Cycle's single images) are silent, as the demo has no sound for them.
+ */
+final class PaletteCycleSounds {
+
+    private static final String CLS_ENGINE =
+            "rak.pixellwp.cycling.wallpaperService.CyclingWallpaperService$CyclingWallpaperEngine";
+    private static final String CLS_CHANGING =
+            "rak.pixellwp.cycling.wallpaperService.ImageChangingKt";
+    private static final String AUDIO = "https://www.effectgames.com/demos/worlds/audio/";
+    private static final float DEFAULT_VOLUME = 0.5f;
+
+    /** scenes.js: world (base image) and script → sound and its volume. */
+    private static final Map<String, Object[]> SOUNDS = new HashMap<>();
+
+    static {
+        put("V26", "janclrscpt", "V13", DEFAULT_VOLUME);
+        put("V26SNOW", "jansnowscpt", "V05RAIN", 0.25f);
+        put("V19", "febclrscpt", "V19", DEFAULT_VOLUME);
+        put("V19", "febcldyscpt", "V19", DEFAULT_VOLUME);
+        put("V30", "aprclrscpt", "V30", 0.25f);
+        put("V30RAIN", "aprrainscpt", "V30RAIN", DEFAULT_VOLUME);
+        put("V08", "MAYCLRSCPT", "V08", 0.25f);
+        put("V08", "MAYCLDYSCPT", "V08", 0.25f);
+        put("V08RAIN", "MAYRAINSCPT", "V08RAIN", DEFAULT_VOLUME);
+        put("V20JOE", "jundayscpt", "V20", DEFAULT_VOLUME);
+        put("V25", "julyclearscpt", "V25HEAT", DEFAULT_VOLUME);
+        put("V25", "julycloudyscpt", "V25HEAT", DEFAULT_VOLUME);
+        put("CORAL", "augclrscpt", "CORAL", 0.25f);
+        put("V29", "SEPTCLRCUMSCPT", "V29", DEFAULT_VOLUME);
+        put("V29", "SEPTCLDYSCPT", "V29", DEFAULT_VOLUME);
+        put("V05AM", "octbegclrscpt", "V13", DEFAULT_VOLUME);
+        put("V05AM", "octendclrscpt", "V13", DEFAULT_VOLUME);
+        put("V05RAIN", "octrainscpt", "V05RAIN", DEFAULT_VOLUME);
+        put("V16", "novclrscpt", "V16", DEFAULT_VOLUME);
+        put("V16RAIN", "novrainscpt", "V16RAIN", DEFAULT_VOLUME);
+        put("V12BASIC", "DECCLRSCPT", "V13", DEFAULT_VOLUME);
+        // March (VW3BASIC, MARCLRSCPT) has no sound in the demo.
+    }
+
+    private static void put(String world, String script, String sound, float volume) {
+        SOUNDS.put(world + "/" + script, new Object[] {sound, volume});
+    }
+
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    private static final ExecutorService DOWNLOADS = Executors.newSingleThreadExecutor();
+    private static final String SHOWN = "nlplus.shown";
+
+    private static java.lang.ref.WeakReference<Object> current =
+            new java.lang.ref.WeakReference<>(null);
+    private static MediaPlayer player;
+    private static String playing;
+    private static ValueAnimator fade;
+    private static Context appContext;
+    private static boolean unlockWatched;
+
+    private PaletteCycleSounds() {
+    }
+
+    static void install(ClassLoader cl, ConfigStore store) {
+        Class<?> engineClass = XposedHelpers.findClass(CLS_ENGINE, cl);
+        XposedBridge.hookAllMethods(XposedHelpers.findClass(CLS_CHANGING, cl), "changeImage",
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Object engine = param.args[0];
+                        MAIN.post(Hooks.guard("palette cycle sound",
+                                () -> update(engine, store)));
+                    }
+                });
+        XposedHelpers.findAndHookMethod(engineClass, "onVisibilityChanged", boolean.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Object engine = param.thisObject;
+                        store.reloadIfChanged();
+                        XposedHelpers.setAdditionalInstanceField(engine, SHOWN, param.args[0]);
+                        if (Boolean.TRUE.equals(param.args[0]) && !isPreview(engine)) {
+                            current = new java.lang.ref.WeakReference<>(engine);
+                        }
+                        Hooks.guard("palette cycle sound", () -> update(engine, store)).run();
+                    }
+                });
+        XposedHelpers.findAndHookMethod(engineClass, "onDestroy", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                XposedHelpers.setAdditionalInstanceField(param.thisObject, SHOWN, false);
+                if (current.get() == param.thisObject) {
+                    Hooks.guard("palette cycle sound", () -> stop()).run();
+                }
+            }
+        });
+        Hooks.log("palette cycle sounds: ready");
+    }
+
+    private static boolean isPreview(Object engine) {
+        try {
+            return (Boolean) XposedHelpers.callMethod(engine, "isPreview");
+        } catch (Throwable t) {
+            return true;
+        }
+    }
+
+    /** The sound for what the current engine shows, where it is seen now (main thread). */
+    private static void update(Object engine, ConfigStore store) {
+        if (current.get() != engine) {
+            return; // Another engine, or none shown yet: this one is not heard.
+        }
+        if (appContext == null) {
+            // The engine is an inner class of Palette Cycle's wallpaper service.
+            appContext = ((Context) XposedHelpers.getSurroundingThis(engine))
+                    .getApplicationContext();
+        }
+        watchUnlock(engine, store);
+        KeyguardManager keyguard = appContext.getSystemService(KeyguardManager.class);
+        boolean seen = Boolean.TRUE.equals(XposedHelpers.getAdditionalInstanceField(engine,
+                SHOWN)) && !isPreview(engine)
+                && (keyguard == null || !keyguard.isKeyguardLocked());
+        Object[] sound = seen && store.get().paletteCycleSounds ? soundOf(engine) : null;
+        if (sound == null) {
+            stop();
+            return;
+        }
+        play((String) sound[0], (Float) sound[1]);
+    }
+
+    /** Leaving the lock screen does not change the wallpaper's visibility: unlocking does. */
+    private static void watchUnlock(Object engine, ConfigStore store) {
+        if (unlockWatched) {
+            return;
+        }
+        unlockWatched = true;
+        IntentFilter filter = new IntentFilter(Intent.ACTION_USER_PRESENT);
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+        appContext.registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent intent) {
+                Object shown = current.get();
+                if (shown != null) {
+                    Hooks.guard("palette cycle unlock", () -> update(shown, store)).run();
+                }
+            }
+        }, filter);
+    }
+
+    private static Object[] soundOf(Object engine) {
+        Object image = XposedHelpers.getObjectField(engine, "currentImage");
+        if (image == null || !XposedHelpers.getBooleanField(image, "isTimeline")) {
+            return null;
+        }
+        String world = (String) XposedHelpers.getObjectField(image, "imageId");
+        String script = (String) XposedHelpers.getObjectField(image, "script");
+        return SOUNDS.get(world + "/" + script);
+    }
+
+    private static void play(String sound, float volume) {
+        if (sound.equals(playing) && player != null) {
+            fadeTo(volume);
+            return;
+        }
+        stop();
+        playing = sound;
+        File file = new File(new File(appContext.getCacheDir(), "nlplus-sounds"), sound + ".mp3");
+        DOWNLOADS.execute(Hooks.guard("palette cycle sound download", () -> {
+            if (!file.exists() && !download(sound, file)) {
+                return;
+            }
+            MAIN.post(Hooks.guard("palette cycle sound start", () -> start(sound, file, volume)));
+        }));
+    }
+
+    private static boolean download(String sound, File file) {
+        File dir = file.getParentFile();
+        if (dir != null) {
+            dir.mkdirs();
+        }
+        File part = new File(file.getPath() + ".part");
+        try (InputStream in = new URL(AUDIO + sound + ".mp3").openStream();
+             FileOutputStream out = new FileOutputStream(part)) {
+            byte[] buffer = new byte[64 * 1024];
+            int n;
+            while ((n = in.read(buffer)) > 0) {
+                out.write(buffer, 0, n);
+            }
+        } catch (Throwable t) {
+            Hooks.log("palette cycle: sound " + sound + " not downloaded: " + t);
+            part.delete();
+            return false;
+        }
+        return part.renameTo(file);
+    }
+
+    private static void start(String sound, File file, float volume) {
+        if (!sound.equals(playing)) {
+            return; // Changed while it downloaded.
+        }
+        try {
+            MediaPlayer mp = new MediaPlayer();
+            mp.setAudioAttributes(new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
+            mp.setDataSource(file.getPath());
+            mp.setLooping(true);
+            mp.setVolume(0, 0);
+            mp.prepare();
+            mp.start();
+            player = mp;
+            lastVolume = 0;
+            fadeTo(volume);
+        } catch (Throwable t) {
+            Hooks.log("palette cycle: sound " + sound + " not played: " + t);
+            file.delete(); // A broken download: fetched again next time.
+            playing = null;
+        }
+    }
+
+    /** Fades out (half a second) and releases the sound. */
+    private static void stop() {
+        MediaPlayer mp = player;
+        player = null;
+        playing = null;
+        if (fade != null) {
+            fade.cancel();
+            fade = null;
+        }
+        if (mp != null) {
+            ValueAnimator out = ValueAnimator.ofFloat(lastVolume, 0f).setDuration(500);
+            lastVolume = 0;
+            out.addUpdateListener(a -> {
+                float v = (Float) a.getAnimatedValue();
+                mp.setVolume(v, v);
+            });
+            out.addListener(new android.animation.AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(android.animation.Animator animation) {
+                    mp.release();
+                }
+            });
+            out.start();
+        }
+    }
+
+    /** The playing sound's volume, as last set by a fade (main thread). */
+    private static float lastVolume;
+
+    /** Fades the playing sound to {@code volume} over 2 s, as the demo fades in. */
+    private static void fadeTo(float volume) {
+        MediaPlayer mp = player;
+        if (mp == null) {
+            return;
+        }
+        if (fade != null) {
+            fade.cancel();
+        }
+        fade = ValueAnimator.ofFloat(lastVolume, volume).setDuration(2000);
+        fade.addUpdateListener(a -> {
+            float v = (Float) a.getAnimatedValue();
+            lastVolume = v;
+            if (player == mp) {
+                mp.setVolume(v, v);
+            }
+        });
+        fade.start();
+    }
+}

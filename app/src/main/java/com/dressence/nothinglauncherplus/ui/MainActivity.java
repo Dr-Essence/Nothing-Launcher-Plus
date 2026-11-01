@@ -312,6 +312,13 @@ public class MainActivity extends Activity {
                     config.livingWorldsSounds = checked;
                     store.save(this);
                 });
+        ui.switchRow("Palette Cycle sounds", "Each world's ambient sound from the Living"
+                + " Worlds web demo while it is on the home screen or app drawer; downloaded"
+                + " once · Palette Cycle in the module's LSPosed scope",
+                config.paletteCycleSounds, checked -> {
+                    config.paletteCycleSounds = checked;
+                    store.save(this);
+                });
         ui.switchRow("Living Worlds smooth turning", "The live wallpaper turns without"
                 + " flashing or starting over", config.livingWorldsTurn, checked -> {
                     config.livingWorldsTurn = checked;

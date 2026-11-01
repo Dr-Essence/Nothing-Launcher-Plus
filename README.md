@@ -828,6 +828,17 @@ not yet released); the module applies the same change to the installed app: the 
 `https://www.effectgames.com/demos/worlds/cache/…js` and `…/canvascycle/images/….LBM.json`
 addresses, read as they are now served.
 
+### Palette Cycle sounds
+
+*Home screen → Palette Cycle sounds* (on by default). Palette Cycle has no sound; the Living
+Worlds web demo its worlds come from gives each world and weather a looping ambient sound
+(`scenes.js`: sound and volume; `main.js`: `audio/{sound}.mp3`, looping, 2 s fade in to the
+volume, 0.5 by default, half a second out). The module plays the sound of the world Palette
+Cycle shows (its `changeImage`: world, weather, time-of-day script), downloaded on the phone
+once into Palette Cycle's cache, and heard only while the wallpaper shows on the home screen or
+in the app drawer, as Living Worlds' sounds are. March has no sound in the demo; Canvas Cycle's
+single pictures have none either.
+
 ### Gaming launcher with a controller
 
 *Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any
@@ -1002,7 +1013,7 @@ The module's code is grouped by where it runs:
 | `system` | The system font, set in the font map system_server gives every app (`SystemFonts`), the gaming launcher while a controller is connected (`ControllerHome`), Settings screens opened on a feature's behalf (`SystemShortcuts`) and a probe writing to the LSPosed log which window decides the screen's orientation each time it changes (`OrientationProbe`, `orientation: requested … by …`, naming the activity or window at the end of the chain). |
 | `widgets` | Nothing's widget apps in landscape. |
 | `keyboard` | Typing in HeliBoard with a game controller (`HeliBoardGamepad`). |
-| `wallpaper` | Living Worlds' live wallpaper: its sounds and seamless turns (`LivingWorlds`); Palette Cycle's downloads (`PaletteCycle`). |
+| `wallpaper` | Living Worlds' live wallpaper: its sounds and seamless turns (`LivingWorlds`); Palette Cycle's downloads and sounds (`PaletteCycle`, `PaletteCycleSounds`). |
 | `settings` | Developer options → Running services as a task manager, in Settings (`TaskManager`, `TaskHeader`, `TaskStats`). |
 | `anim`, `sound` | The emoji animations and dot-matrix screens, and the music and interface sounds. |
 | `ui` | The module's settings app: a menu of pages (App drawer, Home screen, Sound, Status bar & quick settings, Lock screen, System font, Backup, Diagnostics). |

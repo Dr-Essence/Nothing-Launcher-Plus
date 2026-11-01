@@ -25,7 +25,8 @@ public final class PaletteCycle {
     private PaletteCycle() {
     }
 
-    public static void install(ClassLoader cl) {
+    public static void install(ClassLoader cl, com.dressence.nothinglauncherplus.xposed.ConfigStore store) {
+        Hooks.install("palette cycle sounds", () -> PaletteCycleSounds.install(cl, store));
         Class<?> downloader = XposedHelpers.findClass(CLS_DOWNLOADER, cl);
         XposedHelpers.findAndHookMethod(downloader, "getFullUrl",
                 XposedHelpers.findClass("rak.pixellwp.cycling.jsonModels.ImageInfo", cl),
