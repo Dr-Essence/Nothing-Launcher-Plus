@@ -33,6 +33,8 @@ final class SeamlessLoop {
         final short[] samples;
         final int rate;
         final int channels;
+        /** For the log: what was cut and how long the loop is. */
+        String report = "";
 
         Pcm(short[] samples, int rate, int channels) {
             this.samples = samples;
@@ -121,11 +123,20 @@ final class SeamlessLoop {
         short[] all = new short[out.position()];
         out.flip();
         out.get(all);
-        return new Pcm(loop(all, channels, rate), rate, channels);
+        int[] cut = new int[2];
+        Pcm pcm = new Pcm(loop(all, channels, rate, cut), rate, channels);
+        pcm.report = "file " + ms(all.length / channels, rate) + " ms, silence cut "
+                + ms(cut[0], rate) + " ms at the start and " + ms(cut[1], rate)
+                + " ms at the end, loop " + ms(pcm.samples.length / channels, rate) + " ms";
+        return pcm;
     }
 
     /** The samples between the silences at the ends, the last moments faded into the start. */
-    private static short[] loop(short[] all, int channels, int rate) {
+    private static long ms(int frames, int rate) {
+        return frames * 1000L / rate;
+    }
+
+    private static short[] loop(short[] all, int channels, int rate, int[] cut) {
         int frames = all.length / channels;
         int first = 0;
         while (first < frames && quiet(all, first, channels)) {
@@ -136,6 +147,8 @@ final class SeamlessLoop {
             last--;
         }
         int length = last - first + 1;
+        cut[0] = first;
+        cut[1] = frames - 1 - last;
         if (length <= 0) {
             return all; // All quiet: as it is.
         }

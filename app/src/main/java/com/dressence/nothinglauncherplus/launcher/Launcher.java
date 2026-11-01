@@ -41,6 +41,7 @@ public final class Launcher {
         Hooks.install("landscape folder sheet", () -> new FolderSheetLandscape(cl).install());
         Hooks.install("landscape widget picker", () -> new WidgetPickerLandscape(cl, store).install());
         Hooks.install("lifecycle after a turn", () -> hookTurnLifecycle(cl));
+        Hooks.install("home shown", () -> hookHomeShown(cl));
         Hooks.install("controller", () -> Gamepad.install(cl, store));
         Hooks.install("recents memory", () -> RecentsRam.install(cl, store));
         Hooks.install("dot-matrix icons", () -> DotIcons.install(cl, store));
@@ -90,6 +91,32 @@ public final class Launcher {
                         }).run();
                     }
                 });
+    }
+
+    /** Live wallpapers whose sounds play only while the launcher is on screen. */
+    private static final String[] SOUND_WALLPAPERS = {
+            "com.pixfabrik.livingworlds", "rak.pixellwp"};
+
+    /**
+     * Tells the live wallpapers with sounds (Living Worlds, Palette Cycle) when the launcher
+     * (home, app drawer, recents) is on screen or left, so their sounds play there only.
+     */
+    private static void hookHomeShown(ClassLoader cl) {
+        for (String method : new String[] {"onResume", "onPause"}) {
+            boolean shown = "onResume".equals(method);
+            XposedHelpers.findAndHookMethod(CLS_LAUNCHER, cl, method, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) {
+                    Hooks.guard("home shown", () -> {
+                        Activity launcher = (Activity) param.thisObject;
+                        for (String pkg : SOUND_WALLPAPERS) {
+                            launcher.sendBroadcast(new Intent(Config.ACTION_HOME_SHOWN)
+                                    .setPackage(pkg).putExtra(Config.EXTRA_SHOWN, shown));
+                        }
+                    }).run();
+                }
+            });
+        }
     }
 
     /**

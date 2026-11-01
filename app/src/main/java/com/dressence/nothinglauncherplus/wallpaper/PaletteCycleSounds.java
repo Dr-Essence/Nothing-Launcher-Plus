@@ -146,6 +146,7 @@ final class PaletteCycleSounds {
     private static ValueAnimator fade;
     private static Context appContext;
     private static boolean unlockWatched;
+    private static String lastDecision;
 
     private PaletteCycleSounds() {
     }
@@ -206,10 +207,17 @@ final class PaletteCycleSounds {
         }
         watchUnlock(engine, store);
         KeyguardManager keyguard = appContext.getSystemService(KeyguardManager.class);
-        boolean seen = Boolean.TRUE.equals(XposedHelpers.getAdditionalInstanceField(engine,
-                SHOWN)) && !isPreview(engine)
-                && (keyguard == null || !keyguard.isKeyguardLocked());
+        boolean visible = Boolean.TRUE.equals(XposedHelpers.getAdditionalInstanceField(engine,
+                SHOWN));
+        boolean locked = keyguard != null && keyguard.isKeyguardLocked();
+        boolean seen = visible && !isPreview(engine) && !locked && HomeShown.get();
         Object[] sound = seen && store.get().paletteCycleSounds ? soundOf(engine) : null;
+        String decision = (sound == null ? "silent" : "plays " + sound[0]) + " (visible "
+                + visible + ", locked " + locked + ", launcher " + HomeShown.get() + ")";
+        if (!decision.equals(lastDecision)) {
+            lastDecision = decision;
+            Hooks.log("palette cycle sound: " + decision);
+        }
         if (sound == null) {
             stop();
             return;
@@ -223,6 +231,12 @@ final class PaletteCycleSounds {
             return;
         }
         unlockWatched = true;
+        HomeShown.listen(appContext, () -> {
+            Object shown = current.get();
+            if (shown != null) {
+                update(shown, store);
+            }
+        });
         IntentFilter filter = new IntentFilter(Intent.ACTION_USER_PRESENT);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         appContext.registerReceiver(new BroadcastReceiver() {
@@ -271,6 +285,7 @@ final class PaletteCycleSounds {
                 file.delete(); // A broken download: fetched again next time.
                 return;
             }
+            Hooks.log("palette cycle: sound " + sound + ": " + pcm.report);
             MAIN.post(Hooks.guard("palette cycle sound start", () -> start(sound, pcm, volume)));
         }));
     }

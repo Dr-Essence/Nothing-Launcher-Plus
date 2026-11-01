@@ -73,6 +73,9 @@ public final class Config {
 
     /** Broadcast sent to the launcher and system_server after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
+    /** Sent by the launcher when it is shown or left, for the wallpapers' sounds. */
+    public static final String ACTION_HOME_SHOWN = MODULE_PKG + ".HOME_SHOWN";
+    public static final String EXTRA_SHOWN = "shown";
     /** Sent by the recents memory button, for system_server to open Running services. */
     public static final String ACTION_RUNNING_SERVICES = MODULE_PKG + ".RUNNING_SERVICES";
     /** Sent when the system font choice changes, for system_server to rebuild its font map. */

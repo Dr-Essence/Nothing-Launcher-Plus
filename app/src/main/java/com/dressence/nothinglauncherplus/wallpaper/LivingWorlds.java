@@ -274,6 +274,7 @@ public final class LivingWorlds {
 
     /** Leaving the lock screen does not change the wallpaper's visibility: unlocking does. */
     private static void listenForUnlock(Object engine, Class<?> managerClass, Context context) {
+        HomeShown.listen(context, () -> audible(engine, managerClass, null));
         IntentFilter filter = new IntentFilter(Intent.ACTION_USER_PRESENT);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         context.registerReceiver(new BroadcastReceiver() {
@@ -289,7 +290,7 @@ public final class LivingWorlds {
         Object shown = XposedHelpers.getAdditionalInstanceField(engine, SHOWN);
         KeyguardManager keyguard = context.getSystemService(KeyguardManager.class);
         return Boolean.TRUE.equals(shown) && !isPreview(engine) && current.get() == engine
-                && (keyguard == null || !keyguard.isKeyguardLocked());
+                && (keyguard == null || !keyguard.isKeyguardLocked()) && HomeShown.get();
     }
 
     /** Starts or stops the engine's sounds for where the wallpaper is seen now. */
