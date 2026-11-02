@@ -9,8 +9,9 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
 /**
- * Nothing's long-press menus (app icons, folders: NTPopupContainer) in landscape: their
- * portrait width, placed by the item held, and the held icon's copy over the icon.
+ * Nothing's long-press menus (app icons, folders: NTPopupContainer; the home screen's own menu:
+ * OptionsPopupView) in landscape: their portrait width, placed by the item held (or the point
+ * pressed), and the held icon's copy over the icon.
  *
  * <p>Nothing makes each menu row as wide as the screen less its margins
  * ({@code populateAndShowForView}: mContainerWidth = the popup container's width - 2 x
@@ -56,6 +57,7 @@ final class PopupLandscape {
         Hooks.log(line.toString());
     }
     private static final String CLS_ARROW = "com.nothing.launcher.popup.NTArrowPopup";
+    private static final String CLS_OPTIONS = "com.android.launcher3.views.OptionsPopupView";
     private static final String CLS_BUBBLE = "com.android.launcher3.BubbleTextView";
 
     private PopupLandscape() {
@@ -103,6 +105,36 @@ final class PopupLandscape {
         Hooks.deoptimizeAll(popup, "populateAndShowForView");
 
         Class<?> arrow = XposedHelpers.findClass(CLS_ARROW, cl);
+        // The home screen's own menu (long-press on empty space or L3: Home settings, Widgets,
+        // Customisation; OptionsPopupView) is match_parent less its margins in Nothing's layout
+        // (longpress_options_menu): its rows spanned the turned screen (DebuG21: 2260 px).
+        // Landscape only, it is as wide as in portrait: the short side less the same margins.
+        XposedHelpers.findAndHookMethod(arrow, "setupForDisplay", new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) {
+                Hooks.guard("landscape home menu width", () -> {
+                    View menu = (View) param.thisObject;
+                    if (!menu.getClass().getName().equals(CLS_OPTIONS)) {
+                        return;
+                    }
+                    View container = (View) XposedHelpers.callMethod(menu, "getPopupContainer");
+                    int width = container.getWidth();
+                    int height = container.getHeight();
+                    android.view.ViewGroup.LayoutParams lp = menu.getLayoutParams();
+                    if (width <= height || height <= 0
+                            || !(lp instanceof android.view.ViewGroup.MarginLayoutParams)
+                            || lp.width != android.view.ViewGroup.LayoutParams.MATCH_PARENT) {
+                        return; // Portrait (or a width already given): Nothing's own.
+                    }
+                    android.view.ViewGroup.MarginLayoutParams margins =
+                            (android.view.ViewGroup.MarginLayoutParams) lp;
+                    int portrait = height - margins.leftMargin - margins.rightMargin;
+                    if (portrait > 0) {
+                        lp.width = portrait;
+                    }
+                }).run();
+            }
+        });
         // Across: Nothing places its menu at the screen's left inset (orientAboutObject:
         // setX(insets.left)), right for a list as wide as the screen. At the portrait width in
         // landscape that left it at the far left, away from the item held (DebuG19: a folder
@@ -123,7 +155,10 @@ final class PopupLandscape {
                             XposedHelpers.getObjectField(menu, "mTempRect");
                     android.graphics.Rect insets = (android.graphics.Rect)
                             XposedHelpers.callMethod(container, "getInsets");
-                    int menuWidth = menu.getMeasuredWidth();
+                    // Its width as laid out: a given width, else as measured for placing.
+                    android.view.ViewGroup.LayoutParams lp = menu.getLayoutParams();
+                    int menuWidth = lp != null && lp.width > 0 ? lp.width
+                            : menu.getMeasuredWidth();
                     int left = insets.left;
                     int right = width - insets.right - menuWidth;
                     if (target == null || menuWidth <= 0 || right < left) {

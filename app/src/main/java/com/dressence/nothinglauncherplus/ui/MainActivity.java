@@ -448,7 +448,8 @@ public class MainActivity extends Activity {
 
         ui.section("System screens");
         ui.switchRow("System screens in landscape", "Nothing's portrait-only screens that work"
-                + " in landscape follow auto-rotate (so far the quick settings widget picker)",
+                + " in landscape follow auto-rotate (quick settings widget picker, Home settings, app"
+                + " drawer settings, Customisation)",
                 config.systemScreens, checked -> {
                     config.systemScreens = checked;
                     store.save(this);

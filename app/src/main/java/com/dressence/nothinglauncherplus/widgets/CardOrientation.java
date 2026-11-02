@@ -44,11 +44,21 @@ public final class CardOrientation {
     /**
      * Nothing's portrait-locked screens that work in landscape, as package/activity:
      * SystemUI's quick settings widget picker (QSWidgetActivity: a scrolling list of system
-     * and app widgets under a collapsing toolbar).
+     * and app widgets under a collapsing toolbar), and Nothing Launcher's settings pages opened
+     * from the home screen's menu (Home settings, App drawer settings, Customisation: each a
+     * preference list in its BaseSettingsActivity, like Settings' pages; DebuG21 logged Home
+     * settings turning the phone to portrait). The launcher's preview pages (icon pack, screen
+     * layout: BaseHomePreviewActivity, a portrait home screen drawn small) keep the lock.
      */
     private static final java.util.Set<String> SYSTEM_SCREENS = new java.util.HashSet<>(
             java.util.Arrays.asList(
-                    "com.android.systemui/com.nothing.systemui.qs.widget.QSWidgetActivity"));
+                    "com.android.systemui/com.nothing.systemui.qs.widget.QSWidgetActivity",
+                    "com.nothing.launcher/com.nothing.launcher.setting.homesettings"
+                            + ".HomeSettingsActivity",
+                    "com.nothing.launcher/com.nothing.launcher.setting.allapp"
+                            + ".AllAppSettingsActivity",
+                    "com.nothing.launcher/com.nothing.launcher.setting.wallpaper"
+                            + ".CustomisationSettingsActivity"));
     /**
      * Apps whose portrait-locked screens all work in landscape: Settings (its pages are lists,
      * and Nothing locks them all; the reports showed SettingsHomepageActivity and SubSettings

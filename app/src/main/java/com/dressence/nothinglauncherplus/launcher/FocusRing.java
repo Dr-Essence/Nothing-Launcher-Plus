@@ -70,6 +70,9 @@ final class FocusRing {
     /** Puts the ring on {@code view} (taking it off wherever it was). */
     void show(View view) {
         hide();
+        if (isContainer(view)) {
+            return; // A folder's or menu's whole sheet: focus goes on into its items.
+        }
         view.setDefaultFocusHighlightEnabled(false);
         Shape shape = shapeOf(view);
         if (shape == null) {
@@ -285,6 +288,20 @@ final class FocusRing {
         }
         Rect rect = new Rect();
         return outline.getRect(rect) && !rect.isEmpty() ? outline.getRadius() : -1;
+    }
+
+    /**
+     * A view whose own items take focus (a folder's sheet, a menu): not an item itself. A
+     * widget's host keeps its children's focus to itself until entered, so it is an item.
+     */
+    private static boolean isContainer(View view) {
+        if (!(view instanceof android.view.ViewGroup)) {
+            return false;
+        }
+        android.view.ViewGroup group = (android.view.ViewGroup) view;
+        return group.getDescendantFocusability()
+                != android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
+                && group.getFocusables(View.FOCUS_FORWARD).size() > 1;
     }
 
     /** True inside a long-press menu (Nothing's popups). */
