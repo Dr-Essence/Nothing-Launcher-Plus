@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 
 import com.dressence.nothinglauncherplus.Config;
+import com.dressence.nothinglauncherplus.anim.AnimatedEmojiView;
 import com.dressence.nothinglauncherplus.anim.SpringInterpolator;
 import com.dressence.nothinglauncherplus.sound.Sfx;
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
@@ -396,11 +397,10 @@ final class Gamepad {
     }
 
     /**
-     * The newly focused item shows it: the focus ring round its own shape, and home screen
-     * icons and folders lift towards the eye; the one before settles back, wherever focus came
-     * from (a folder or menu closing moves focus without an old item). Drawer folder tiles fill
-     * their cells, so they are not scaled up (the lift went past the list's edge and was cut
-     * off); the ring shows them.
+     * The newly focused item shows it: the focus ring round its own shape, and icons, folders
+     * and drawer folder tiles lift towards the eye; the one before settles back, wherever focus
+     * came from (a folder or menu closing moves focus without an old item). A drawer tile's
+     * emoji cover reacts as focus reaches it (that tile's only), as it does to a press.
      */
     private void lift(View newFocus, float lift) {
         settle();
@@ -408,11 +408,15 @@ final class Gamepad {
             return;
         }
         ring.show(newFocus);
-        if (liftable(newFocus) && !drawerTile(newFocus)) {
+        if (liftable(newFocus)) {
+            pivotInside(newFocus);
             newFocus.animate().scaleX(LIFT_SCALE).scaleY(LIFT_SCALE).translationZ(lift)
                     .setInterpolator(LIFT).setDuration(420).start();
             // Only what was lifted is settled: a widget's scale is its own (scale-to-fit).
-            lifted = new WeakReference<>(newFocus);
+                lifted = new WeakReference<>(newFocus);
+        }
+        if (drawerTile(newFocus)) {
+            reactCovers(newFocus);
         }
         LauncherSounds.effect(Sfx.MOVE);
     }
@@ -422,8 +426,65 @@ final class Gamepad {
         View view = lifted.get();
         if (view != null) {
             view.animate().scaleX(1).scaleY(1).translationZ(0)
-                    .setInterpolator(SETTLE).setDuration(320).start();
+                    .setInterpolator(SETTLE).setDuration(320)
+                    .withEndAction(view::resetPivot).start();
             lifted = new WeakReference<>(null);
+        }
+    }
+
+    /**
+     * Where the lift grows from: the item's centre, moved only as far as keeps it inside the
+     * list it scrolls in (which cuts off what passes its edge: DebuG20, the top row's tile
+     * lost its top). A tile in the top row grows downwards, one in the first column to the
+     * right; a tile with room all round grows from its centre.
+     */
+    private static void pivotInside(View view) {
+        View list = null;
+        for (android.view.ViewParent p = view.getParent(); p instanceof View;
+                p = p.getParent()) {
+            if (p.getClass().getName().contains("RecyclerView")) {
+                list = (View) p;
+                break;
+            }
+        }
+        if (list == null) {
+            view.resetPivot();
+            return;
+        }
+        android.graphics.Rect item = new android.graphics.Rect(0, 0, view.getWidth(),
+                view.getHeight());
+        ((android.view.ViewGroup) list).offsetDescendantRectToMyCoords(view, item);
+        boolean padded = ((android.view.ViewGroup) list).getClipToPadding();
+        float left = padded ? list.getPaddingLeft() : 0;
+        float top = padded ? list.getPaddingTop() : 0;
+        float right = list.getWidth() - (padded ? list.getPaddingRight() : 0);
+        float bottom = list.getHeight() - (padded ? list.getPaddingBottom() : 0);
+        view.setPivotX(pivot(item.left, item.right, left, right) - item.left);
+        view.setPivotY(pivot(item.top, item.bottom, top, bottom) - item.top);
+    }
+
+    /** A pivot (list coordinates) that keeps [from, to] scaled by the lift inside [min, max]. */
+    private static float pivot(float from, float to, float min, float max) {
+        float s = LIFT_SCALE;
+        // Scaled about p: p + (from - p) s >= min and p + (to - p) s <= max.
+        float lowest = (to * s - max) / (s - 1);
+        float highest = (from * s - min) / (s - 1);
+        float centre = (from + to) / 2;
+        if (lowest > highest) {
+            return centre; // Larger than the list itself: as it is.
+        }
+        return Math.max(lowest, Math.min(highest, centre));
+    }
+
+    /** The emoji covers on a drawer tile react (the tile's own only). */
+    private static void reactCovers(View view) {
+        if (view instanceof AnimatedEmojiView) {
+            ((AnimatedEmojiView) view).react();
+        } else if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                reactCovers(group.getChildAt(i));
+            }
         }
     }
 

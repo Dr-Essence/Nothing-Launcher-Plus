@@ -910,8 +910,9 @@ leaving out small marks such as notification dots, and rings it just outside. A 
 menu's whole sheet, when it takes focus, gets no ring: the next press moves into its items. Launcher3's own
 keyboard-focus rectangle (drawn round the item's whole box) and Android's default highlight are
 off while controller navigation is on, so there is only ever one indicator. Home screen icons
-and folders also lift on a spring (scale + elevation), while drawer folder tiles, which fill
-their cells, are not scaled. All settle back the moment the screen is touched. Select opens the
+and folders, and the drawer's folder tiles, also lift on a spring (scale + elevation), each
+growing away from the drawer's edges so nothing is cut off; a folder tile's emoji cover reacts as
+the ring reaches it, as it does to a press. All settle back the moment the screen is touched. Select opens the
 notifications through the system (the launcher may not expand the panel itself). The PS / Xbox /
 Guide button in an app that does not use it goes home: Android asks the system about a key the
 app left unhandled (`interceptUnhandledKey`), and a game that uses the button keeps it.
