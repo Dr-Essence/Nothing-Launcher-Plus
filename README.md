@@ -953,31 +953,30 @@ release builds (`-dontobfuscate`), and were checked against HeliBoard 4.2's rele
 </details>
 
 <details>
-<summary><b>Sound</b> · generated background music, interface sounds</summary>
+<summary><b>Sound</b> · Nothing's breathing sounds as background music, interface sounds</summary>
 
 Both off by default; switch them on in the module's **Sound** page.
 
-- **Background music**, generated live (never a loop, never a recording) and tuned to
-  A = 432 Hz, in stereo. Seven original styles in the manner of classic console menus. The
-  PlayStation-menu kind come first, deliberately simple and matched by measurement (spectrum,
-  stereo width, swell rate, register) to reference recordings: *Home Menu* (PS4-style: one warm
-  chorused tone playing slow, ringing notes that overlap into chords, F3 to G4, with phrases and
-  pauses; the default) and *System Browser* (PS2-style: wide filtered noise breathing in and out
-  every few seconds, a cluster of every note of the scale between F3 and F4 over a low rumble, a
-  slow soft ping line and rare glints sliding down). No drums, almost nothing above 2 kHz. Then *Crystal Shore*
-  (90s new-age shimmer and surf), *Shop Lounge* (swung e-piano, walking bass, vibes), *Starlight
-  Lullaby* (16-bit music box and flute) and *Pixel Meadow* (8-bit overworld).
-- Each style has a master tone control; the calm ones keep essentially nothing above 2 kHz, and
-  loudness is matched on what a phone speaker actually plays (above 200 Hz).
-  A composer writes the music as it plays: motif, answer and cadence over changing progressions,
-  a new progression every 16 bars and a new key every 32.
+- **Background music** built on Nothing's own meditation widgets: each style plays that widget's
+  breathing loop, read from Nothing Widgets on the phone, and layers sound on it that breathes
+  with it (following the loop's own loudness), in the loop's key (A minor pentatonic,
+  A = 440 Hz) so nothing clashes. The layers follow measurements of the PS4 and PS2 menu music:
+  open chord swells under a filter that opens on the in-breath, a low sub, single ringing bells
+  near the top of each breath (some gliding down), air that opens and closes, a deep rumble, a
+  small fluttering cluster that flares every 15 to 30 s, and rare glints, all in a soft hall.
+  Almost nothing above 2 kHz.
+  - *Calm* (the default): Calm's loop under PS4-style chord swells and bells.
+  - *Focus*: Focus's box breathing under PS2-style air, rumble and flutter.
+  - *Relax*: Relax's long, slow breaths under one deep chord per breath and rare chimes.
+- Without Nothing Widgets the layers still play, breathing at the style's pace.
 - Tapping an app lets the music recede at once: over 1.6 s it fades and closes its filter, like a
-  console dimming its menu as a game starts.
+  console dimming its menu as a game starts. A new style fades the old one out first.
 - It plays only while the home screen or drawer is in front, fades in and out, never takes audio
   focus (so it can't pause your music), and goes quiet while another app plays media or a call
-  is active. Synthesis runs on one audio thread into a power-saving track, about 1% of a core.
+  is active. It runs on one audio thread at 24 kHz; the loop is decoded once, off that thread.
 - **Interface sounds**: console-style chimes for opening and closing the drawer and folders,
-  launching apps, turning pages, menus and controller focus, silent on silent or vibrate.
+  launching apps, turning pages, menus and controller focus, in tune with the music. Silent on
+  silent or vibrate.
 - **Preview** the selected style in the module; music volume has its own slider.
 
 </details>

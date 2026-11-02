@@ -18,17 +18,20 @@ import java.io.OutputStream;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Plays the background music and interface sounds in one process (the launcher, or the module
  * app for previews).
  *
  * <ul>
- *   <li>Music is synthesized live, in stereo, on one audio thread, and only while asked to
- *       play: the launcher asks while it is in front and lets go the moment an app is tapped.
- *       Starts fade in (after a long silence, with a console-style opening swell); stops
- *       recede over 1.6 s, quieter and more muffled, through a short buffer so the fade is
- *       heard at once.</li>
+ *   <li>Music is rendered live by {@link Ambience}, in stereo, on one audio thread, and only
+ *       while asked to play: the launcher asks while it is in front and lets go the moment an
+ *       app is tapped. The style's breathing loop is read from Nothing Widgets off the audio
+ *       path ({@link Beds}). Starts fade in; stops recede over 1.6 s, quieter and more muffled,
+ *       through a short buffer so the fade is heard at once; a new style fades the old one out
+ *       first.</li>
  *   <li>It never takes audio focus, so it can't pause anyone's music; instead it fades out while
  *       any other app plays media or a call is active, and comes back afterwards.</li>
  *   <li>Interface sounds are rendered once into small WAV files and played through SoundPool;
@@ -42,9 +45,9 @@ public final class SoundEngine {
     private static final float FADE_IN_SECONDS = 2.5f;
     /** Fading out also closes the master filter, so the music recedes rather than stops. */
     private static final float FADE_OUT_SECONDS = 1.6f;
-    /** After this long without music, the next start opens with the console-style swell. */
-    private static final long INTRO_AFTER_SILENCE_MS = 10 * 60 * 1000;
-    private static final String SFX_VERSION = "2";
+    /** How long a start waits for its breathing loop before playing without it. */
+    private static final long BED_WAIT_MS = 4000;
+    private static final String SFX_VERSION = "3";
     private static SoundEngine instance;
 
     private final Context context;
@@ -52,14 +55,20 @@ public final class SoundEngine {
     private final Handler main = new Handler(Looper.getMainLooper());
     private final Object lock = new Object();
 
-    private volatile Style style = Style.MEMORY_CARD;
+    private final Beds beds;
+    private final ExecutorService bedLoader = Executors.newSingleThreadExecutor(
+            r -> new Thread(r, "NothingLauncher+ music bed"));
+    private volatile Style style = Style.CALM;
     private volatile float volume = 0.5f;
     private volatile boolean wanted;
     private volatile boolean othersPlaying;
     private Thread thread;
-    private Synth synth;
-    private Style synthStyle;
-    private long silentSince;
+    private Ambience ambience;
+    private Style ambienceStyle;
+    private short[] ambienceBed;
+    /** The style whose loop was last asked for, and the last loaded. */
+    private Style bedAsked;
+    private volatile Bed bed;
 
     private SoundPool pool;
     private final Map<Sfx, Integer> sfxIds = new EnumMap<>(Sfx.class);
@@ -74,6 +83,7 @@ public final class SoundEngine {
 
     private SoundEngine(Context context) {
         this.context = context;
+        beds = new Beds(context, RATE);
         audio = context.getSystemService(AudioManager.class);
         audio.registerAudioPlaybackCallback(new AudioManager.AudioPlaybackCallback() {
             @Override
@@ -124,10 +134,37 @@ public final class SoundEngine {
         return wanted;
     }
 
+    /** A style and its breathing loop (null when Nothing Widgets can't give it). */
+    private static final class Bed {
+        final Style style;
+        final short[] pcm;
+
+        Bed(Style style, short[] pcm) {
+            this.style = style;
+            this.pcm = pcm;
+        }
+    }
+
+    /** Starts decoding {@code wanted}'s breathing loop, unless it is loaded or on its way. */
+    private void askBed(Style wanted) {
+        if (bedAsked == wanted) {
+            return;
+        }
+        bedAsked = wanted;
+        bedLoader.execute(() -> bed = new Bed(wanted, beds.get(wanted)));
+    }
+
     private void musicLoop() {
         Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
         AudioTrack track = null;
         try {
+            // The first start waits (silently, off the main thread) for its loop to decode.
+            askBed(style);
+            long waitUntil = System.currentTimeMillis() + BED_WAIT_MS;
+            while (ambience == null && (bed == null || bed.style != style) && wanted
+                    && System.currentTimeMillis() < waitUntil) {
+                Thread.sleep(20);
+            }
             // A short buffer (about four blocks) so a fade-out is heard the moment it starts.
             int minBuffer = AudioTrack.getMinBufferSize(
                     RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
@@ -149,22 +186,27 @@ public final class SoundEngine {
             float gain = 0;
             float fadeIn = BLOCK / (FADE_IN_SECONDS * RATE);
             float fadeOut = BLOCK / (FADE_OUT_SECONDS * RATE);
-            boolean intro = silentSince == 0
-                    || System.currentTimeMillis() - silentSince > INTRO_AFTER_SILENCE_MS;
             while (true) {
                 Style current = style;
-                if (synth == null) {
-                    synth = new Synth(RATE, current, System.nanoTime());
-                    synthStyle = current;
-                } else if (synthStyle != current) {
-                    synth.setStyle(current);
-                    synthStyle = current;
+                askBed(current);
+                Bed loaded = bed;
+                boolean ready = loaded != null && loaded.style == current;
+                if (ambience == null) {
+                    ambience = new Ambience(RATE, current, System.nanoTime());
+                    ambienceBed = ready ? loaded.pcm : null;
+                    ambience.setStyle(current, ambienceBed);
+                    ambienceStyle = current;
                 }
-                if (intro) {
-                    synth.intro();
-                    intro = false;
+                // A new style, or its loop arriving late: fade out, switch, fade back in.
+                boolean switching = ambienceStyle != current
+                        || (ready && ambienceBed != loaded.pcm);
+                if (switching && ready && gain == 0) {
+                    ambienceBed = loaded.pcm;
+                    ambience.setStyle(current, ambienceBed);
+                    ambienceStyle = current;
+                    switching = false;
                 }
-                boolean playing = wanted && !othersPlaying;
+                boolean playing = wanted && !othersPlaying && !switching;
                 float target = playing ? volume : 0;
                 float next = target > gain ? Math.min(target, gain + fadeIn)
                         : Math.max(target, gain - fadeOut);
@@ -175,8 +217,8 @@ public final class SoundEngine {
                     }
                 }
                 // Receding: muffle in step with the fade, back to clear as it returns.
-                synth.setMuffle(playing ? 0 : 1 - next / Math.max(0.01f, volume));
-                synth.render(block, BLOCK);
+                ambience.setMuffle(playing ? 0 : 1 - next / Math.max(0.01f, volume));
+                ambience.render(block, BLOCK);
                 float step = (next - gain) / BLOCK;
                 for (int i = 0; i < BLOCK; i++) {
                     gain += step;
@@ -187,7 +229,6 @@ public final class SoundEngine {
                 gain = next;
                 track.write(block, 0, block.length, AudioTrack.WRITE_BLOCKING);
             }
-            silentSince = System.currentTimeMillis();
         } catch (Throwable t) {
             synchronized (lock) {
                 thread = null;

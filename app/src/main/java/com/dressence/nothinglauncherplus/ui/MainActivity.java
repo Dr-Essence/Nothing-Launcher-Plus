@@ -721,8 +721,9 @@ public class MainActivity extends Activity {
                     config.uiSounds = checked;
                     store.save(this);
                 });
-        ui.switchRow("Background music", "Generated live and tuned to 432 Hz. Plays on the home"
-                + " screen only and goes quiet while other audio or a call plays", config.music,
+        ui.switchRow("Background music", "Nothing's Calm, Focus and Relax breathing sounds with"
+                + " console-menu layers that breathe along. Plays on the home screen only and goes"
+                + " quiet while other audio or a call plays", config.music,
                 checked -> {
                     config.music = checked;
                     store.save(this);

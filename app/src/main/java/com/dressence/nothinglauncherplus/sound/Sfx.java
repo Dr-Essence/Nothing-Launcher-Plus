@@ -2,8 +2,9 @@ package com.dressence.nothinglauncherplus.sound;
 
 /**
  * Interface sounds in the spirit of console menus: soft glassy ticks for moving, a rising
- * two-note chime for opening, falling for closing, a little fanfare for launching. All
- * synthesized (and tuned to 432 Hz) once, then played from memory.
+ * two-note chime for opening, falling for closing, a little fanfare for launching. All notes are
+ * from the background music's A minor pentatonic at A4 = 440 Hz (Nothing's breathing loops'
+ * tuning), so they sit in tune over it. Synthesized once, then played from memory.
  */
 public enum Sfx {
 
@@ -19,6 +20,7 @@ public enum Sfx {
     MENU(new float[][] {{60, 0, 0.9f}, {67, 0.04f, 0.7f}}, Patch.E_PIANO, 0.2f, 0.9f);
 
     static final float RATE = 24000;
+    static final float A4 = 440f;
     private static final float TAIL_SECONDS = 0.7f;
 
     /** Notes as {MIDI note, start seconds, level}. */
@@ -44,9 +46,8 @@ public enum Sfx {
             Voice v = new Voice();
             v.reset();
             patch.apply(v);
-            v.freq = Synth.hz(notes[i][0]);
+            v.freq = (float) (A4 * Math.pow(2, (notes[i][0] - 69) / 12.0));
             v.gain *= notes[i][2] * level * 4;
-            v.echo = 0;
             starts[i] = (int) (notes[i][1] * RATE);
             voices[i] = v;
         }
@@ -61,7 +62,7 @@ public enum Sfx {
                     voices[i].start(noteSeconds, RATE);
                 }
                 if (voices[i].active && voices[i].next()) {
-                    float s = (voices[i].left + voices[i].right) * 0.5f;
+                    float s = voices[i].out;
                     dry += s;
                     wet += s * voices[i].reverb;
                 }

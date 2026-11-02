@@ -165,7 +165,7 @@ public final class Config {
     public boolean uiSounds = false;
     public boolean music = false;
     /** A {@code sound.Style} name. */
-    public String musicStyle = "HOME_MENU";
+    public String musicStyle = "CALM";
     /** 0..100. */
     public int musicVolume = 45;
     /** Let the home screen and app drawer follow auto-rotate into landscape. */
@@ -352,7 +352,7 @@ public final class Config {
         qsAmber = in.bool(KEY_QS_AMBER, false);
         uiSounds = in.bool(KEY_UI_SOUNDS, false);
         music = in.bool(KEY_MUSIC, false);
-        musicStyle = in.text(KEY_MUSIC_STYLE, "HOME_MENU");
+        musicStyle = in.text(KEY_MUSIC_STYLE, "CALM");
         musicVolume = Math.max(0, Math.min(100, in.number(KEY_MUSIC_VOLUME, 45)));
         allowRotation = in.bool(KEY_ALLOW_ROTATION, false);
         controllerNav = in.bool(KEY_CONTROLLER_NAV, true);
