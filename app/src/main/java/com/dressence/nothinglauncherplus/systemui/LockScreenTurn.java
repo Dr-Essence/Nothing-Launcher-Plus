@@ -868,12 +868,17 @@ final class LockScreenTurn {
                         XposedHelpers.callMethod(state, "addCallback", java.lang.reflect.Proxy
                                 .newProxyInstance(cl, new Class<?>[] {listenerClass},
                                         (proxy, method, args) -> {
-                                            if (method.getName().equals("onStateChanged")
-                                                    && args != null && args.length == 1
-                                                    && Integer.valueOf(STATE_KEYGUARD)
-                                                            .equals(args[0])) {
-                                                // Into the lock screen only; guarded: this
-                                                // runs inside SystemUI's state dispatch.
+                                            if (method.getName().equals("onStateChanged")) {
+                                                // Each state: into the lock screen the
+                                                // placement here applies; out of it (the
+                                                // shade pulled down, unlocked) SystemUI's own
+                                                // comes back. SystemUI places them again only
+                                                // when its values change, and turned they
+                                                // often do not: the lock screen's placement
+                                                // stayed in the shade (DebuG19: the stack
+                                                // over quick settings over an app, 419 px
+                                                // short of the edge on the lock screen).
+                                                // Guarded: inside SystemUI's state dispatch.
                                                 Hooks.guard("lock screen notifications",
                                                         LockScreenTurn::layOutNotifications)
                                                         .run();
@@ -952,7 +957,8 @@ final class LockScreenTurn {
 
     /**
      * SystemUI's notification placement, done again (the fingerprint icon's spot changed, or
-     * the lock screen came back, so the clearance is placed for it): with its last margins,
+     * the shade's state changed: on the lock screen the clearance is placed for it, elsewhere
+     * SystemUI's own placement is restored): with its last margins,
      * which change only with the configuration (and a new configuration places them anew),
      * but the notifications' alpha as it is now, never an earlier one (SystemUI fades them
      * through this same call). Only while the turned lock screen is in use, in landscape.

@@ -200,6 +200,7 @@ final class LandscapeGrid {
         Hooks.install("landscape portrait guard", this::hookDatabase);
         Hooks.install("landscape widget spans", this::hookDisplaySpan);
         Hooks.install("clean rotation", this::hookRebindHold);
+        Hooks.install("pages on a profile change", this::hookProfileChange);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -643,6 +644,88 @@ final class LandscapeGrid {
                 main.post(Hooks.guard("rotation release", () -> releaseDrawing()));
             }
         });
+    }
+
+    /**
+     * The launcher keeps its pages when its profile changes and builds them again only on the
+     * rebind that follows; pages get their grid size only as they are made (hookPages). So
+     * after a turn the pages kept the other orientation's grid, stretched to the screen, until
+     * the rebind replaced them: under a second on a turn (drawing is held meanwhile,
+     * hookRebindHold), but nine seconds just after a boot (DebuG19: the portrait 5 x 9 grid
+     * across the landscape screen, 09:56:18.9 to 09:56:27.7). As the profile changes, the
+     * pages there are get the grid of the new orientation with their items at their places in
+     * it (landscape: arranged; portrait: each item's own cells), so they are right until the
+     * rebind replaces them.
+     */
+    private void hookProfileChange() {
+        XposedHelpers.findAndHookMethod(launcherClass, "dispatchDeviceProfileChanged",
+                new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) {
+                        Hooks.guard("pages on a profile change",
+                                () -> regridPages(param.thisObject)).run();
+                    }
+                });
+    }
+
+    private void regridPages(Object launcher) {
+        Object workspace = XposedHelpers.callMethod(launcher, "getWorkspace");
+        Object screens = XposedHelpers.getObjectField(workspace, "mWorkspaceScreens");
+        int count = (Integer) XposedHelpers.callMethod(screens, "size");
+        if (count == 0) {
+            return;
+        }
+        Object profile = XposedHelpers.callMethod(launcher, "getDeviceProfile");
+        Grid grid = gridFor(profile);
+        Object inv = XposedHelpers.getObjectField(profile, "inv");
+        int columns = grid != null ? grid.landscapeColumns()
+                : XposedHelpers.getIntField(inv, "numColumns");
+        int rows = grid != null ? grid.landscapeRows() : XposedHelpers.getIntField(inv, "numRows");
+        placed.clear(); // These moves are not edits of the landscape pages.
+        for (int i = 0; i < count; i++) {
+            Object page = XposedHelpers.callMethod(screens, "valueAt", i);
+            if (XposedHelpers.getIntField(page, "mCountX") == columns
+                    && XposedHelpers.getIntField(page, "mCountY") == rows) {
+                continue;
+            }
+            XposedHelpers.callMethod(page, "setGridSize", columns, rows);
+            if (grid != null) {
+                arrange(page, grid);
+            } else {
+                portraitCellsOn(page);
+            }
+        }
+    }
+
+    /** A page's items back at their own (portrait) cells. */
+    private void portraitCellsOn(Object page) {
+        ViewGroup container = (ViewGroup) XposedHelpers.callMethod(page, "getShortcutsAndWidgets");
+        Class<?> info = itemInfo();
+        List<View> views = new ArrayList<>();
+        for (int i = 0; i < container.getChildCount(); i++) {
+            View child = container.getChildAt(i);
+            if (info.isInstance(child.getTag()) && onDesktop(child.getTag())) {
+                views.add(child);
+            }
+        }
+        for (View view : views) {
+            XposedHelpers.callMethod(page, "markCellsAsUnoccupiedForView", view);
+        }
+        for (View view : views) {
+            int[] c = portraitCells(view.getTag());
+            Object lp = view.getLayoutParams();
+            XposedHelpers.callMethod(lp, "setCellX", c[0]);
+            XposedHelpers.callMethod(lp, "setCellY", c[1]);
+            XposedHelpers.setIntField(lp, "cellHSpan", c[2]);
+            XposedHelpers.setIntField(lp, "cellVSpan", c[3]);
+            XposedHelpers.callMethod(page, "markCellsAsOccupiedForView", view);
+            try {
+                XposedHelpers.callMethod(view, "applyDisplaySpan", c[2], c[3]);
+            } catch (NoSuchMethodError notAWidget) {
+                // Icons and folders.
+            }
+        }
+        container.requestLayout();
     }
 
     private void holdDrawing(Activity launcher) {

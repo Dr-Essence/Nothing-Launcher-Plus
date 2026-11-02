@@ -63,7 +63,12 @@ final class LivingWorldsView {
     private final Object engine;
     private final ConfigStore store;
     private final ReentrantLock lock = new ReentrantLock();
-    private final Paint paint = new Paint(); // No filtering: sharp pixels.
+    /**
+     * Sharp pixels, as the page's CSS image-rendering: pixelated keeps them: filtering off.
+     * A new Paint filters bitmaps by default since Android 9 (its hidden default flags include
+     * FILTER_BITMAP_FLAG), which smoothed the scene.
+     */
+    private final Paint paint = new Paint();
     private final RectF dst = new RectF();
     private final ImageReader reader;
     private final VirtualDisplay display;
@@ -80,6 +85,7 @@ final class LivingWorldsView {
     volatile boolean visible = true;
 
     private LivingWorldsView(Object engine, ConfigStore store, SurfaceHolder holder) {
+        paint.setFilterBitmap(false);
         this.engine = engine;
         this.store = store;
         this.holder = holder;

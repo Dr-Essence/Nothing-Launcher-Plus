@@ -567,14 +567,28 @@ on, the home screen's activity record is given, in system_server as it is made, 
 Nothing's helper asks for: Android opens it in the orientation it ends in, and it is loaded and
 laid out once.
 
+### Shade over a turned screen
+
+On the lock screen the module places the notifications on one half, clear of the fingerprint
+icon. SystemUI places them again only when its own values change, and turned they often do not
+when the shade's state changes, so that placement stayed in the pulled-down shade (DebuG19:
+the stack 419 px short of the edge on the lock screen, over quick settings above an app). At
+each state change SystemUI's placement is done again with its own latest values: the module's
+on the lock screen, SystemUI's own everywhere else.
+
 ### Long-press menus in landscape
 
 Nothing makes each row of its long-press menus (an app icon's App info / Remove / Hide icon, a
 folder's Customise / Rename: `NTPopupContainer`) as wide as the screen less its margins, a
 phone-wide list in portrait. Turned, that is the long side, and the rows ran past the screen's
 edge (DebuG18). Nothing hands that width to its own row builders; in landscape they get the
-width the screen's short side gives, as in portrait, and Nothing builds and places the menu as
-it does there.
+width the screen's short side gives, as in portrait, and the menu itself is that wide (its
+layout made it, and its shortcut grid's background, as wide as the screen). Nothing places the
+menu at the screen's left inset, right for a full-width list; in landscape its placement puts
+it centred on the item held, inside the screen, above or below as Nothing decides. The held
+icon's highlighted copy is placed less the drag layer's top inset only, though the layer adds
+its left inset too; turned, that inset is the camera cutout's side and the copy showed beside
+the icon as a second one: the left inset is taken back the same way (no change in portrait).
 
 ### Restore missing home items
 
@@ -859,7 +873,8 @@ So the page no longer changes size at all. It is given a display of exactly its 
 fits the scene at scale 1), and the module draws its frames on the wallpaper's surface with
 `App.resize`'s own framing worked out for the surface: zoomed to fill ("Zoom to fill screen",
 Living Worlds' switch) or fitted, the same sideways anchor it gives February, July and
-December, and pixels kept sharp as its `image-rendering: pixelated` keeps them. A turn draws
+December, and pixels kept sharp as its `image-rendering: pixelated` keeps them (bitmap
+filtering off: a new Paint filters by default since Android 9). A turn draws
 the last frame again at once for the new size, before Android shows the wallpaper: the first
 frame in landscape is already the landscape picture, filling the screen, with no black and no
 reload. The page draws about 16× fewer pixels than at screen size; scaling it up is one GPU
