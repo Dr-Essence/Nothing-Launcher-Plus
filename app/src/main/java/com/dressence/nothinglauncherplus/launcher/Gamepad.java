@@ -57,6 +57,7 @@ final class Gamepad {
     private static final String CLS_BUBBLE_TEXT = "com.android.launcher3.BubbleTextView";
     private static final String CLS_FOLDER_ICON = "com.android.launcher3.folder.BaseFolderIcon";
     private static final String CLS_POPUP = "com.android.launcher3.popup.PopupContainerWithArrow";
+    private static final String CLS_NT_POPUP = "com.nothing.launcher.popup.NTPopupContainer";
     private static final String CLS_ARROW_POPUP = "com.nothing.launcher.popup.NTArrowPopup";
     private static final String CLS_FOCUS_INDICATOR =
             "com.android.launcher3.keyboard.ItemFocusIndicatorHelper";
@@ -79,6 +80,8 @@ final class Gamepad {
     private final Class<?> bubbleText;
     private final Class<?> folderIcon;
     private final Class<?> popup;
+    /** Nothing's app menu, or null when this launcher has none. */
+    private Class<?> ntPopup;
     private final FocusRing ring;
     private WeakReference<View> lifted = new WeakReference<>(null);
     /** The item a controller-opened menu belongs to, given focus back as the menu closes. */
@@ -93,6 +96,7 @@ final class Gamepad {
         bubbleText = XposedHelpers.findClass(CLS_BUBBLE_TEXT, cl);
         folderIcon = XposedHelpers.findClass(CLS_FOLDER_ICON, cl);
         popup = XposedHelpers.findClass(CLS_POPUP, cl);
+        ntPopup = XposedHelpers.findClassIfExists(CLS_NT_POPUP, cl);
         ring = new FocusRing(bubbleText);
     }
 
@@ -369,18 +373,32 @@ final class Gamepad {
                 ? (View) XposedHelpers.callMethod(appsView, "getActiveRecyclerView") : null;
     }
 
-    /** App icons show their shortcuts popup; anything else gets its long-press action. */
+    /**
+     * App icons show their menu as a long-press does: Nothing's own (NTPopupContainer
+     * .showForView, which the home screen's long-press goes through, Workspace
+     * .handlePopupContainer). Launcher3's showForIcon builds the stock Android menu instead
+     * (DebuG22: a narrow column at bg_popup_item_width with its header buttons drawn tiny);
+     * it is only the fallback, should Nothing's go. Anything else gets its long-press action.
+     */
     private void openMenu(Activity launcher) {
         View focused = launcher.getWindow().getDecorView().findFocus();
         if (focused == null) {
             return;
         }
         menuAnchor = new WeakReference<>(focused);
-        if (bubbleText.isInstance(focused)) {
-            XposedHelpers.callStaticMethod(popup, "showForIcon", focused);
-        } else {
+        if (!bubbleText.isInstance(focused)) {
             focused.performLongClick();
+            return;
         }
+        if (ntPopup != null) {
+            try {
+                XposedHelpers.callStaticMethod(ntPopup, "showForView", focused);
+                return;
+            } catch (NoSuchMethodError e) {
+                ntPopup = null; // Not in this version: the stock menu from now on.
+            }
+        }
+        XposedHelpers.callStaticMethod(popup, "showForIcon", focused);
     }
 
     /** Focus back on the item whose menu is closing (still there, controller in use). */
