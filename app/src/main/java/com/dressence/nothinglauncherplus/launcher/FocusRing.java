@@ -40,6 +40,17 @@ final class FocusRing {
     private static final float MARK = 0.2f;
     private static final float GAP_DP = 3;
     private static final float STROKE_DP = 2;
+    /**
+     * A shape covers at least this share of its bounds (a disc about 0.79, a card nearly 1);
+     * less is scattered marks, such as a calendar's text on a clear background.
+     */
+    private static final float SOLID = 0.35f;
+    /** A shape whose bounds are less than this share of all that is drawn is a detail. */
+    private static final float EXTENT = 0.5f;
+    /** Corners at least this round are taken as fully round. */
+    private static final float ROUND = 0.85f;
+    /** A row or column belongs to the shape when it holds this share of the fullest one. */
+    private static final float PROJECTION = 0.25f;
     /** 1 - 1/sqrt(2): how far along its diagonal a rounded corner starts, per unit radius. */
     private static final float CORNER = 0.29289f;
 
@@ -50,11 +61,19 @@ final class FocusRing {
         final int width;
         final int height;
 
+        /** False when what was drawn is scattered marks (text, lines), not one solid shape. */
+        final boolean solid;
+
         Shape(RectF bounds, float radius, int width, int height) {
+            this(bounds, radius, width, height, true);
+        }
+
+        Shape(RectF bounds, float radius, int width, int height, boolean solid) {
             this.bounds = bounds;
             this.radius = radius;
             this.width = width;
             this.height = height;
+            this.solid = solid;
         }
     }
 
@@ -70,7 +89,7 @@ final class FocusRing {
     /** Puts the ring on {@code view} (taking it off wherever it was). */
     void show(View view) {
         hide();
-        if (isContainer(view)) {
+        if (!isWidget(view) && isContainer(view)) {
             return; // A folder's or menu's whole sheet: focus goes on into its items.
         }
         view.setDefaultFocusHighlightEnabled(false);
@@ -80,13 +99,17 @@ final class FocusRing {
         }
         float dp = view.getResources().getDisplayMetrics().density;
         float stroke = STROKE_DP * dp;
-        RectF r = new RectF(shape.bounds);
-        float gap = GAP_DP * dp + stroke / 2;
+        // The same gap all round, inside the item (where nothing cuts it off): closer to the
+        // shape, or just on its edge, where the item leaves no room, never squashed to fit.
+        RectF b = shape.bounds;
+        float half = stroke / 2;
+        float gap = Math.min(GAP_DP * dp + half, Math.min(Math.min(b.left, b.top),
+                Math.min(view.getWidth() - b.right, view.getHeight() - b.bottom)) - half);
+        gap = Math.max(gap, -half);
+        RectF r = new RectF(b);
         r.inset(-gap, -gap);
-        // Inside the item, where it can't be cut off.
-        r.intersect(stroke / 2, stroke / 2, view.getWidth() - stroke / 2,
-                view.getHeight() - stroke / 2);
-        float radius = Math.min(shape.radius + gap, Math.min(r.width(), r.height()) / 2);
+        float radius = Math.max(0, Math.min(shape.radius + gap,
+                Math.min(r.width(), r.height()) / 2));
         Ring next = new Ring(r, radius, stroke);
         next.setBounds(0, 0, view.getWidth(), view.getHeight());
         view.getOverlay().add(next);
@@ -120,11 +143,20 @@ final class FocusRing {
             return cached;
         }
         Rect area = new Rect(0, 0, w, h);
-        if (bubbleText.isInstance(view)) {
+        boolean icon = bubbleText.isInstance(view);
+        boolean widget = isWidget(view);
+        if (icon) {
             // An app icon: the icon, not its name.
             XposedHelpers.callMethod(view, "getIconBounds", area);
             if (!area.intersect(0, 0, w, h)) {
                 return null;
+            }
+        } else if (widget) {
+            // A widget: its cell less the launcher's padding round it.
+            area.set(view.getPaddingLeft(), view.getPaddingTop(), w - view.getPaddingRight(),
+                    h - view.getPaddingBottom());
+            if (area.isEmpty()) {
+                area.set(0, 0, w, h);
             }
         }
         Shape shape;
@@ -136,7 +168,7 @@ final class FocusRing {
         if (inPopup(view)) {
             // A menu row: its whole width, as round as the row or its card when the row draws
             // no background of its own.
-            if (shape == null || shape.bounds.width() < w * 0.8f) {
+            if (shape == null || !shape.solid || shape.bounds.width() < w * 0.8f) {
                 float radius = outlineRadius(view);
                 if (radius <= 0 && view.getParent() instanceof View) {
                     radius = outlineRadius((View) view.getParent());
@@ -146,9 +178,19 @@ final class FocusRing {
                 }
                 shape = new Shape(new RectF(0, 0, w, h), radius, w, h);
             }
-        } else if (shape == null) {
-            shape = new Shape(new RectF(area), Math.min(area.width(), area.height()) * 0.2f,
-                    w, h);
+        } else if (shape == null || !shape.solid) {
+            // Nothing solid drawn (a clear widget of text and lines, an icon of a lone letter):
+            // the widget's card as Android rounds widgets, the icon's circle, else the area.
+            float radius;
+            if (widget) {
+                radius = view.getResources().getDimension(
+                        android.R.dimen.system_app_widget_background_radius);
+            } else if (icon) {
+                radius = Math.min(area.width(), area.height()) / 2f;
+            } else {
+                radius = Math.min(area.width(), area.height()) * 0.2f;
+            }
+            shape = new Shape(new RectF(area), radius, w, h);
         }
         shapes.put(view, shape);
         return shape;
@@ -182,32 +224,54 @@ final class FocusRing {
         RectF bounds = new RectF(area.left + o[0] / scale, area.top + o[1] / scale,
                 area.left + o[2] / scale, area.top + o[3] / scale);
         float radius = Math.min(o[4] / scale, Math.min(bounds.width(), bounds.height()) / 2);
-        return new Shape(bounds, radius, w, h);
+        return new Shape(bounds, radius, w, h, o[5] >= SOLID);
     }
 
     /**
-     * The shape in a mask: {left, top, right, bottom, corner radius} in mask pixels, or null
-     * when it is empty.
+     * The shape in a mask: {left, top, right, bottom, corner radius, share of its bounds it
+     * covers} in mask pixels, or null when it is empty. Its bounds are the rows and columns
+     * that carry a fair part of it, so a mark joined to its edge (a notification dot touching
+     * a folder's disc) does not widen it.
      */
     static float[] outline(boolean[] mask, int bw, int bh) {
-        keepShape(mask, bw, bh);
-        int left = bw;
-        int top = bh;
-        int right = -1;
-        int bottom = -1;
+        // Everything drawn, before the small marks are left out.
+        int allLeft = bw;
+        int allTop = bh;
+        int allRight = -1;
+        int allBottom = -1;
         for (int y = 0; y < bh; y++) {
             for (int x = 0; x < bw; x++) {
                 if (mask[y * bw + x]) {
-                    left = Math.min(left, x);
-                    right = Math.max(right, x);
-                    top = Math.min(top, y);
-                    bottom = Math.max(bottom, y);
+                    allLeft = Math.min(allLeft, x);
+                    allRight = Math.max(allRight, x);
+                    allTop = Math.min(allTop, y);
+                    allBottom = Math.max(allBottom, y);
                 }
             }
         }
-        if (right < 0) {
+        if (allRight < 0) {
             return null;
         }
+        int largest = keepShape(mask, bw, bh);
+        int[] columns = new int[bw];
+        int[] rows = new int[bh];
+        for (int y = 0; y < bh; y++) {
+            for (int x = 0; x < bw; x++) {
+                if (mask[y * bw + x]) {
+                    columns[x]++;
+                    rows[y]++;
+                }
+            }
+        }
+        int[] across = span(columns);
+        int[] down = span(rows);
+        if (across == null || down == null) {
+            return null;
+        }
+        int left = across[0];
+        int right = across[1];
+        int top = down[0];
+        int bottom = down[1];
         // The corner radius: how far in along each corner's diagonal the shape starts.
         int reach = Math.min(right - left, bottom - top) / 2;
         float[] steps = {
@@ -217,7 +281,41 @@ final class FocusRing {
                 diagonal(mask, bw, right, bottom, -1, -1, reach)};
         java.util.Arrays.sort(steps);
         float step = (steps[1] + steps[2]) / 2; // Middle two: a stray mark can't skew it.
-        return new float[] {left, top, right + 1, bottom + 1, step / CORNER};
+        float area = (float) (right - left + 1) * (bottom - top + 1);
+        float radius = step / CORNER;
+        float half = (Math.min(right - left, bottom - top) + 1) / 2f;
+        if (radius >= half * ROUND) {
+            radius = half; // Round all the way: a disc, a pill.
+        }
+        // Solid: the shape fills its bounds, and its bounds are most of what is drawn (a
+        // calendar's highlighted day is solid, but a small part of the widget).
+        float all = (float) (allRight - allLeft + 1) * (allBottom - allTop + 1);
+        float cover = Math.min(1, largest / area);
+        if (area < all * EXTENT) {
+            cover = 0;
+        }
+        return new float[] {left, top, right + 1, bottom + 1, radius, cover};
+    }
+
+    /** First and last index holding at least {@link #PROJECTION} of the fullest; or null. */
+    private static int[] span(int[] counts) {
+        int max = 0;
+        for (int c : counts) {
+            max = Math.max(max, c);
+        }
+        if (max == 0) {
+            return null;
+        }
+        float least = Math.max(1, max * PROJECTION);
+        int first = 0;
+        while (counts[first] < least) {
+            first++;
+        }
+        int last = counts.length - 1;
+        while (counts[last] < least) {
+            last--;
+        }
+        return new int[] {first, last};
     }
 
     /** Steps from a corner along its diagonal until the shape starts (at most {@code reach}). */
@@ -231,8 +329,11 @@ final class FocusRing {
         return reach;
     }
 
-    /** Keeps the shape's own pixels: every mark at least {@link #MARK} of the largest. */
-    private static void keepShape(boolean[] mask, int bw, int bh) {
+    /**
+     * Keeps the shape's own pixels: every mark at least {@link #MARK} of the largest. Returns
+     * the largest mark's size.
+     */
+    private static int keepShape(boolean[] mask, int bw, int bh) {
         int[] label = new int[mask.length];
         int[] queue = new int[mask.length];
         int[] sizes = new int[mask.length + 1];
@@ -272,6 +373,7 @@ final class FocusRing {
                 mask[i] = false;
             }
         }
+        return largest;
     }
 
     /** The corner radius of a view's own rounded outline, or -1 when it has none. */
@@ -290,9 +392,21 @@ final class FocusRing {
         return outline.getRect(rect) && !rect.isEmpty() ? outline.getRadius() : -1;
     }
 
+    /** A widget's host (Launcher3's app widgets and Nothing's cards). */
+    static boolean isWidget(View view) {
+        for (Class<?> c = view.getClass(); c != null; c = c.getSuperclass()) {
+            String name = c.getName();
+            if (name.equals("android.appwidget.AppWidgetHostView")
+                    || name.equals("com.nothing.cardhost.CardWidgetHostView")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
-     * A view whose own items take focus (a folder's sheet, a menu): not an item itself. A
-     * widget's host keeps its children's focus to itself until entered, so it is an item.
+     * A view whose own items take focus (a folder's sheet, a menu): not an item itself.
+     * Widgets are items although their parts may take focus (DebuG22: Nothing's cards).
      */
     private static boolean isContainer(View view) {
         if (!(view instanceof android.view.ViewGroup)) {

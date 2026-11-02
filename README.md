@@ -906,8 +906,12 @@ by the system, which may list media sessions; the launcher may not).
 
 The focused item shows one thin ring in its own shape: the module reads the item's outline from
 what it draws (an icon's shape, a folder's disc, a widget's card or circle, a menu row's pill),
-leaving out small marks such as notification dots, and rings it just outside. A folder's or
-menu's whole sheet, when it takes focus, gets no ring: the next press moves into its items. Launcher3's own
+leaving out small marks such as notification dots, and rings it just outside. A widget that
+draws no solid card (a calendar's text, a clock's digits) is ringed round its whole cell, with
+Android's widget corners. A folder's or menu's whole sheet, when it takes focus, gets no ring:
+the next press moves into its items. Closing a menu with B gives focus back to the item it was
+opened from (Android would otherwise give it to the first thing in the window: a folder's name,
+opening the keyboard, or the drawer's Private Space). Launcher3's own
 keyboard-focus rectangle (drawn round the item's whole box) and Android's default highlight are
 off while controller navigation is on, so there is only ever one indicator. Home screen icons
 and folders, and the drawer's folder tiles, also lift on a spring (scale + elevation), each

@@ -57,6 +57,7 @@ final class Gamepad {
     private static final String CLS_BUBBLE_TEXT = "com.android.launcher3.BubbleTextView";
     private static final String CLS_FOLDER_ICON = "com.android.launcher3.folder.BaseFolderIcon";
     private static final String CLS_POPUP = "com.android.launcher3.popup.PopupContainerWithArrow";
+    private static final String CLS_ARROW_POPUP = "com.nothing.launcher.popup.NTArrowPopup";
     private static final String CLS_FOCUS_INDICATOR =
             "com.android.launcher3.keyboard.ItemFocusIndicatorHelper";
     /** What a music widget calls itself (its label, as Launcher3 sets it on the host). */
@@ -80,6 +81,8 @@ final class Gamepad {
     private final Class<?> popup;
     private final FocusRing ring;
     private WeakReference<View> lifted = new WeakReference<>(null);
+    /** The item a controller-opened menu belongs to, given focus back as the menu closes. */
+    private WeakReference<View> menuAnchor = new WeakReference<>(null);
 
     private Gamepad(ClassLoader cl, ConfigStore store) {
         this.store = store;
@@ -115,6 +118,18 @@ final class Gamepad {
                         if (store.get().controllerNav) {
                             param.setResult(null);
                         }
+                    }
+                });
+        // A menu closing hands focus to whatever Android finds first in the window once the
+        // menu is gone: in a folder its name field, which opens the keyboard; in the drawer
+        // the Private Space entry at its end, which scrolls there and shows Nothing's guide
+        // (DebuG22, B on a menu at 23:13:32 and 23:14:09). Before the menu leaves, focus goes
+        // back to the item it was opened from, as on a console.
+        XposedHelpers.findAndHookMethod(CLS_ARROW_POPUP, cl, "closeComplete",
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        Hooks.guard("controller menu close", gamepad::refocusAnchor).run();
                     }
                 });
         XposedHelpers.findAndHookMethod(launcher, "onCreate", Bundle.class, new XC_MethodHook() {
@@ -164,17 +179,7 @@ final class Gamepad {
     /** The widget with focus (Launcher3's or Nothing's card host), or null. */
     private static View focusedWidget(Activity launcher) {
         View focused = launcher.getWindow().getDecorView().findFocus();
-        if (focused == null) {
-            return null;
-        }
-        for (Class<?> c = focused.getClass(); c != null; c = c.getSuperclass()) {
-            String name = c.getName();
-            if (name.equals("android.appwidget.AppWidgetHostView")
-                    || name.equals("com.nothing.cardhost.CardWidgetHostView")) {
-                return focused;
-            }
-        }
-        return null;
+        return focused != null && FocusRing.isWidget(focused) ? focused : null;
     }
 
     /** A music or media player widget, by its label or provider. */
@@ -370,10 +375,21 @@ final class Gamepad {
         if (focused == null) {
             return;
         }
+        menuAnchor = new WeakReference<>(focused);
         if (bubbleText.isInstance(focused)) {
             XposedHelpers.callStaticMethod(popup, "showForIcon", focused);
         } else {
             focused.performLongClick();
+        }
+    }
+
+    /** Focus back on the item whose menu is closing (still there, controller in use). */
+    private void refocusAnchor() {
+        View anchor = menuAnchor.get();
+        menuAnchor = new WeakReference<>(null);
+        if (anchor != null && store.get().controllerNav && anchor.isAttachedToWindow()
+                && anchor.isShown() && !anchor.isInTouchMode()) {
+            anchor.requestFocus();
         }
     }
 
@@ -470,10 +486,11 @@ final class Gamepad {
         float lowest = (to * s - max) / (s - 1);
         float highest = (from * s - min) / (s - 1);
         float centre = (from + to) / 2;
-        if (lowest > highest) {
-            return centre; // Larger than the list itself: as it is.
-        }
-        return Math.max(lowest, Math.min(highest, centre));
+        float p = lowest > highest ? centre : Math.max(lowest, Math.min(highest, centre));
+        // On the item itself, at most its edge: an item focused while partly past the list's
+        // edge (about to be scrolled in) grows from that edge. A pivot off the item moves it
+        // as it grows (DebuG22: a tile shown a row away from its place while focused).
+        return Math.max(from, Math.min(to, p));
     }
 
     /** The emoji covers on a drawer tile react (the tile's own only). */
