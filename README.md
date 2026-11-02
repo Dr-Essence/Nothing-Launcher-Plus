@@ -1,14 +1,28 @@
 # Nothing Launcher+
 
-An LSPosed module that adds **custom folders** to the Nothing Launcher app drawer.
-
-Nothing Launcher's **Smart (Beta)** drawer layout sorts apps into folders by category ("Games",
-"Tools", …). The categories come from Nothing's server, and you can't change them. This module
-adds your own folders next to them. Apps you put in a custom folder leave their automatic one.
+An LSPosed module for **Nothing and CMF phones** that adds to Nothing Launcher and Nothing OS:
+custom app drawer folders with animated dot-matrix covers, a landscape home screen and lock
+screen, game controller support, live wallpaper sounds and more.
 
 > **Heavily experimental alpha.** Expect bugs, and expect things to change from build to build.
+> Tested on one phone so far (CMF Phone 1, Nothing OS 4.1, Android 16).
 
-## Who this is for
+**What it adds**
+
+- **App drawer**: your own folders beside Nothing's Smart categories, image and emoji covers.
+- **Dot-matrix look**: animated emoji covers, glowing dot-matrix app icons, an Ndot status bar.
+- **Landscape**: home screen, app drawer, recents, widget cards, lock screen and always-on display.
+- **Controllers**: navigate the launcher and type in HeliBoard with a gamepad; a gaming launcher.
+- **System extras**: memory in recents, a Running services task manager, system fonts, full
+  refresh rate in battery saver, sounds and music.
+- **Live wallpapers**: sounds and smooth turning for Living Worlds and Palette Cycle.
+
+Each section below opens when tapped.
+
+## Getting started
+
+<details>
+<summary><b>Who this is for</b> · Nothing / CMF phones, tested devices, feedback</summary>
 
 - **Nothing and CMF phones only.** The module hooks Nothing's own apps (Nothing Launcher,
   Nothing's System UI, Nothing Widgets, NothingCardService). It does nothing useful on other
@@ -23,39 +37,13 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
   - your device and Nothing OS version;
   - what works and what doesn't;
   - an LSPosed log (LSPosed → Logs → save), and a screen recording if something looks wrong;
-  - for a screen that looks or turns wrong, a debug report: in the module's app, Diagnostics →
-    **Capture debug report** (root). Choose how long it waits first (10 s to 10 min: time to
-    set the problem up, such as locking the phone, turning it or opening the screen that
-    misbehaves) and how long it captures (15 s to 10 min). Meanwhile it records the screen
-    and, every few seconds, takes a screenshot, the screen composer's layers, the windows and
-    the view layout of every visible window (System UI's included) and how System UI draws
-    what is behind the lock screen, PIN page and shade (scrims and blur) and the busiest
-    processes (`top`); each time the screen wakes it records the rotation and its sensor a
-    second and three seconds after (and on the always-on display); logcat runs throughout. At the end it adds the memory of the module's
-    app, Nothing Launcher and System UI (`dumpsys meminfo`).
-    It adds System UI's state, input, display, the system settings, the game service, battery,
-    where the phone keeps its CPU / GPU clocks and temperatures, Nothing's Game Bar app, the
-    PerfMTK module's scripts, settings and `--help` (if installed), SurfaceFlinger and the
-    composer libraries it has loaded and an 8-second SurfaceFlinger layer trace (Perfetto;
-    for the landscape fingerprint) and the LSPosed log, and saves one
-    `NLPlus-report-….tar.gz` in Download; a notification says when it is ready. While it
-    runs you can tell what it is doing: one buzz when capturing starts and two when the
-    report is saved (felt on the lock screen too), an ongoing notification counting down
-    ("Capture starts in…", "Capturing…", "Saving the report…"), and a small "● REC" pill
-    with the seconds left, drawn by System UI, so it shows on the lock screen too. **Stop
-    capture** ends it early and still saves it. It can hold personal information
-    (screenshots, the recording, notifications, logs), so look through it before posting it
-    publicly. The **Diagnostic logging** switch on the same page (off by default; turn it on
-    before capturing, it applies within a minute without a reboot, and off again after: it
-    logs every lock screen layout pass) writes the module's diagnostic lines to the LSPosed
-    log: orientation changes, rotation sensor reports, lock screen layout, the always-on
-    display's position, fingerprint events and portrait-only system screens.
-    **Test notifications** on the same page posts 1, 3, 6 or 12 sample notifications (short,
-    long, conversation, progress, picture and reminder), now or in 10 seconds so the phone can
-    be locked first, to check how the lock screen lays them out; **Clear test notifications**
-    removes them. It asks for the notification permission the first time.
 
-### Before you install: protect your phone
+  - for a screen that looks or turns wrong, a debug report (see *Diagnostics and debug report* under Features).
+
+</details>
+
+<details>
+<summary><b>Before you install: protect your phone</b> · safe mode, backups, one feature at a time</summary>
 
 - **Don't use it on a phone you depend on.** It is alpha software that hooks System UI and the
   system framework; a phone you can afford to have misbehave for a while is the right place for it.
@@ -79,7 +67,59 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
   too: a burn-in protection module once moved the status bar in a way that looked like this
   module's doing.
 
-## For the best experience
+- **Defaults**: features that depend on one phone's hardware or one build's internals start off
+(task manager, lock screen rotation, landscape system screens, performance tools, status bar
+and quick settings Ndot, diagnostic logging); the ones that only act on apps you add to the
+scope, or find their place by name and stand aside when it is missing, start on.
+
+</details>
+
+<details>
+<summary><b>Requirements and install</b> · LSPosed, scope, updates and signing</summary>
+
+#### Requirements
+
+- Nothing Launcher **4.0.20**. Later versions will probably work too, because the hooks avoid
+  obfuscated names (see below).
+- LSPosed (or another Xposed implementation with API 93+ and `xposedsharedprefs` support).
+
+#### Install
+
+1. Build the APK (`./gradlew assembleRelease`) or download it from the *Build module* GitHub
+   Actions run.
+2. Install it, enable it in LSPosed and select **Nothing Launcher** as the scope, plus only
+   what you use:
+   - **System UI**: the lit status bar, quick settings and *Lock screen rotation (test)*;
+   - **System Framework** (`android`, needs a reboot): system font and widget cards in landscape;
+   - **Nothing Widgets** and **NothingCardService**: widget cards in landscape;
+   - **HeliBoard**: typing with a controller.
+   The module installs on internal storage only: LSPosed reads it at boot, before a memory
+   card used as internal storage (adopted storage, `/mnt/expand/…`) is mounted, and a module
+   there was not loaded after a reboot ("Failed to open APK … No such file"), and Android,
+   checking its apps before the card is mounted, deleted the module's data (its settings and
+   folders) as belonging to a missing app. An install can still land there whatever the APK
+   asks for (the "Force allow apps on external" developer option, or an installer that picks
+   the card), so after an update, and whenever its page is opened, the module moves itself
+   back to the phone's storage (root; `pm move-package com.dressence.nothinglauncherplus
+   internal`), and its page says so.
+3. Force-stop Nothing Launcher, or use "Restart Nothing Launcher" (root) on the app's Home screen page.
+4. In Nothing Launcher settings, set *Drawer layout* to **Smart (Beta)** and tap **Custom folders**.
+
+#### Updates and signing
+
+Every build is signed with the same key (`signing/update.jks`, committed on purpose), so a new
+APK installs straight over the old one and keeps your folders. After an update the module
+restarts Nothing Launcher by itself (root), and LSPosed loads the new code right away: no
+uninstall, no reboot. Set `SIGNING_KEYSTORE`, `SIGNING_PASSWORD` and `SIGNING_KEY_ALIAS` to build
+with a private key instead.
+
+Builds from before v0.5.0 were signed with throwaway keys: switch once with **Export**,
+uninstall, install, **Import**.
+
+</details>
+
+<details>
+<summary><b>Recommended companion projects</b> · PerfMTK, HeliBoard, NothingTweaks</summary>
 
 These are separate projects, not part of this module. Each has its own risks, so read its
 instructions first.
@@ -104,10 +144,19 @@ instructions first.
   PIN), screenshot and screen recording options, in-display fingerprint colours and a charging
   limit. It goes well with this module.
 
+</details>
+
 ## Features
 
 Everything new is opt-in: with the defaults the drawer looks exactly like stock Smart (Beta)
-plus your folders.
+plus your folders. Changes apply right away; the launcher does not need a restart.
+
+<details>
+<summary><b>App drawer: custom folders</b> · folders, covers, ordering, opacity, search, export</summary>
+
+Nothing Launcher's **Smart (Beta)** drawer layout sorts apps into folders by category ("Games",
+"Tools", …). The categories come from Nothing's server, and you can't change them. This module
+adds your own folders next to them. Apps you put in a custom folder leave their automatic one.
 
 - Create, rename and delete drawer folders and pick the apps in each.
 - **Reorder the folders** by dragging them in the module's folder list. The drawer fills its
@@ -129,18 +178,20 @@ plus your folders.
   Launcher settings* opens the module's main menu.
 - Long-press a drawer folder for the launcher's own popup: **Add to home screen** creates a real
   home-screen folder with the same name and apps; **Edit** (custom folders) opens the folder editor.
-- **Landscape (beta)**: the home screen and app drawer follow auto-rotate. Each home page is
-  rearranged into a wide grid automatically, while your portrait layout stays as it is — see
-  *Landscape* below.
-- **Game controllers**: navigate home and the drawer with a DualSense, DualShock, Xbox, GameSir,
-  Backbone or any standard gamepad, and type with the controller like on a PlayStation in
-  **[HeliBoard](https://github.com/Helium314/HeliBoard)**, the recommended keyboard for the best
-  experience — see *Controllers* below.
 - **Export / Import** saves folders, options and cover images to one file, so the setup survives
   a reinstall.
 - Changes apply right away through a reload broadcast. You don't need to restart the launcher.
 
-## Emoji animations
+- **Drawer search** follows the drawer's opacity: Nothing paints its search's sheet, scrim,
+  header and results' background itself (`updateCustomColor`), so it rose as a solid black panel
+  over a see-through drawer. Its Compose search bar paints a band in the drawer's scrim colour
+  from the bar's middle down, which rises with the keyboard, and its search page uses that colour
+  as its background: the colour is faded where Nothing reads it, so they follow the opacity too.
+
+</details>
+
+<details>
+<summary><b>Emoji covers (beta)</b> · animated dot-matrix emoji on folder tiles</summary>
 
 > **Beta.** Emoji covers are a beta. They will be replaced by the **Nothing Dot Matrix
 > Display** engine (see [Roadmap](#roadmap)).
@@ -170,18 +221,7 @@ plus your folders.
 - **Glowing screens**: the lit dots on the emoji screen throw a soft halo of their own colour
   into the glass (the frame stretched with smooth filtering, plus a half-resolution copy for
   the wider falloff), redone every frame so the glow moves with the animation.
-- **Dot-matrix app icons** (option): every app icon the launcher draws, on the home screen, in
-  the drawer, in folders and in search, is a little dot-matrix screen of its own: a bezel
-  round a pane of glass with a hairline rim, and on it a 22 x 22 grid of round dots lit in the
-  icon's own colours, each casting a dim halo on the glass. An icon in the launcher's circle
-  is a round screen of dark glass; an icon with a shape of its own keeps it, its glass lit
-  green from behind and the bezel following its outline. Nothing is cut to a circle, and an
-  old icon the launcher put on a white plate is shown off the plate, in its own shape. Now and
-  then, each icon on its own timing, a faint green scan line rolls down its dots. When icons
-  come into view each powers on like a little screen: dots light from the centre outwards on
-  a spring with a brief white LED flash, icons a few milliseconds apart. App names too long
-  for their icon scroll like the folder names, a dot at a time. One hook on the launcher's
-  icon drawable covers every surface; each icon is made into a screen once and cached.
+
 - **Folders open and shut**: 📁's front panel tips open on its bottom hinge, showing the
   shadowed inside and the papers in it, then closes again (📂 closes up and reopens). It is
   drawn from the emoji's own dots, so it never changes size; tap it and it opens at once.
@@ -218,23 +258,7 @@ plus your folders.
   glance about within their whites; 💔 cracks apart and mends; 🤖's antenna lamp blinks; 🤹
   juggles, the balls passing behind the head; only round open eyes blink, never ^ ^ or
   brows; angry faces flush from the chin up.
-- **Ndot status bar** (option): System UI is in the module's scope; the status bar is lit
-  like the drawer's folder screens on any wallpaper: the clock and date in Nothing's NDot in
-  the green of the folder name panels with a soft glow, and every icon (network type,
-  signal, Wi-Fi, airplane mode, headphones, alarm...), the battery and the network speed in
-  the same green, their own shapes untouched. Another option puts the date before the time.
-- **Green quick settings** (option): the tiles' icons and labels glow green, and a tile that
-  is on lights deep retro-display green where it was white, or, with **Amber dashboard
-  tiles**, the warm amber of a retro car dashboard. The icons' own animations still play.
-- **System font**: choose any of Nothing's fonts already on the phone (NDot, NType, and the
-  ones inside Nothing's widgets app), each previewed in the chooser on a dot-matrix screen
-  made for it, in its own letters. It is applied the way Android applies its own fonts: with
-  System Framework in the module's LSPosed scope, the font map system_server gives every app
-  is rewritten with the chosen font as soon as you pick it, so every app opened from then on
-  uses it, no reboot; System UI and the launcher are restarted at once. A font only the
-  widgets app has is first added to the system's fonts as a file (one restart). If the system
-  ever crashes while a new font is in use, the next start leaves it off. Phone default
-  undoes it.
+
 - **Animation test**: in the module's settings, play any emoji's animation on a big dot
   screen without making a folder for it: step through emoji one by one, replay its reaction,
   slow it to half or a quarter speed, and compare the dots with the plain emoji.
@@ -294,34 +318,28 @@ plus your folders.
 Emoji names and groups come from [emojibase-data](https://github.com/milesj/emojibase) (MIT),
 based on Unicode CLDR.
 
-## Sound
+</details>
 
-Both off by default; switch them on in the module's **Sound** page.
+<details>
+<summary><b>Dot-matrix app icons</b> · every launcher icon as a little dot screen</summary>
 
-- **Background music**, generated live (never a loop, never a recording) and tuned to
-  A = 432 Hz, in stereo. Seven original styles in the manner of classic console menus. The
-  PlayStation-menu kind come first, deliberately simple and matched by measurement (spectrum,
-  stereo width, swell rate, register) to reference recordings: *Home Menu* (PS4-style: one warm
-  chorused tone playing slow, ringing notes that overlap into chords, F3 to G4, with phrases and
-  pauses; the default) and *System Browser* (PS2-style: wide filtered noise breathing in and out
-  every few seconds, a cluster of every note of the scale between F3 and F4 over a low rumble, a
-  slow soft ping line and rare glints sliding down). No drums, almost nothing above 2 kHz. Then *Crystal Shore*
-  (90s new-age shimmer and surf), *Shop Lounge* (swung e-piano, walking bass, vibes), *Starlight
-  Lullaby* (16-bit music box and flute) and *Pixel Meadow* (8-bit overworld).
-- Each style has a master tone control; the calm ones keep essentially nothing above 2 kHz, and
-  loudness is matched on what a phone speaker actually plays (above 200 Hz).
-  A composer writes the music as it plays: motif, answer and cadence over changing progressions,
-  a new progression every 16 bars and a new key every 32.
-- Tapping an app lets the music recede at once: over 1.6 s it fades and closes its filter, like a
-  console dimming its menu as a game starts.
-- It plays only while the home screen or drawer is in front, fades in and out, never takes audio
-  focus (so it can't pause your music), and goes quiet while another app plays media or a call
-  is active. Synthesis runs on one audio thread into a power-saving track, about 1% of a core.
-- **Interface sounds**: console-style chimes for opening and closing the drawer and folders,
-  launching apps, turning pages, menus and controller focus, silent on silent or vibrate.
-- **Preview** the selected style in the module; music volume has its own slider.
+- **Dot-matrix app icons** (option): every app icon the launcher draws, on the home screen, in
+  the drawer, in folders and in search, is a little dot-matrix screen of its own: a bezel
+  round a pane of glass with a hairline rim, and on it a 22 x 22 grid of round dots lit in the
+  icon's own colours, each casting a dim halo on the glass. An icon in the launcher's circle
+  is a round screen of dark glass; an icon with a shape of its own keeps it, its glass lit
+  green from behind and the bezel following its outline. Nothing is cut to a circle, and an
+  old icon the launcher put on a white plate is shown off the plate, in its own shape. Now and
+  then, each icon on its own timing, a faint green scan line rolls down its dots. When icons
+  come into view each powers on like a little screen: dots light from the centre outwards on
+  a spring with a brief white LED flash, icons a few milliseconds apart. App names too long
+  for their icon scroll like the folder names, a dot at a time. One hook on the launcher's
+  icon drawable covers every surface; each icon is made into a screen once and cached.
 
-## Landscape
+</details>
+
+<details>
+<summary><b>Home screen in landscape</b> · grid, folders, menus, recents, restoring items</summary>
 
 Nothing's DeviceProfile replaces AOSP's sizing with portrait-only math: cell width is derived
 from the screen *height*, everything is scaled against a 1080×2392 portrait reference and the
@@ -350,6 +368,224 @@ Around the home screen:
 - **The launcher's own screens** (home and drawer settings, customization, icon packs) keep
   Nothing's portrait lock: the home screen layout preview there is only drawn right in
   portrait.
+
+#### Home screen opens in its orientation
+
+Nothing's manifest declares the home screen portrait, and Nothing's own RotationHelper lifts
+that (`setRequestedOrientation(-1)`, auto-rotate respected) only once the home screen runs.
+So each time the launcher started (a reboot, a restart) with the phone on its side, Android
+opened it in portrait and the launcher filled its pages for portrait; the screen then turned,
+and the launcher threw that away, loaded everything again and laid it out for landscape
+(DebuG16, a forced restart: opened at rotation 0, loading restarted four times, pages filled
+for portrait at +3.0 s, shown at +3.5 s, landscape ready at +4.1 s). With Home screen rotation
+on, the home screen's activity record is given, in system_server as it is made, the value
+Nothing's helper asks for: Android opens it in the orientation it ends in, and it is loaded and
+laid out once.
+
+#### Landscape grid
+
+The landscape page is the portrait page turned: a C×R portrait grid becomes R columns by as
+many of the C rows as the landscape page holds at the portrait cell size (5×9 → 9×4 on a
+1080 px tall phone, the portrait cells exactly), so every page fits on any grid, screen size or
+density.
+Each item sits at its portrait place turned (its portrait row is its landscape column, its
+portrait column its landscape row) with its own spans: icons, folders and square widgets turned
+that way never meet; a widget of another shape whose spot is taken goes to the nearest free
+spot that holds it whole; items of a portrait column that does not fit on the landscape page
+go to the nearest free spot. The cells are the portrait cells turned (a portrait row's height
+is a landscape column's width, a portrait column's width a landscape row's height), at their
+portrait size unless the portrait rows do not fit across (then scaled the same both ways), so
+the page keeps Nothing's sizes and spacing; the grid is centred on the page. Icons, folders and widget contents keep their portrait shape
+and are as large as their landscape cells hold them, never larger than in portrait: a widget
+keeps the least margin Nothing gives it in portrait, and where a landscape row is too low for
+an icon and its name at near portrait size (5-column grids) icons and folders show at their
+portrait size without names, as Nothing's own landscape profile does. A widget as wide as the portrait page (a
+calendar) fills the landscape page's width and is as tall as in portrait, as far as the page
+allows; it is placed after the other items, in the room they leave. The grid in use is logged
+(`landscape grid 9x5 cells … gap … in … px`).
+
+**Crowded pages.** A landscape page with portrait-size cells holds fewer cells than the
+portrait page (36 against 45 on 5×9). If any home page holds more than that (a page full of
+apps), the landscape grid gets a row for every portrait column instead, with cells as much
+smaller as that needs (9×5 cells of 167 px on 5×9), so every item keeps a cell of its own and
+nothing overlaps. This is decided from the launcher's items as the landscape pages are built
+(and by the arrangement, should a page still not fit), and goes back to portrait-size cells
+on the next turn once no page is crowded. Icons are refitted to the cells either way.
+
+**Arranging landscape on its own.** Icons, folders and widgets can be moved and resized on the
+landscape home screen like in portrait. Each keeps that landscape place and size (remembered
+per item and per grid, in the launcher's own data), while the launcher's database, and so the
+portrait home screen, keeps its portrait place and size. Items never arranged in landscape
+are placed by turning the portrait page, around the ones that were. Only a move or resize of
+an item already shown counts: the launcher builds new views whenever it binds its pages again
+(a rotation, a grid or label change), and their first places are not edits. Places are kept per
+portrait grid, so they stay when the landscape page's rows change; a place that no longer fits
+the landscape page is left for the item's turned place.
+
+Portrait is guarded at the database itself: every item write ends in one call
+(`ModelDbController.update`), whichever launcher method made it (the small methods that set an
+item's cells are inlined by ART into the drop, reorder and resize code, past hooks on them; a
+landscape drop with a reorder wrote landscape cells into portrait this way). In landscape, a
+write that keeps an item on its page keeps its portrait cells and spans in the row, and its
+landscape place is remembered; a move to another page or into a folder is written as it is.
+Back in portrait, items the launcher changed in memory while in landscape get their portrait
+cells back before the pages are built.
+
+The landscape grid only acts on the launcher's own home pages: Nothing draws its home screen
+previews (the layout preview in its settings) with the same page classes, and those are left
+exactly as Nothing lays them out. The portrait page is folded onto it:
+cut into bands as tall as the landscape page and laid side by side, each item where it is in
+its band (a 5×9 page on a 4-row landscape page: portrait rows 0–3 on the left, rows 4–7 next
+to them). Larger items are placed first; an item whose spot is taken or off the page goes to
+the nearest free spot that holds it whole, so nothing overlaps, and is only shown smaller if
+no spot on the page holds it. A widget as wide as the portrait page (a calendar) is as wide
+as the landscape page.
+
+Nothing insets each widget in its cells by a padding its profile works out per span
+(`Rect o(spanX, spanY)` on its DeviceProfile subclass, found by signature); app widgets, its
+card widgets and the sizes widgets are told all use it. It works that out from its own idea of
+the cell, which in landscape is not the cell in use, and came out negative, so widgets grew
+past their cells into their neighbours. Landscape takes the portrait profile's padding, as its
+cells are the portrait ones.
+
+Pages mark a widget's cells from its item (its model cell and portrait spans; a Nothing card
+even its portrait cell), not from where it is shown, so on a landscape page the cells it was
+shown on read free while its portrait ones read taken: drags and resizes met phantom widgets
+and went over real ones. On the launcher's landscape pages every view marks the cells it is
+shown at, as Nothing already does for icons and folders. Nothing's resize frame also set a
+widget up from its item, putting it back to its portrait spans (the calendar shrank to five
+columns the moment it was touched) and freeing only those cells; while it sets up a widget on
+a landscape page the item reads as shown there, and a widget that may be as wide (or tall) as
+the portrait page may be resized as wide (or tall) as the landscape one.
+
+The launcher makes its profiles one after another and keeps a copy of each, which it copies
+its own from and Nothing sizes its widgets with. A landscape profile made before the portrait
+one had none to take its cell from (stock 396×92 cells, 85 px icons), so the portrait cell is
+remembered as the launcher measures it, and the landscape profiles are made again once all
+are there. Each page's items are laid out on it in their portrait
+reading order, left to right and top to bottom: widgets first, then apps and folders in the
+room left. A widget taller than the landscape page is shown as tall as the page.
+
+The arrangement is done on each page's own views once the launcher has put its items there,
+never by reading the launcher's model while it loads (which held the model lock on the main
+thread and froze rotation for seconds). Each item is first put in its turned portrait cell,
+which is always on the page, so the launcher never drops one for being off the grid.
+
+The launcher deletes any item it binds onto a cell that is already taken ("Collision while
+binding workspace item"). Turned cells can overlap until the page is arranged, so in landscape
+this deleted widgets for good, in portrait too. While a landscape page is bound no cell counts
+as taken, and a collision delete in landscape is refused and logged
+(`NothingLauncher+: landscape grid: kept …`).
+
+A rotation relays the launcher out and rebinds its pages, which are filled a moment later: the
+first frames on the turned screen were the old pages stretched to it, then empty pages. Android
+keeps showing the last frame while it turns the screen until the app draws, so drawing is held
+from the rebind until the pages are filled and arranged (as the launcher does at startup), for
+one second at most, and only while the launcher has focus: an app opening over it in
+landscape turns it too, and the app's opening animation must keep drawing.
+
+The launcher's loader waits for an idle main thread between its steps (home screen, then apps,
+shortcuts and widgets), with no time limit. A view redrawn every frame keeps the main thread
+from ever going idle, and the widget list then stayed empty ("Widgets and shortcuts aren't
+available") until the launcher went to the background. Dot-matrix icons animate only while
+they are in view (the closed drawer and other pages get one still frame, rechecked once a
+second), and the loader waits for idle at most three seconds per step.
+
+- The launcher database keeps the portrait layout: moving or resizing an item within its page
+  in landscape is remembered for landscape only and leaves its portrait place as it is.
+- An item added in landscape, or moved onto another page there, goes to a free spot of the
+  portrait page: the launcher deletes items that overlap or leave the grid when it next loads,
+  so every landscape write is checked against the portrait page. The page is then arranged
+  again in place, without reloading the launcher. The launcher reads an item's cells for its
+  database row later, on its own thread, so the row itself is kept inside the portrait page
+  where it is written (moves and new items): a landscape cell past the portrait grid never
+  reaches the database, whichever thread runs first.
+
+#### Long-press menus
+
+Nothing makes each row of its long-press menus (an app icon's App info / Remove / Hide icon, a
+folder's Customise / Rename: `NTPopupContainer`) as wide as the screen less its margins, a
+phone-wide list in portrait. Turned, that is the long side, and the rows ran past the screen's
+edge (DebuG18). Nothing hands that width to its own row builders; in landscape they get the
+width the screen's short side gives, as in portrait, and the menu itself is that wide (its
+layout made it, and its shortcut grid's background, as wide as the screen). Nothing places the
+menu at the screen's left inset, right for a full-width list; in landscape its placement puts
+it centred on the item held, inside the screen, above or below as Nothing decides. The held
+icon's highlighted copy is placed less the drag layer's top inset only, though the layer adds
+its left inset too; turned, that inset is the camera cutout's side and the copy showed beside
+the icon as a second one: the left inset is taken back the same way (no change in portrait).
+
+#### Widget picker, drawer search and drawer folders
+
+- **Widget picker** in landscape: Nothing sizes its cards and previews as fractions of the
+  screen's width and height (a card is 45% of the width), so on the turned screen a profile made
+  for it drew every card and preview about 1090 px wide on a 1080 px high screen, cut off at the
+  sheet's edges; the profile was also made once and kept, so one orientation's sizes reached the
+  other. Each orientation keeps its own profile. Turned, Nothing's constructor works on the
+  portrait screen, so cards, previews and preview cells are their portrait size, and only what
+  places them is worked out for the turned screen: its size, the options sheet (the height under
+  the status bar), the heights' positions and the side margins that center the content. The
+  list's page indicator sits 16 px above the screen's bottom, as in portrait. Turned while
+  open, the sheet is rebuilt for the new orientation by Launcher3's own rebuild
+  (`WidgetsFullSheet.onDeviceProfileChanged`, which on its own rebuilds only between one and
+  two panels), so it takes the new orientation's sizes.
+  On a widget's options the list's page dots go away, as in portrait: Nothing hides them there
+  by sliding the whole sheet down so its bottom leaves the screen, which the turned options page
+  (the screen's height) barely does, so turned they are hidden with Nothing's own dots animation
+  and shown again by its own reset when the list comes back.
+- **Drawer search after a turn**: turned in place, Launcher3 saves its state
+  (`onSaveInstanceState` in `onHandleConfigurationChanged`) and androidx drops the launcher's
+  lifecycle to "created" while it stays on screen; Nothing's Compose search only updates while
+  "started", so it took typing but showed no results until the launcher was left. The lifecycle
+  is put back where it was after the turn.
+- **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
+  many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
+  sheet gives the list at least four rows, which squeezed the name off a landscape screen).
+
+#### Other landscape details
+
+- **Hidden navigation bar.** With Nothing's "hide navigation bar" on, the taskbar window
+  (which draws the gesture pill on phones) is made 0 px tall when it is created; when the
+  home screen turned, the taskbar's `onRotationChanged` sized it again to the pill's height
+  without that check, so the pill came back in landscape. That one resize is skipped while
+  the bar is hidden.
+- A **live wallpaper** that turns with the home screen draws its first frames after a turn
+  itself: one that rebuilds its renderer for the new size shows black, or a white frame, until
+  it has drawn. That is the wallpaper's own redraw (Living Worlds' is replaced by the module's
+  framing, see *Living Worlds smooth turning*).
+- **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
+
+Nothing also blocks landscape outright: `NTLauncher.handleConfigurationChanged` ignores every
+change to landscape ("Skip to handle the config change for the landscape orientation"), and the
+landscape profiles are filtered out of the list the launcher picks from. With rotation on, the
+module handles the change the way AOSP does and lets the home screen activity, and only it,
+pick from the full list. Nothing's list is left as it is: the taskbar, which draws the gesture
+handle and hides it when "Hide navigation bar" is on, and the settings previews keep the
+profiles Nothing made them for (given landscape ones, the hidden handle came back in
+landscape).
+
+Each landscape profile is logged (`NothingLauncher+: landscape profile …`) with its geometry, so
+LSPosed logs show exactly what was laid out. Portrait is untouched.
+
+#### Restore missing home items
+
+*Launcher → Restore missing home items*. Nothing Launcher keeps one database per grid size
+(`launcher_5_by_8.db`, `launcher_5_by_9.db`, …); when the grid changes it moves the items into
+the new grid's database and drops the ones it cannot place, while the old grid's database keeps
+them (DebuG16: two folders, two icons and four widgets, all from row 4 down, were only in the
+5×8 database). Inside the launcher, on its own model thread, the most recently changed other
+grid database of the same width (and no more rows) is read, read-only; its home screen icons,
+shortcuts and folders (with their contents) that the grid in use lacks are added through
+Nothing's own database insert at their own page and cells where those are free, and the launcher
+reloads. Nothing is removed or moved and no app is added twice. Widgets are not brought back
+(their ids belong to the widget service, which released them); the launcher names the ones to
+add again.
+
+</details>
+
+<details>
+<summary><b>Widget cards and system screens in landscape</b> · Calm, battery and other cards, Settings pages</summary>
+
 - **Nothing's widget cards** (Calm / breathing, battery, photos, …) and their settings open in
   landscape. Nothing Widgets (`com.nothing.hearthstone`) and NothingCardService declare every
   screen portrait-only, and Android applies that as a card launches, so cards opened from a
@@ -391,6 +627,12 @@ Around the home screen:
   made them: neither has a landscape design (the lock screen left its clock in a corner and its
   notifications in a narrow column, the Customisation page fell back to its foldable layout,
   tiny on a phone).
+
+</details>
+
+<details>
+<summary><b>Lock screen and always-on display in landscape (test)</b> · off by default; fingerprint, notifications, shade</summary>
+
 - **Lock screen rotation (test)**, off by default. When it is on, the lock screen follows
   auto-rotate: SystemUI's own switch for that, `KeyguardStateController
   .isKeyguardScreenRotationAllowed()` (also set by the `lockscreen.rot_override` property and
@@ -542,48 +784,8 @@ Around the home screen:
   Not from this module: "Remove anything covering this area" is Nothing's accidental-touch
   protection, shown when its proximity sensor (top edge in portrait, a side in landscape) is
   covered, e.g. by a hand holding the phone sideways.
-- **Status bar.** The clock pressed against the screen's edge, investigated in 0.29.8–0.30.0,
-  came from another LSPosed module (OLED burn-in protection shifting the status bar), not from
-  this one; the guard and the diagnostic hooks added for it are removed again.
-- **Hidden navigation bar.** With Nothing's "hide navigation bar" on, the taskbar window
-  (which draws the gesture pill on phones) is made 0 px tall when it is created; when the
-  home screen turned, the taskbar's `onRotationChanged` sized it again to the pill's height
-  without that check, so the pill came back in landscape. That one resize is skipped while
-  the bar is hidden.
-- A **live wallpaper** that turns with the home screen draws its first frames after a turn
-  itself: one that rebuilds its renderer for the new size shows black, or a white frame, until
-  it has drawn. That is the wallpaper's own redraw (Living Worlds' is replaced by the module's
-  framing, see *Living Worlds smooth turning*).
-- **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
 
-### Home screen opens in its orientation
-
-Nothing's manifest declares the home screen portrait, and Nothing's own RotationHelper lifts
-that (`setRequestedOrientation(-1)`, auto-rotate respected) only once the home screen runs.
-So each time the launcher started (a reboot, a restart) with the phone on its side, Android
-opened it in portrait and the launcher filled its pages for portrait; the screen then turned,
-and the launcher threw that away, loaded everything again and laid it out for landscape
-(DebuG16, a forced restart: opened at rotation 0, loading restarted four times, pages filled
-for portrait at +3.0 s, shown at +3.5 s, landscape ready at +4.1 s). With Home screen rotation
-on, the home screen's activity record is given, in system_server as it is made, the value
-Nothing's helper asks for: Android opens it in the orientation it ends in, and it is loaded and
-laid out once.
-
-### Full refresh rate in battery saver
-
-*System → Full refresh rate in battery saver* (off by default). Android's display mode director
-caps the refresh rate while battery saver is on (`DisplayModeDirector$SettingsObserver`: with
-`low_power` set, a vote at the low-power-mode priority for 0..60 Hz, and one for the display's
-low-power modes where it lists them). With the setting on, those two votes are not cast: the
-screen keeps the refresh rate set in Display settings (120 Hz), and everything else battery
-saver does stays. Turning it on or off applies at once.
-
-Defaults: features that depend on one phone's hardware or one build's internals start off
-(task manager, lock screen rotation, landscape system screens, performance tools, status bar
-and quick settings Ndot, diagnostic logging); the ones that only act on apps you add to the
-scope, or find their place by name and stand aside when it is missing, start on.
-
-### Shade over a turned screen
+#### Shade over a turned screen
 
 On the lock screen the module places the notifications on one half, clear of the fingerprint
 icon. SystemUI places them again only when its own values change, and turned they often do not
@@ -592,212 +794,30 @@ the stack 419 px short of the edge on the lock screen, over quick settings above
 each state change SystemUI's placement is done again with its own latest values: the module's
 on the lock screen, SystemUI's own everywhere else.
 
-### Long-press menus in landscape
+</details>
 
-Nothing makes each row of its long-press menus (an app icon's App info / Remove / Hide icon, a
-folder's Customise / Rename: `NTPopupContainer`) as wide as the screen less its margins, a
-phone-wide list in portrait. Turned, that is the long side, and the rows ran past the screen's
-edge (DebuG18). Nothing hands that width to its own row builders; in landscape they get the
-width the screen's short side gives, as in portrait, and the menu itself is that wide (its
-layout made it, and its shortcut grid's background, as wide as the screen). Nothing places the
-menu at the screen's left inset, right for a full-width list; in landscape its placement puts
-it centred on the item held, inside the screen, above or below as Nothing decides. The held
-icon's highlighted copy is placed less the drag layer's top inset only, though the layer adds
-its left inset too; turned, that inset is the camera cutout's side and the copy showed beside
-the icon as a second one: the left inset is taken back the same way (no change in portrait).
+<details>
+<summary><b>Status bar and quick settings</b> · Ndot clock, green icons, dashboard tiles</summary>
 
-### Restore missing home items
+- **Ndot status bar** (option): System UI is in the module's scope; the status bar is lit
+  like the drawer's folder screens on any wallpaper: the clock and date in Nothing's NDot in
+  the green of the folder name panels with a soft glow, and every icon (network type,
+  signal, Wi-Fi, airplane mode, headphones, alarm...), the battery and the network speed in
+  the same green, their own shapes untouched. Another option puts the date before the time.
+- **Green quick settings** (option): the tiles' icons and labels glow green, and a tile that
+  is on lights deep retro-display green where it was white, or, with **Amber dashboard
+  tiles**, the warm amber of a retro car dashboard. The icons' own animations still play.
 
-*Launcher → Restore missing home items*. Nothing Launcher keeps one database per grid size
-(`launcher_5_by_8.db`, `launcher_5_by_9.db`, …); when the grid changes it moves the items into
-the new grid's database and drops the ones it cannot place, while the old grid's database keeps
-them (DebuG16: two folders, two icons and four widgets, all from row 4 down, were only in the
-5×8 database). Inside the launcher, on its own model thread, the most recently changed other
-grid database of the same width (and no more rows) is read, read-only; its home screen icons,
-shortcuts and folders (with their contents) that the grid in use lacks are added through
-Nothing's own database insert at their own page and cells where those are free, and the launcher
-reloads. Nothing is removed or moved and no app is added twice. Widgets are not brought back
-(their ids belong to the widget service, which released them); the launcher names the ones to
-add again.
+- **Status bar.** The clock pressed against the screen's edge, investigated in 0.29.8–0.30.0,
+  came from another LSPosed module (OLED burn-in protection shifting the status bar), not from
+  this one; the guard and the diagnostic hooks added for it are removed again.
 
-### Landscape grid
+</details>
 
-The landscape page is the portrait page turned: a C×R portrait grid becomes R columns by as
-many of the C rows as the landscape page holds at the portrait cell size (5×9 → 9×4 on a
-1080 px tall phone, the portrait cells exactly), so every page fits on any grid, screen size or
-density.
-Each item sits at its portrait place turned (its portrait row is its landscape column, its
-portrait column its landscape row) with its own spans: icons, folders and square widgets turned
-that way never meet; a widget of another shape whose spot is taken goes to the nearest free
-spot that holds it whole; items of a portrait column that does not fit on the landscape page
-go to the nearest free spot. The cells are the portrait cells turned (a portrait row's height
-is a landscape column's width, a portrait column's width a landscape row's height), at their
-portrait size unless the portrait rows do not fit across (then scaled the same both ways), so
-the page keeps Nothing's sizes and spacing; the grid is centred on the page. Icons, folders and widget contents keep their portrait shape
-and are as large as their landscape cells hold them, never larger than in portrait: a widget
-keeps the least margin Nothing gives it in portrait, and where a landscape row is too low for
-an icon and its name at near portrait size (5-column grids) icons and folders show at their
-portrait size without names, as Nothing's own landscape profile does. A widget as wide as the portrait page (a
-calendar) fills the landscape page's width and is as tall as in portrait, as far as the page
-allows; it is placed after the other items, in the room they leave. The grid in use is logged
-(`landscape grid 9x5 cells … gap … in … px`).
+<details>
+<summary><b>Recents and Running services</b> · memory in recents, tile, shortcut, task manager</summary>
 
-**Crowded pages.** A landscape page with portrait-size cells holds fewer cells than the
-portrait page (36 against 45 on 5×9). If any home page holds more than that (a page full of
-apps), the landscape grid gets a row for every portrait column instead, with cells as much
-smaller as that needs (9×5 cells of 167 px on 5×9), so every item keeps a cell of its own and
-nothing overlaps. This is decided from the launcher's items as the landscape pages are built
-(and by the arrangement, should a page still not fit), and goes back to portrait-size cells
-on the next turn once no page is crowded. Icons are refitted to the cells either way.
-
-**Arranging landscape on its own.** Icons, folders and widgets can be moved and resized on the
-landscape home screen like in portrait. Each keeps that landscape place and size (remembered
-per item and per grid, in the launcher's own data), while the launcher's database, and so the
-portrait home screen, keeps its portrait place and size. Items never arranged in landscape
-are placed by turning the portrait page, around the ones that were. Only a move or resize of
-an item already shown counts: the launcher builds new views whenever it binds its pages again
-(a rotation, a grid or label change), and their first places are not edits. Places are kept per
-portrait grid, so they stay when the landscape page's rows change; a place that no longer fits
-the landscape page is left for the item's turned place.
-
-Portrait is guarded at the database itself: every item write ends in one call
-(`ModelDbController.update`), whichever launcher method made it (the small methods that set an
-item's cells are inlined by ART into the drop, reorder and resize code, past hooks on them; a
-landscape drop with a reorder wrote landscape cells into portrait this way). In landscape, a
-write that keeps an item on its page keeps its portrait cells and spans in the row, and its
-landscape place is remembered; a move to another page or into a folder is written as it is.
-Back in portrait, items the launcher changed in memory while in landscape get their portrait
-cells back before the pages are built.
-
-The landscape grid only acts on the launcher's own home pages: Nothing draws its home screen
-previews (the layout preview in its settings) with the same page classes, and those are left
-exactly as Nothing lays them out. The portrait page is folded onto it:
-cut into bands as tall as the landscape page and laid side by side, each item where it is in
-its band (a 5×9 page on a 4-row landscape page: portrait rows 0–3 on the left, rows 4–7 next
-to them). Larger items are placed first; an item whose spot is taken or off the page goes to
-the nearest free spot that holds it whole, so nothing overlaps, and is only shown smaller if
-no spot on the page holds it. A widget as wide as the portrait page (a calendar) is as wide
-as the landscape page.
-
-Nothing insets each widget in its cells by a padding its profile works out per span
-(`Rect o(spanX, spanY)` on its DeviceProfile subclass, found by signature); app widgets, its
-card widgets and the sizes widgets are told all use it. It works that out from its own idea of
-the cell, which in landscape is not the cell in use, and came out negative, so widgets grew
-past their cells into their neighbours. Landscape takes the portrait profile's padding, as its
-cells are the portrait ones.
-
-Pages mark a widget's cells from its item (its model cell and portrait spans; a Nothing card
-even its portrait cell), not from where it is shown, so on a landscape page the cells it was
-shown on read free while its portrait ones read taken: drags and resizes met phantom widgets
-and went over real ones. On the launcher's landscape pages every view marks the cells it is
-shown at, as Nothing already does for icons and folders. Nothing's resize frame also set a
-widget up from its item, putting it back to its portrait spans (the calendar shrank to five
-columns the moment it was touched) and freeing only those cells; while it sets up a widget on
-a landscape page the item reads as shown there, and a widget that may be as wide (or tall) as
-the portrait page may be resized as wide (or tall) as the landscape one.
-
-The launcher makes its profiles one after another and keeps a copy of each, which it copies
-its own from and Nothing sizes its widgets with. A landscape profile made before the portrait
-one had none to take its cell from (stock 396×92 cells, 85 px icons), so the portrait cell is
-remembered as the launcher measures it, and the landscape profiles are made again once all
-are there. Each page's items are laid out on it in their portrait
-reading order, left to right and top to bottom: widgets first, then apps and folders in the
-room left. A widget taller than the landscape page is shown as tall as the page.
-
-The arrangement is done on each page's own views once the launcher has put its items there,
-never by reading the launcher's model while it loads (which held the model lock on the main
-thread and froze rotation for seconds). Each item is first put in its turned portrait cell,
-which is always on the page, so the launcher never drops one for being off the grid.
-
-The launcher deletes any item it binds onto a cell that is already taken ("Collision while
-binding workspace item"). Turned cells can overlap until the page is arranged, so in landscape
-this deleted widgets for good, in portrait too. While a landscape page is bound no cell counts
-as taken, and a collision delete in landscape is refused and logged
-(`NothingLauncher+: landscape grid: kept …`).
-
-A rotation relays the launcher out and rebinds its pages, which are filled a moment later: the
-first frames on the turned screen were the old pages stretched to it, then empty pages. Android
-keeps showing the last frame while it turns the screen until the app draws, so drawing is held
-from the rebind until the pages are filled and arranged (as the launcher does at startup), for
-one second at most, and only while the launcher has focus: an app opening over it in
-landscape turns it too, and the app's opening animation must keep drawing.
-
-The launcher's loader waits for an idle main thread between its steps (home screen, then apps,
-shortcuts and widgets), with no time limit. A view redrawn every frame keeps the main thread
-from ever going idle, and the widget list then stayed empty ("Widgets and shortcuts aren't
-available") until the launcher went to the background. Dot-matrix icons animate only while
-they are in view (the closed drawer and other pages get one still frame, rechecked once a
-second), and the loader waits for idle at most three seconds per step.
-
-- The launcher database keeps the portrait layout: moving or resizing an item within its page
-  in landscape is remembered for landscape only and leaves its portrait place as it is.
-- An item added in landscape, or moved onto another page there, goes to a free spot of the
-  portrait page: the launcher deletes items that overlap or leave the grid when it next loads,
-  so every landscape write is checked against the portrait page. The page is then arranged
-  again in place, without reloading the launcher. The launcher reads an item's cells for its
-  database row later, on its own thread, so the row itself is kept inside the portrait page
-  where it is written (moves and new items): a landscape cell past the portrait grid never
-  reaches the database, whichever thread runs first.
-- **Widget picker** in landscape: Nothing sizes its cards and previews as fractions of the
-  screen's width and height (a card is 45% of the width), so on the turned screen a profile made
-  for it drew every card and preview about 1090 px wide on a 1080 px high screen, cut off at the
-  sheet's edges; the profile was also made once and kept, so one orientation's sizes reached the
-  other. Each orientation keeps its own profile. Turned, Nothing's constructor works on the
-  portrait screen, so cards, previews and preview cells are their portrait size, and only what
-  places them is worked out for the turned screen: its size, the options sheet (the height under
-  the status bar), the heights' positions and the side margins that center the content. The
-  list's page indicator sits 16 px above the screen's bottom, as in portrait. Turned while
-  open, the sheet is rebuilt for the new orientation by Launcher3's own rebuild
-  (`WidgetsFullSheet.onDeviceProfileChanged`, which on its own rebuilds only between one and
-  two panels), so it takes the new orientation's sizes.
-  On a widget's options the list's page dots go away, as in portrait: Nothing hides them there
-  by sliding the whole sheet down so its bottom leaves the screen, which the turned options page
-  (the screen's height) barely does, so turned they are hidden with Nothing's own dots animation
-  and shown again by its own reset when the list comes back.
-- **Drawer search** follows the drawer's opacity: Nothing paints its search's sheet, scrim,
-  header and results' background itself (`updateCustomColor`), so it rose as a solid black panel
-  over a see-through drawer. Its Compose search bar paints a band in the drawer's scrim colour
-  from the bar's middle down, which rises with the keyboard, and its search page uses that colour
-  as its background: the colour is faded where Nothing reads it, so they follow the opacity too.
-- **Drawer search after a turn**: turned in place, Launcher3 saves its state
-  (`onSaveInstanceState` in `onHandleConfigurationChanged`) and androidx drops the launcher's
-  lifecycle to "created" while it stays on screen; Nothing's Compose search only updates while
-  "started", so it took typing but showed no results until the launcher was left. The lifecycle
-  is put back where it was after the turn.
-- **Drawer folders** open in landscape as in portrait, name over apps: the folder sheet gets as
-  many columns as the drawer has tiles and only as many rows as leave its name room (Nothing's
-  sheet gives the list at least four rows, which squeezed the name off a landscape screen).
-
-Nothing also blocks landscape outright: `NTLauncher.handleConfigurationChanged` ignores every
-change to landscape ("Skip to handle the config change for the landscape orientation"), and the
-landscape profiles are filtered out of the list the launcher picks from. With rotation on, the
-module handles the change the way AOSP does and lets the home screen activity, and only it,
-pick from the full list. Nothing's list is left as it is: the taskbar, which draws the gesture
-handle and hides it when "Hide navigation bar" is on, and the settings previews keep the
-profiles Nothing made them for (given landscape ones, the hidden handle came back in
-landscape).
-
-Each landscape profile is logged (`NothingLauncher+: landscape profile …`) with its geometry, so
-LSPosed logs show exactly what was laid out. Portrait is untouched.
-
-## Controllers
-
-Android already maps the D-pad and left stick to arrow keys, A to select and B to back, and
-Launcher3 moves its keyboard focus with them. The module adds:
-
-| Button | Home screen | App drawer |
-| --- | --- | --- |
-| Start | Open drawer | Close drawer |
-| Y (triangle) / X (square) | Shortcuts / menu of the focused item | same |
-| L1 / R1 | Previous / next page | Scroll up / down |
-| L2 / R2 | First / last page | Top / bottom |
-| L3 / R3 (stick click) | Home options (wallpaper, widgets, settings) | Close drawer |
-| Select | Notifications | Notifications |
-
-The focused icon or folder lifts on a spring (scale + elevation) and settles back the moment
-the screen is touched.
-
-### Memory in recents
+#### Memory in recents
 
 *Home screen → Memory in recents* (on by default): recents shows how much memory is free of the
 phone's total (rounded up to the size it is sold as, 8 GB not 7.4), and below it the swap
@@ -817,7 +837,7 @@ launcher asks system_server (`SystemShortcuts`), which is not held to it, to ope
 there as Developer options does. With no answer from the system (it loads its part at a reboot
 after updating), developer options opens instead.
 
-### Running services tile and shortcut
+#### Running services tile and shortcut
 
 Running services also opens from a quick settings tile (*Running services*, in the tile
 editor) and from a shortcut: the module is listed where launchers offer shortcuts (Launcher3's
@@ -828,7 +848,7 @@ long-press shortcut removed, placed icons greyed). Each opens an invisible activ
 (`ui.RunningServices`) that asks system_server for the page, as recents' memory button does,
 or opens developer options when the system does not answer.
 
-### Task manager in Running services
+#### Task manager in Running services
 
 *Home screen → Task manager in Running services* (off by default: it hooks Nothing Settings'
 internal classes, whose names change from build to build; Settings in the module's LSPosed
@@ -857,7 +877,105 @@ main thread while the page is open. The hooks use Settings 16.0.0's obfuscated n
 (`RunningProcessesView.a`, row holder `A1`); a Settings update that renames them turns the
 task manager off and leaves Nothing's page as it is.
 
-### Living Worlds sounds on the home screen
+</details>
+
+<details>
+<summary><b>Game controllers</b> · launcher navigation, gaming launcher, HeliBoard typing</summary>
+
+Android already maps the D-pad and left stick to arrow keys, A to select and B to back, and
+Launcher3 moves its keyboard focus with them. The module adds:
+
+| Button | Home screen | App drawer |
+| --- | --- | --- |
+| Start | Open drawer | Close drawer |
+| Y (triangle) / X (square) | Shortcuts / menu of the focused item | same |
+| L1 / R1 | Previous / next page | Scroll up / down |
+| L2 / R2 | First / last page | Top / bottom |
+| L3 / R3 (stick click) | Home options (wallpaper, widgets, settings) | Close drawer |
+| Select | Notifications | Notifications |
+
+The focused icon or folder lifts on a spring (scale + elevation) and settles back the moment
+the screen is touched.
+
+#### Gaming launcher with a controller
+
+*Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any
+installed home app). While a game controller is connected, by USB or Bluetooth, Android's home
+app is the gaming launcher: the module changes the home choice itself (the HOME role, from
+system_server), as picking a home app in Android's settings does, so the home button, the home
+gesture (Launcher3's Quickstep follows the default home and hands over to it) and everything
+else that opens home go there. The controller's own home button (PS, Xbox, Guide:
+`KEYCODE_BUTTON_MODE`, which Android passes to the app in front) opens home too.
+
+When the last controller disconnects, or the switch is turned off, the home app it replaced
+comes back, only if the gaming launcher is still home (a home app picked meanwhile stays). The
+replaced app is kept in a global setting (`nlplus_home_before_controller`), so a restart with
+no controller connected puts it back as well. A controller counts when it is an external,
+non-virtual input device with a gamepad or joystick source; changes wait 1.5 s to settle, so a
+Bluetooth controller dropping and coming back does not switch home twice.
+
+#### Typing with a controller (HeliBoard)
+
+For the best experience use **[HeliBoard](https://github.com/Helium314/HeliBoard)**
+(`helium314.keyboard`, open source; tick it in the module's LSPosed scope; switch: *Home
+screen → Controller typing in HeliBoard*, on by default). With the keyboard up, the controller types on it the way a PlayStation's on-screen keyboard works:
+
+| Button | Keyboard |
+| --- | --- |
+| D-pad / left stick | Move the highlight over everything HeliBoard shows: keys, suggestions, the toolbar (open or closed) and pinned keys, the emoji pages with their categories and bottom row, the clipboard and its buttons, the one-handed mode buttons, and the panels that open over the keys. Rows wrap left and right; lists and the toolbar scroll as it moves |
+| Cross (A) | Touch what is highlighted, for as long as it is held: a tap types or picks; held, it does what a held finger does (backspace and arrows repeat; a key opens its accents / long-press keys, a suggestion opens more suggestions, an emoji its skin tones, a toolbar key pins). While held with a panel open, the d-pad slides over the panel and letting go picks |
+| Square (X) | Backspace (held, it repeats) |
+| Triangle (Y) | Space |
+| L1 / R1 | Move the text cursor left / right |
+| L2 | Shift (twice quickly: caps lock) |
+| R2 | Done (the keyboard's enter / action key) |
+| Circle (B) | Back: close an open panel, else from emoji / clipboard back to the letters, else close the keyboard |
+
+Cross is a finger: a touch is given to HeliBoard's window at the highlight (down when Cross
+goes down, up when it comes up), so HeliBoard's own code handles every press, repeat,
+long-press, popup and pick exactly as with touch. The highlight is drawn in that window's
+overlay, above all of HeliBoard's views, and stays on what it is on when the keys change
+(shift, symbols, emoji), or moves to what is now nearest. Only controller buttons are taken,
+and only while the keyboard is up: a hardware keyboard's arrows stay HeliBoard's, and with the
+keyboard closed every button goes to the app. The hooks use HeliBoard's own names, kept in its
+release builds (`-dontobfuscate`), and were checked against HeliBoard 4.2's release APK.
+
+</details>
+
+<details>
+<summary><b>Sound</b> · generated background music, interface sounds</summary>
+
+Both off by default; switch them on in the module's **Sound** page.
+
+- **Background music**, generated live (never a loop, never a recording) and tuned to
+  A = 432 Hz, in stereo. Seven original styles in the manner of classic console menus. The
+  PlayStation-menu kind come first, deliberately simple and matched by measurement (spectrum,
+  stereo width, swell rate, register) to reference recordings: *Home Menu* (PS4-style: one warm
+  chorused tone playing slow, ringing notes that overlap into chords, F3 to G4, with phrases and
+  pauses; the default) and *System Browser* (PS2-style: wide filtered noise breathing in and out
+  every few seconds, a cluster of every note of the scale between F3 and F4 over a low rumble, a
+  slow soft ping line and rare glints sliding down). No drums, almost nothing above 2 kHz. Then *Crystal Shore*
+  (90s new-age shimmer and surf), *Shop Lounge* (swung e-piano, walking bass, vibes), *Starlight
+  Lullaby* (16-bit music box and flute) and *Pixel Meadow* (8-bit overworld).
+- Each style has a master tone control; the calm ones keep essentially nothing above 2 kHz, and
+  loudness is matched on what a phone speaker actually plays (above 200 Hz).
+  A composer writes the music as it plays: motif, answer and cadence over changing progressions,
+  a new progression every 16 bars and a new key every 32.
+- Tapping an app lets the music recede at once: over 1.6 s it fades and closes its filter, like a
+  console dimming its menu as a game starts.
+- It plays only while the home screen or drawer is in front, fades in and out, never takes audio
+  focus (so it can't pause your music), and goes quiet while another app plays media or a call
+  is active. Synthesis runs on one audio thread into a power-saving track, about 1% of a core.
+- **Interface sounds**: console-style chimes for opening and closing the drawer and folders,
+  launching apps, turning pages, menus and controller focus, silent on silent or vibrate.
+- **Preview** the selected style in the module; music volume has its own slider.
+
+</details>
+
+<details>
+<summary><b>Live wallpapers</b> · Living Worlds and Palette Cycle: sounds, turning, framing</summary>
+
+#### Living Worlds sounds on the home screen
 
 *Home screen → Living Worlds sounds* (on by default; Living Worlds in the module's LSPosed
 scope). Living Worlds 2.12.74 plays each of its 12 worlds' ambient sounds in the app only: its
@@ -875,7 +993,7 @@ when the wallpaper is replaced; the wallpaper picker's preview is silent. With a
 set no Living Worlds engine runs, so nothing plays. Should two engines run at once, only the
 last shown is heard.
 
-### Living Worlds smooth turning
+#### Living Worlds smooth turning
 
 *Home screen → Living Worlds smooth turning* (on by default). Living Worlds' default wallpaper
 drawing ("Alt wallpaper tech", from Android 8) shows its page in a WebView on a virtual display
@@ -905,7 +1023,7 @@ centring. Every world ships only as a 345×455 crop of the desktop program's 640
 screen's width takes about 7× the scene, which shows a third of its height; showing more would
 leave bars at the sides, as the art is no wider.
 
-### Palette Cycle downloads
+#### Palette Cycle downloads
 
 Palette Cycle (`rak.pixellwp`, F-Droid 2.3.1; in the module's LSPosed scope) shows Mark
 Ferrari's full 640×480 worlds, downloaded on the phone from effectgames.com. Its addresses
@@ -915,7 +1033,7 @@ not yet released); the module applies the same change to the installed app: the 
 `https://www.effectgames.com/demos/worlds/cache/…js` and `…/canvascycle/images/….LBM.json`
 addresses, read as they are now served.
 
-### Palette Cycle sounds
+#### Palette Cycle sounds
 
 *Home screen → Palette Cycle sounds* (on by default). Palette Cycle has no sound; the two web
 demos its pictures come from give them looping ambient sounds, played the same way by both
@@ -941,7 +1059,7 @@ once, the silence at both ends cut, its last 0.3 s cross-faded into its start, a
 `AudioTrack` looping over its own buffer, end into start sample for sample. It is and heard only while the wallpaper shows on the home
 screen or in the app drawer, as Living Worlds' sounds are.
 
-### Palette Cycle framing and cycling
+#### Palette Cycle framing and cycling
 
 - *Home screen → Palette Cycle in landscape*: a slider from the top of the picture (sky) to
   the bottom (water, ground), 50 by default. Palette Cycle keeps one pan for both
@@ -957,50 +1075,36 @@ screen or in the app drawer, as Living Worlds' sounds are.
   doubles on 2026-10-31 (commit `8fbddbb`, unreleased); the module does the same
   (`Cycle.getCycleAmount`).
 
-### Gaming launcher with a controller
+</details>
 
-*Home screen → Gaming launcher with a controller* (off by default) and *Gaming launcher* (any
-installed home app). While a game controller is connected, by USB or Bluetooth, Android's home
-app is the gaming launcher: the module changes the home choice itself (the HOME role, from
-system_server), as picking a home app in Android's settings does, so the home button, the home
-gesture (Launcher3's Quickstep follows the default home and hands over to it) and everything
-else that opens home go there. The controller's own home button (PS, Xbox, Guide:
-`KEYCODE_BUTTON_MODE`, which Android passes to the app in front) opens home too.
+<details>
+<summary><b>System</b> · system font, full refresh rate in battery saver</summary>
 
-When the last controller disconnects, or the switch is turned off, the home app it replaced
-comes back, only if the gaming launcher is still home (a home app picked meanwhile stays). The
-replaced app is kept in a global setting (`nlplus_home_before_controller`), so a restart with
-no controller connected puts it back as well. A controller counts when it is an external,
-non-virtual input device with a gamepad or joystick source; changes wait 1.5 s to settle, so a
-Bluetooth controller dropping and coming back does not switch home twice.
+#### System font
 
-### Typing with a controller (HeliBoard)
+Choose any of Nothing's fonts already on the phone (NDot, NType, and the
+  ones inside Nothing's widgets app), each previewed in the chooser on a dot-matrix screen
+  made for it, in its own letters. It is applied the way Android applies its own fonts: with
+  System Framework in the module's LSPosed scope, the font map system_server gives every app
+  is rewritten with the chosen font as soon as you pick it, so every app opened from then on
+  uses it, no reboot; System UI and the launcher are restarted at once. A font only the
+  widgets app has is first added to the system's fonts as a file (one restart). If the system
+  ever crashes while a new font is in use, the next start leaves it off. Phone default
+  undoes it.
 
-For the best experience use **[HeliBoard](https://github.com/Helium314/HeliBoard)**
-(`helium314.keyboard`, open source; tick it in the module's LSPosed scope; switch: *Home
-screen → Controller typing in HeliBoard*, on by default). With the keyboard up, the controller types on it the way a PlayStation's on-screen keyboard works:
+#### Full refresh rate in battery saver
 
-| Button | Keyboard |
-| --- | --- |
-| D-pad / left stick | Move the highlight over everything HeliBoard shows: keys, suggestions, the toolbar (open or closed) and pinned keys, the emoji pages with their categories and bottom row, the clipboard and its buttons, the one-handed mode buttons, and the panels that open over the keys. Rows wrap left and right; lists and the toolbar scroll as it moves |
-| Cross (A) | Touch what is highlighted, for as long as it is held: a tap types or picks; held, it does what a held finger does (backspace and arrows repeat; a key opens its accents / long-press keys, a suggestion opens more suggestions, an emoji its skin tones, a toolbar key pins). While held with a panel open, the d-pad slides over the panel and letting go picks |
-| Square (X) | Backspace (held, it repeats) |
-| Triangle (Y) | Space |
-| L1 / R1 | Move the text cursor left / right |
-| L2 | Shift (twice quickly: caps lock) |
-| R2 | Done (the keyboard's enter / action key) |
-| Circle (B) | Back: close an open panel, else from emoji / clipboard back to the letters, else close the keyboard |
+*System → Full refresh rate in battery saver* (off by default). Android's display mode director
+caps the refresh rate while battery saver is on (`DisplayModeDirector$SettingsObserver`: with
+`low_power` set, a vote at the low-power-mode priority for 0..60 Hz, and one for the display's
+low-power modes where it lists them). With the setting on, those two votes are not cast: the
+screen keeps the refresh rate set in Display settings (120 Hz), and everything else battery
+saver does stays. Turning it on or off applies at once.
 
-Cross is a finger: a touch is given to HeliBoard's window at the highlight (down when Cross
-goes down, up when it comes up), so HeliBoard's own code handles every press, repeat,
-long-press, popup and pick exactly as with touch. The highlight is drawn in that window's
-overlay, above all of HeliBoard's views, and stays on what it is on when the keys change
-(shift, symbols, emoji), or moves to what is now nearest. Only controller buttons are taken,
-and only while the keyboard is up: a hardware keyboard's arrows stay HeliBoard's, and with the
-keyboard closed every button goes to the app. The hooks use HeliBoard's own names, kept in its
-release builds (`-dontobfuscate`), and were checked against HeliBoard 4.2's release APK.
+</details>
 
-## Performance (CMF Phone 1 only, experimental, root)
+<details>
+<summary><b>Performance (CMF Phone 1 only, experimental, root)</b> · Ndot overlay, PerfMTK, 120 fps unlock, Game Bar</summary>
 
 A **Performance** page appears in the module's menu on a CMF Phone 1 (`ro.product.device`
 Tetris) and nowhere else. Everything on it was built from what this phone reports (its
@@ -1068,6 +1172,54 @@ clock, GPU and thermal files, Android's display and game services, PerfMTK's own
 
 Planned next: refresh rate options through PerfMTK's profiles (`--reload`).
 
+</details>
+
+<details>
+<summary><b>Diagnostics and debug report</b> · what to send when something is wrong</summary>
+
+#### Debug report
+
+In the module's app, Diagnostics →
+**Capture debug report** (root). Choose how long it waits first (10 s to 10 min: time to
+set the problem up, such as locking the phone, turning it or opening the screen that
+misbehaves) and how long it captures (15 s to 10 min). Meanwhile it records the screen
+and, every few seconds, takes a screenshot, the screen composer's layers, the windows and
+the view layout of every visible window (System UI's included) and how System UI draws
+what is behind the lock screen, PIN page and shade (scrims and blur) and the busiest
+processes (`top`); each time the screen wakes it records the rotation and its sensor a
+second and three seconds after (and on the always-on display); logcat runs throughout. At the end it adds the memory of the module's
+app, Nothing Launcher and System UI (`dumpsys meminfo`).
+It adds System UI's state, input, display, the system settings, the game service, battery,
+where the phone keeps its CPU / GPU clocks and temperatures, Nothing's Game Bar app, the
+PerfMTK module's scripts, settings and `--help` (if installed), SurfaceFlinger and the
+composer libraries it has loaded and an 8-second SurfaceFlinger layer trace (Perfetto;
+for the landscape fingerprint) and the LSPosed log, and saves one
+`NLPlus-report-….tar.gz` in Download; a notification says when it is ready. While it
+runs you can tell what it is doing: one buzz when capturing starts and two when the
+report is saved (felt on the lock screen too), an ongoing notification counting down
+("Capture starts in…", "Capturing…", "Saving the report…"), and a small "● REC" pill
+with the seconds left, drawn by System UI, so it shows on the lock screen too. **Stop
+capture** ends it early and still saves it. It can hold personal information
+(screenshots, the recording, notifications, logs), so look through it before posting it
+publicly.
+
+#### Diagnostic logging
+
+The **Diagnostic logging** switch on the same page (off by default; turn it on
+before capturing, it applies within a minute without a reboot, and off again after: it
+logs every lock screen layout pass) writes the module's diagnostic lines to the LSPosed
+log: orientation changes, rotation sensor reports, lock screen layout, the always-on
+display's position, fingerprint events and portrait-only system screens.
+
+#### Test notifications
+
+**Test notifications** on the same page posts 1, 3, 6 or 12 sample notifications (short,
+long, conversation, progress, picture and reminder), now or in 10 seconds so the phone can
+be locked first, to check how the lock screen lays them out; **Clear test notifications**
+removes them. It asks for the notification permission the first time.
+
+</details>
+
 ## Roadmap
 
 - **Nothing Dot Matrix Display**: a new engine for the emoji covers, which are a beta until
@@ -1079,46 +1231,10 @@ Planned next: refresh rate options through PerfMTK's profiles (`--reload`).
   - **Every emoji reworked one by one:** each one rendered in 3D, with several animations made
     for that emoji alone.
 
-## Requirements
+## For developers
 
-- Nothing Launcher **4.0.20**. Later versions will probably work too, because the hooks avoid
-  obfuscated names (see below).
-- LSPosed (or another Xposed implementation with API 93+ and `xposedsharedprefs` support).
-
-## Install
-
-1. Build the APK (`./gradlew assembleRelease`) or download it from the *Build module* GitHub
-   Actions run.
-2. Install it, enable it in LSPosed and select **Nothing Launcher** as the scope, plus only
-   what you use:
-   - **System UI**: the lit status bar, quick settings and *Lock screen rotation (test)*;
-   - **System Framework** (`android`, needs a reboot): system font and widget cards in landscape;
-   - **Nothing Widgets** and **NothingCardService**: widget cards in landscape;
-   - **HeliBoard**: typing with a controller.
-   The module installs on internal storage only: LSPosed reads it at boot, before a memory
-   card used as internal storage (adopted storage, `/mnt/expand/…`) is mounted, and a module
-   there was not loaded after a reboot ("Failed to open APK … No such file"), and Android,
-   checking its apps before the card is mounted, deleted the module's data (its settings and
-   folders) as belonging to a missing app. An install can still land there whatever the APK
-   asks for (the "Force allow apps on external" developer option, or an installer that picks
-   the card), so after an update, and whenever its page is opened, the module moves itself
-   back to the phone's storage (root; `pm move-package com.dressence.nothinglauncherplus
-   internal`), and its page says so.
-3. Force-stop Nothing Launcher, or use "Restart Nothing Launcher" (root) on the app's Home screen page.
-4. In Nothing Launcher settings, set *Drawer layout* to **Smart (Beta)** and tap **Custom folders**.
-
-## Updates and signing
-
-Every build is signed with the same key (`signing/update.jks`, committed on purpose), so a new
-APK installs straight over the old one and keeps your folders. After an update the module
-restarts Nothing Launcher by itself (root), and LSPosed loads the new code right away: no
-uninstall, no reboot. Set `SIGNING_KEYSTORE`, `SIGNING_PASSWORD` and `SIGNING_KEY_ALIAS` to build
-with a private key instead.
-
-Builds from before v0.5.0 were signed with throwaway keys: switch once with **Export**,
-uninstall, install, **Import**.
-
-## Code layout
+<details>
+<summary><b>Code layout</b> · packages by where the code runs</summary>
 
 The module's code is grouped by where it runs:
 
@@ -1141,7 +1257,10 @@ runs as that app's own, so it is guarded: a fault costs that one feature, never 
 font for the system font map must be a real font file every app can open, or every app
 drawing text with it would crash.
 
-## How it works (reverse-engineering notes, v4.0.20)
+</details>
+
+<details>
+<summary><b>How it works</b> · reverse-engineering notes, Nothing Launcher 4.0.20</summary>
 
 The launcher is built on AOSP Launcher3 (`com.android.launcher3.*`, unobfuscated). Nothing's own
 code is in `com.nothing.launcher.*`, and R8 has obfuscated most of it.
@@ -1185,3 +1304,5 @@ assignments stay untouched, so disabling the module restores the stock drawer.
 
 The config is stored as world-readable shared prefs (`config.xml`) through LSPosed's
 `xposedsharedprefs`. The hook reads it with `XSharedPreferences`.
+
+</details>
