@@ -40,6 +40,7 @@ public final class Launcher {
         new LandscapeSurfaces(cl, store).install();
         Hooks.install("landscape folder sheet", () -> new FolderSheetLandscape(cl).install());
         Hooks.install("landscape widget picker", () -> new WidgetPickerLandscape(cl, store).install());
+        Hooks.install("landscape menus", () -> PopupLandscape.install(cl));
         Hooks.install("lifecycle after a turn", () -> hookTurnLifecycle(cl));
         Hooks.install("home shown", () -> hookHomeShown(cl));
         Hooks.install("controller", () -> Gamepad.install(cl, store));

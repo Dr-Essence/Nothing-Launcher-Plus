@@ -88,8 +88,16 @@ final class GreenIcons {
         if (m != null) {
             frame.canvas.concat(m);
         }
-        d.draw(frame.canvas);
-        frame.canvas.restoreToCount(save);
+        try {
+            d.draw(frame.canvas);
+        } catch (IllegalArgumentException e) {
+            // A picture held on the GPU (a hardware bitmap: the media player's album art,
+            // DebuG18) cannot be drawn into this software frame; it is no icon to light, so
+            // it draws itself as Nothing has it.
+            return false;
+        } finally {
+            frame.canvas.restoreToCount(save);
+        }
 
         float alpha = view.getImageAlpha() / 255f;
         if (area == Areas.TILE) {

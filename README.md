@@ -567,6 +567,15 @@ on, the home screen's activity record is given, in system_server as it is made, 
 Nothing's helper asks for: Android opens it in the orientation it ends in, and it is loaded and
 laid out once.
 
+### Long-press menus in landscape
+
+Nothing makes each row of its long-press menus (an app icon's App info / Remove / Hide icon, a
+folder's Customise / Rename: `NTPopupContainer`) as wide as the screen less its margins, a
+phone-wide list in portrait. Turned, that is the long side, and the rows ran past the screen's
+edge (DebuG18). Nothing hands that width to its own row builders; in landscape they get the
+width the screen's short side gives, as in portrait, and Nothing builds and places the menu as
+it does there.
+
 ### Restore missing home items
 
 *Launcher → Restore missing home items*. Nothing Launcher keeps one database per grid size
