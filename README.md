@@ -899,10 +899,18 @@ Launcher3 moves its keyboard focus with them. The module adds:
 | L3 / R3 (stick click) | Home options (wallpaper, widgets, settings) | Close drawer |
 | Select | Notifications | Notifications |
 
-The focused item shows a rounded highlight in its own shape (a circle round an app icon, the
-row's own corners in a menu) in place of Android's square-cornered default; home screen icons and
-folders also lift on a spring (scale + elevation), while drawer folder tiles, which fill their
-cells, are not scaled. All settle back the moment the screen is touched. Select opens the
+On a focused **widget**, A (cross) taps it, so a clock opens Clock and a Calm widget starts a
+breath (Launcher3's own keyboard path ended in the widget's long-press menu). On a **music
+widget**, A plays or pauses, L1 / R1 skip back / forward and Start opens the app playing (found
+by the system, which may list media sessions; the launcher may not).
+
+The focused item shows one thin ring in its own shape: the module reads the item's outline from
+what it draws (an icon's shape, a folder's disc, a widget's card or circle, a menu row's pill),
+leaving out small marks such as notification dots, and rings it just outside. Launcher3's own
+keyboard-focus rectangle (drawn round the item's whole box) and Android's default highlight are
+off while controller navigation is on, so there is only ever one indicator. Home screen icons
+and folders also lift on a spring (scale + elevation), while drawer folder tiles, which fill
+their cells, are not scaled. All settle back the moment the screen is touched. Select opens the
 notifications through the system (the launcher may not expand the panel itself). The PS / Xbox /
 Guide button in an app that does not use it goes home: Android asks the system about a key the
 app left unhandled (`interceptUnhandledKey`), and a game that uses the button keeps it.

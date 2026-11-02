@@ -2,22 +2,30 @@ package com.dressence.nothinglauncherplus.system;
 
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.ActivityOptions;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.session.MediaController;
+import android.media.session.MediaSessionManager;
+import android.media.session.PlaybackState;
 import android.os.Binder;
+import android.os.Build;
 import android.os.UserHandle;
 
 import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.xposed.Hooks;
 
+import java.util.List;
+
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 
 /**
- * Settings screens the module's features open on the system's behalf.
+ * Screens the module's features open on the system's behalf.
  *
  * <p>Running services (recents' memory button): in Nothing's Settings (Settings 16.0.0) it is
  * the fragment {@code com.android.settings.applications.RunningServices}, which Developer
@@ -81,6 +89,67 @@ public final class SystemShortcuts {
                 }).run();
             }
         }, new IntentFilter(Config.ACTION_EXPAND_NOTIFICATIONS), Context.RECEIVER_EXPORTED);
+        // The controller's Start on a music widget: the app playing. Only the system may list
+        // media sessions (MEDIA_CONTENT_CONTROL, which Nothing Launcher does not hold).
+        context.registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent intent) {
+                Hooks.guard("open media app", () -> openMediaApp(context)).run();
+            }
+        }, new IntentFilter(Config.ACTION_OPEN_MEDIA_APP), Context.RECEIVER_EXPORTED);
+    }
+
+    /**
+     * Opens the app of the session playing (else the most recent one): its own session
+     * activity (the player screen), or its launcher activity.
+     */
+    private static void openMediaApp(Context context) {
+        long identity = Binder.clearCallingIdentity();
+        try {
+            MediaSessionManager sessions = context.getSystemService(MediaSessionManager.class);
+            List<MediaController> controllers = sessions.getActiveSessions(null);
+            MediaController chosen = null;
+            for (MediaController controller : controllers) {
+                PlaybackState state = controller.getPlaybackState();
+                if (state != null && state.getState() == PlaybackState.STATE_PLAYING) {
+                    chosen = controller;
+                    break;
+                }
+            }
+            if (chosen == null && !controllers.isEmpty()) {
+                chosen = controllers.get(0);
+            }
+            if (chosen == null) {
+                Hooks.log("open media app: no media session");
+                return;
+            }
+            PendingIntent session = chosen.getSessionActivity();
+            if (session != null) {
+                try {
+                    ActivityOptions options = ActivityOptions.makeBasic();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        options.setPendingIntentBackgroundActivityStartMode(
+                                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+                    }
+                    session.send(context, 0, null, null, null, null, options.toBundle());
+                    return;
+                } catch (PendingIntent.CanceledException e) {
+                    // Fall back to the app's launcher activity.
+                }
+            }
+            Intent launch = context.getPackageManager()
+                    .getLaunchIntentForPackage(chosen.getPackageName());
+            if (launch == null) {
+                return;
+            }
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            int userId = (Integer) XposedHelpers.callStaticMethod(ActivityManager.class,
+                    "getCurrentUser");
+            XposedHelpers.callMethod(context, "startActivityAsUser", launch,
+                    UserHandle.getUserHandleForUid(userId * PER_USER_RANGE));
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /** Running services in SubSettings, as Developer options opens it; false if it cannot. */

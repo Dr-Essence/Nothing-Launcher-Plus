@@ -78,6 +78,8 @@ public final class Config {
     /** To the system: open the notification panel (the launcher may not). */
     public static final String ACTION_EXPAND_NOTIFICATIONS =
             MODULE_PKG + ".action.EXPAND_NOTIFICATIONS";
+    /** To the system: open the app whose music is playing (the launcher can't see sessions). */
+    public static final String ACTION_OPEN_MEDIA_APP = MODULE_PKG + ".action.OPEN_MEDIA_APP";
     /** To the launcher: bring back home items another grid's database still has. */
     public static final String ACTION_RESTORE_ITEMS = MODULE_PKG + ".action.RESTORE_ITEMS";
     /** Sent by the launcher when it is shown or left, for the wallpapers' sounds. */

@@ -1,13 +1,21 @@
 package com.dressence.nothinglauncherplus.launcher;
 
 import android.app.Activity;
+import android.appwidget.AppWidgetHostView;
+import android.appwidget.AppWidgetProviderInfo;
+import android.content.Intent;
+import android.graphics.Canvas;
+import android.media.AudioManager;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.TypedValue;
 import android.view.InputDevice;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
+import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.anim.SpringInterpolator;
 import com.dressence.nothinglauncherplus.sound.Sfx;
 import com.dressence.nothinglauncherplus.xposed.ConfigStore;
@@ -24,10 +32,13 @@ import de.robv.android.xposed.XposedHelpers;
  *
  * <p>Android already turns the D-pad and left stick into arrow keys, A into select and B into
  * back, and Launcher3 moves its keyboard focus with them. On top of that this adds the shoulder
- * and face buttons, and a spring "lift" on the focused item so it is obvious where focus is.
- * Nothing runs until a controller button is pressed or focus moves without touch.
+ * and face buttons, a focus ring in the focused item's own shape ({@link FocusRing}) and a
+ * spring "lift" on focused icons and folders. Nothing runs until a controller button is pressed
+ * or focus moves without touch.
  *
  * <ul>
+ *   <li>A (cross) on a widget: a tap on it (the clock opens Clock); on a music widget, play /
+ *   pause, with L1 / R1 previous / next and Start opening the app playing</li>
  *   <li>Y (triangle) and X (square): menu of the focused item (app shortcuts, folder
  *   options)</li>
  *   <li>L1 / R1: previous / next home page; scroll the drawer up / down</li>
@@ -45,7 +56,14 @@ final class Gamepad {
     private static final String CLS_BUBBLE_TEXT = "com.android.launcher3.BubbleTextView";
     private static final String CLS_FOLDER_ICON = "com.android.launcher3.folder.BaseFolderIcon";
     private static final String CLS_POPUP = "com.android.launcher3.popup.PopupContainerWithArrow";
+    private static final String CLS_FOCUS_INDICATOR =
+            "com.android.launcher3.keyboard.ItemFocusIndicatorHelper";
+    /** What a music widget calls itself (its label, as Launcher3 sets it on the host). */
+    private static final java.util.regex.Pattern MUSIC =
+            java.util.regex.Pattern.compile("(?i).*(music|media|player|playing|song).*");
 
+    /** How long a widget tap is held, like a finger's. */
+    private static final long TAP_MS = 60;
     private static final float LIFT_SCALE = 1.08f;
     private static final int LIFT_DP = 8;
     /** Lift: quick and slightly bouncy; settle: calmer. */
@@ -59,9 +77,8 @@ final class Gamepad {
     private final Class<?> bubbleText;
     private final Class<?> folderIcon;
     private final Class<?> popup;
+    private final FocusRing ring;
     private WeakReference<View> lifted = new WeakReference<>(null);
-    /** The highlight drawn on the focused item, removed when it loses focus. */
-    private android.graphics.drawable.Drawable ring;
 
     private Gamepad(ClassLoader cl, ConfigStore store) {
         this.store = store;
@@ -72,6 +89,7 @@ final class Gamepad {
         bubbleText = XposedHelpers.findClass(CLS_BUBBLE_TEXT, cl);
         folderIcon = XposedHelpers.findClass(CLS_FOLDER_ICON, cl);
         popup = XposedHelpers.findClass(CLS_POPUP, cl);
+        ring = new FocusRing(bubbleText);
     }
 
     static void install(ClassLoader cl, ConfigStore store) {
@@ -83,6 +101,18 @@ final class Gamepad {
                     protected void beforeHookedMethod(MethodHookParam param) {
                         if (gamepad.onKey((Activity) param.thisObject, (KeyEvent) param.args[0])) {
                             param.setResult(true);
+                        }
+                    }
+                });
+        // Launcher3's own keyboard-focus outline (a rectangle round the item's whole box, drawn
+        // by the drag layer, folders and the drawer) is off while the controller is on: the
+        // focus ring shows focus instead, so there is one indicator, in the item's own shape.
+        XposedHelpers.findAndHookMethod(CLS_FOCUS_INDICATOR, cl, "draw", Canvas.class,
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        if (store.get().controllerNav) {
+                            param.setResult(null);
                         }
                     }
                 });
@@ -100,8 +130,18 @@ final class Gamepad {
 
     /** Returns true when the event was a mapped controller button and has been handled. */
     private boolean onKey(Activity launcher, KeyEvent event) {
-        if (!store.get().controllerNav || !isMappedButton(event.getKeyCode())
-                || !fromController(event)) {
+        if (!store.get().controllerNav || !fromController(event)) {
+            return false;
+        }
+        View widget = focusedWidget(launcher);
+        if (widget != null && widgetButton(widget, event.getKeyCode())) {
+            if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+                Hooks.guard("controller widget", () -> pressWidget(launcher, widget,
+                        event.getKeyCode())).run();
+            }
+            return true;
+        }
+        if (!isMappedButton(event.getKeyCode())) {
             return false;
         }
         // Act on release, like system buttons; swallow the press and its repeats.
@@ -114,6 +154,108 @@ final class Gamepad {
             }
         }
         return true;
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Widgets
+    // ---------------------------------------------------------------------------------------
+
+    /** The widget with focus (Launcher3's or Nothing's card host), or null. */
+    private static View focusedWidget(Activity launcher) {
+        View focused = launcher.getWindow().getDecorView().findFocus();
+        if (focused == null) {
+            return null;
+        }
+        for (Class<?> c = focused.getClass(); c != null; c = c.getSuperclass()) {
+            String name = c.getName();
+            if (name.equals("android.appwidget.AppWidgetHostView")
+                    || name.equals("com.nothing.cardhost.CardWidgetHostView")) {
+                return focused;
+            }
+        }
+        return null;
+    }
+
+    /** A music or media player widget, by its label or provider. */
+    private static boolean isMusic(View widget) {
+        CharSequence label = widget.getContentDescription();
+        if (label != null && MUSIC.matcher(label).matches()) {
+            return true;
+        }
+        if (widget instanceof AppWidgetHostView) {
+            AppWidgetProviderInfo info = ((AppWidgetHostView) widget).getAppWidgetInfo();
+            return info != null && MUSIC.matcher(info.provider.getClassName()).matches();
+        }
+        return false;
+    }
+
+    /**
+     * The buttons a focused widget takes: A (cross) as a tap on it (instead of Launcher3's
+     * keyboard path, which ends in its long-press menu); on a music widget A plays or pauses,
+     * L1 / R1 skip back / forward and Start opens the app playing.
+     */
+    private static boolean widgetButton(View widget, int keyCode) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_BUTTON_A:
+                return true;
+            case KeyEvent.KEYCODE_BUTTON_L1:
+            case KeyEvent.KEYCODE_BUTTON_R1:
+            case KeyEvent.KEYCODE_BUTTON_START:
+                return isMusic(widget);
+            default:
+                return false;
+        }
+    }
+
+    private void pressWidget(Activity launcher, View widget, int keyCode) {
+        boolean music = isMusic(widget);
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_BUTTON_A:
+                if (music) {
+                    mediaKey(launcher, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
+                } else {
+                    tap(widget);
+                }
+                break;
+            case KeyEvent.KEYCODE_BUTTON_L1:
+                mediaKey(launcher, KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+                break;
+            case KeyEvent.KEYCODE_BUTTON_R1:
+                mediaKey(launcher, KeyEvent.KEYCODE_MEDIA_NEXT);
+                break;
+            case KeyEvent.KEYCODE_BUTTON_START:
+                launcher.sendBroadcast(new Intent(Config.ACTION_OPEN_MEDIA_APP)
+                        .setPackage("android"));
+                break;
+            default:
+                break;
+        }
+    }
+
+    /** To whichever app has the media session, as headphones' buttons are. */
+    private static void mediaKey(Activity launcher, int keyCode) {
+        AudioManager audio = launcher.getSystemService(AudioManager.class);
+        audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, keyCode));
+        audio.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, keyCode));
+    }
+
+    /** A finger's tap in the middle of what the widget draws: the widget does what it does. */
+    private void tap(View widget) {
+        FocusRing.Shape shape = ring.shapeOf(widget);
+        float x = shape != null ? shape.bounds.centerX() : widget.getWidth() / 2f;
+        float y = shape != null ? shape.bounds.centerY() : widget.getHeight() / 2f;
+        long down = SystemClock.uptimeMillis();
+        touch(widget, down, down, MotionEvent.ACTION_DOWN, x, y);
+        widget.postDelayed(Hooks.guard("controller widget", () ->
+                touch(widget, down, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, x, y)),
+                TAP_MS);
+    }
+
+    private static void touch(View view, long down, long at, int action, float x, float y) {
+        MotionEvent event = MotionEvent.obtain(down, at, action, x, y, 0);
+        event.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        view.dispatchTouchEvent(event);
+        event.recycle();
     }
 
     /** A and B stay with Android (select / back fallbacks); the D-pad stays focus navigation. */
@@ -201,8 +343,7 @@ final class Gamepad {
             case KeyEvent.KEYCODE_BUTTON_SELECT:
                 // Nothing Launcher may not expand the panel itself (EXPAND_STATUS_BAR): the
                 // system does it (SystemShortcuts).
-                launcher.sendBroadcast(new android.content.Intent(
-                        com.dressence.nothinglauncherplus.Config.ACTION_EXPAND_NOTIFICATIONS)
+                launcher.sendBroadcast(new Intent(Config.ACTION_EXPAND_NOTIFICATIONS)
                         .setPackage("android"));
                 break;
             default:
@@ -245,116 +386,45 @@ final class Gamepad {
                 launcher.getResources().getDisplayMetrics());
         ViewTreeObserver observer = root.getViewTreeObserver();
         observer.addOnGlobalFocusChangeListener((oldFocus, newFocus) ->
-                Hooks.guard("controller focus", () -> lift(oldFocus, newFocus, lift)).run());
-        // Touching the screen ends controller mode: drop the lift straight away.
+                Hooks.guard("controller focus", () -> lift(newFocus, lift)).run());
+        // Touching the screen ends controller mode: drop the lift and ring straight away.
         observer.addOnTouchModeChangeListener(inTouchMode -> {
             if (inTouchMode) {
-                Hooks.guard("controller focus", () -> settle(lifted.get())).run();
+                Hooks.guard("controller focus", this::settle).run();
             }
         });
     }
 
     /**
-     * The newly focused item shows it: a rounded highlight in its own shape, and home screen
-     * icons and folders lift towards the eye; the one before settles back. Android's default
-     * focus highlight (a square-cornered box, a flat band on menu rows) is off on the item
-     * while it has controller focus. Drawer folder tiles fill their cells, so they are not
-     * scaled up (the lift went past the list's edge and was cut off); the highlight shows them.
+     * The newly focused item shows it: the focus ring round its own shape, and home screen
+     * icons and folders lift towards the eye; the one before settles back, wherever focus came
+     * from (a folder or menu closing moves focus without an old item). Drawer folder tiles fill
+     * their cells, so they are not scaled up (the lift went past the list's edge and was cut
+     * off); the ring shows them.
      */
-    private void lift(View oldFocus, View newFocus, float lift) {
-        settle(oldFocus);
+    private void lift(View newFocus, float lift) {
+        settle();
         if (newFocus == null || !store.get().controllerNav || newFocus.isInTouchMode()) {
             return;
         }
-        highlight(newFocus);
+        ring.show(newFocus);
         if (liftable(newFocus) && !drawerTile(newFocus)) {
             newFocus.animate().scaleX(LIFT_SCALE).scaleY(LIFT_SCALE).translationZ(lift)
                     .setInterpolator(LIFT).setDuration(420).start();
+            // Only what was lifted is settled: a widget's scale is its own (scale-to-fit).
+            lifted = new WeakReference<>(newFocus);
         }
-        lifted = new WeakReference<>(newFocus);
         LauncherSounds.effect(Sfx.MOVE);
     }
 
-    private void settle(View view) {
-        if (view != null && view == lifted.get()) {
+    private void settle() {
+        ring.hide();
+        View view = lifted.get();
+        if (view != null) {
             view.animate().scaleX(1).scaleY(1).translationZ(0)
                     .setInterpolator(SETTLE).setDuration(320).start();
-            if (ring != null) {
-                view.getOverlay().remove(ring);
-                ring = null;
-            }
-            view.setDefaultFocusHighlightEnabled(true);
             lifted = new WeakReference<>(null);
         }
-    }
-
-    /** The focused item's rounded highlight, drawn over it in its own overlay. */
-    private void highlight(View view) {
-        int w = view.getWidth();
-        int h = view.getHeight();
-        if (w <= 0 || h <= 0) {
-            return;
-        }
-        float dp = view.getResources().getDisplayMetrics().density;
-        android.graphics.Rect bounds = new android.graphics.Rect(0, 0, w, h);
-        float radius;
-        if (inPopup(view)) {
-            // A menu row: its whole width, as round as the row (or its card) is.
-            radius = outlineRadius(view);
-            if (radius < 0 && view.getParent() instanceof View) {
-                radius = outlineRadius((View) view.getParent());
-            }
-            if (radius < 0) {
-                radius = 12 * dp;
-            }
-        } else if (bubbleText.isInstance(view)) {
-            // An app icon: a circle round the icon itself, not its name.
-            XposedHelpers.callMethod(view, "getIconBounds", bounds);
-            int grow = Math.round(4 * dp);
-            bounds.inset(-grow, -grow);
-            bounds.intersect(0, 0, w, h);
-            radius = Math.min(bounds.width(), bounds.height()) / 2f;
-        } else {
-            radius = outlineRadius(view);
-            if (radius < 0) {
-                radius = Math.min(w, h) * 0.2f;
-            }
-        }
-        android.graphics.drawable.GradientDrawable shape =
-                new android.graphics.drawable.GradientDrawable();
-        shape.setCornerRadius(radius);
-        shape.setColor(0x24FFFFFF);
-        shape.setStroke(Math.max(1, Math.round(2 * dp)), 0xCCFFFFFF);
-        shape.setBounds(bounds);
-        view.setDefaultFocusHighlightEnabled(false);
-        view.getOverlay().add(shape);
-        ring = shape;
-    }
-
-    /** The corner radius of a view's own rounded outline, or -1 when it has none. */
-    private static float outlineRadius(View view) {
-        android.view.ViewOutlineProvider provider = view.getOutlineProvider();
-        if (provider == null) {
-            return -1;
-        }
-        android.graphics.Outline outline = new android.graphics.Outline();
-        try {
-            provider.getOutline(view, outline);
-        } catch (Throwable t) {
-            return -1;
-        }
-        android.graphics.Rect rect = new android.graphics.Rect();
-        return outline.getRect(rect) && !rect.isEmpty() ? outline.getRadius() : -1;
-    }
-
-    /** True inside a long-press menu (Nothing's popups). */
-    private static boolean inPopup(View view) {
-        for (android.view.ViewParent p = view.getParent(); p instanceof View; p = p.getParent()) {
-            if (p.getClass().getName().contains("Popup")) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /** A Smart drawer folder or entrance tile. */
