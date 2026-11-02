@@ -158,7 +158,9 @@ Nothing Launcher's **Smart (Beta)** drawer layout sorts apps into folders by cat
 "Tools", …). The categories come from Nothing's server, and you can't change them. This module
 adds your own folders next to them. Apps you put in a custom folder leave their automatic one.
 
-- Create, rename and delete drawer folders and pick the apps in each.
+- Create, rename and delete drawer folders and pick the apps in each, on a page in the module's
+  Nothing look: every app with its icon, a search, and a dot that fills in for the apps chosen
+  (apps in another folder say which, and move here when chosen).
 - **Reorder the folders** by dragging them in the module's folder list. The drawer fills its
   rows two folders at a time in that order, so you choose which folders share a row and which
   row comes first.

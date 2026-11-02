@@ -13,9 +13,7 @@ import com.dressence.nothinglauncherplus.Config;
 import com.dressence.nothinglauncherplus.anim.Motion;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /** Edits one custom folder: name, cover, apps and their order. */
 public class FolderActivity extends Activity {
@@ -169,38 +167,9 @@ public class FolderActivity extends Activity {
         return "None · the tile shows app previews";
     }
 
-    /** Multi-select of all apps; kept apps keep their order, new ones are appended. */
+    /** The app picker page (its own screen: icons, search; it saves the choice itself). */
     private void pickApps(Config.Folder folder) {
-        List<Apps.App> all = Apps.all(this);
-        Config config = store.config;
-        String[] labels = new String[all.size()];
-        boolean[] checked = new boolean[all.size()];
-        for (int i = 0; i < all.size(); i++) {
-            Apps.App app = all.get(i);
-            Config.Folder owner = config.folderForComponent(app.component);
-            checked[i] = owner == folder;
-            labels[i] = owner == null || owner == folder
-                    ? app.label : app.label + "  (in " + owner.name + ")";
-        }
-        Dialogs.builder(this)
-                .setTitle(folder.name)
-                .setMultiChoiceItems(labels, checked, (d, which, isChecked) ->
-                        checked[which] = isChecked)
-                .setPositiveButton("Save", (d, w) -> {
-                    Set<String> selected = new LinkedHashSet<>();
-                    for (int i = 0; i < all.size(); i++) {
-                        if (checked[i]) {
-                            selected.add(all.get(i).component);
-                        }
-                    }
-                    folder.apps.retainAll(selected);
-                    for (String component : selected) {
-                        config.assign(component, folder);
-                    }
-                    saveAndRender();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        AppPickerActivity.open(this, folder.id);
     }
 
     @Override

@@ -55,6 +55,11 @@
 
         <activity android:name=".ui.EmojiPickerActivity" />
 
+        <!-- A custom folder's apps: icons, search, Nothing look. -->
+        <activity
+            android:name=".ui.AppPickerActivity"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- Opens Developer options' Running services (tile, shortcuts); shows nothing. -->
         <activity
             android:name=".ui.RunningServices"
