@@ -45,9 +45,11 @@ adds your own folders next to them. Apps you put in a custom folder leave their 
     with the seconds left, drawn by System UI, so it shows on the lock screen too. **Stop
     capture** ends it early and still saves it. It can hold personal information
     (screenshots, the recording, notifications, logs), so look through it before posting it
-    publicly. The **Diagnostic logging** switch on the same page (on for now) writes the
-    module's diagnostic lines to the LSPosed log: orientation changes, lock screen layout,
-    fingerprint events and portrait-only system screens.
+    publicly. The **Diagnostic logging** switch on the same page (off by default; turn it on
+    before capturing, it applies within a minute without a reboot, and off again after: it
+    logs every lock screen layout pass) writes the module's diagnostic lines to the LSPosed
+    log: orientation changes, rotation sensor reports, lock screen layout, the always-on
+    display's position, fingerprint events and portrait-only system screens.
     **Test notifications** on the same page posts 1, 3, 6 or 12 sample notifications (short,
     long, conversation, progress, picture and reminder), now or in 10 seconds so the phone can
     be locked first, to check how the lock screen lays them out; **Clear test notifications**
@@ -567,6 +569,20 @@ on, the home screen's activity record is given, in system_server as it is made, 
 Nothing's helper asks for: Android opens it in the orientation it ends in, and it is loaded and
 laid out once.
 
+### Full refresh rate in battery saver
+
+*System → Full refresh rate in battery saver* (off by default). Android's display mode director
+caps the refresh rate while battery saver is on (`DisplayModeDirector$SettingsObserver`: with
+`low_power` set, a vote at the low-power-mode priority for 0..60 Hz, and one for the display's
+low-power modes where it lists them). With the setting on, those two votes are not cast: the
+screen keeps the refresh rate set in Display settings (120 Hz), and everything else battery
+saver does stays. Turning it on or off applies at once.
+
+Defaults: features that depend on one phone's hardware or one build's internals start off
+(task manager, lock screen rotation, landscape system screens, performance tools, status bar
+and quick settings Ndot, diagnostic logging); the ones that only act on apps you add to the
+scope, or find their place by name and stand aside when it is missing, start on.
+
 ### Shade over a turned screen
 
 On the lock screen the module places the notifications on one half, clear of the fingerprint
@@ -814,8 +830,9 @@ or opens developer options when the system does not answer.
 
 ### Task manager in Running services
 
-*Home screen → Task manager in Running services* (on by default; Settings in the module's
-LSPosed scope). Nothing's own Developer options → Running services page becomes a task
+*Home screen → Task manager in Running services* (off by default: it hooks Nothing Settings'
+internal classes, whose names change from build to build; Settings in the module's LSPosed
+scope). Nothing's own Developer options → Running services page becomes a task
 manager; nothing of it is replaced:
 
 - Under Nothing's memory bar, a header in Nothing's dot-matrix look (NDot 57, dot meters lit

@@ -12,6 +12,7 @@ import com.dressence.nothinglauncherplus.system.ControllerHome;
 import com.dressence.nothinglauncherplus.wallpaper.LivingWorlds;
 import com.dressence.nothinglauncherplus.wallpaper.PaletteCycle;
 import com.dressence.nothinglauncherplus.system.RotationSensor;
+import com.dressence.nothinglauncherplus.system.SaverRefreshRate;
 import com.dressence.nothinglauncherplus.system.SystemShortcuts;
 import com.dressence.nothinglauncherplus.system.SystemFonts;
 import com.dressence.nothinglauncherplus.systemui.SystemUi;
@@ -45,6 +46,7 @@ public final class ModuleEntry implements IXposedHookLoadPackage {
             Hooks.install("rotation sensor", () -> RotationSensor.install(cl, store));
             Hooks.install("controller home", () -> ControllerHome.install(cl, store));
             Hooks.install("system shortcuts", () -> SystemShortcuts.install(cl));
+            Hooks.install("saver refresh rate", () -> SaverRefreshRate.install(cl, store));
         } else if (!lpparam.isFirstApplication) {
             return;
         } else if (Config.LAUNCHER_PKG.equals(pkg)) {

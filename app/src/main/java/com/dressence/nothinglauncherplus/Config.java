@@ -71,6 +71,7 @@ public final class Config {
     public static final String KEY_UNLOCK_GAMES = "unlock_games";
     public static final String KEY_PERF_PROFILE = "perf_profile";
     public static final String KEY_THERMAL_OFF = "thermal_off";
+    public static final String KEY_SAVER_FULL_REFRESH = "saver_full_refresh";
 
     /** Broadcast sent to the launcher and system_server after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
@@ -171,7 +172,7 @@ public final class Config {
     /** Recents shows free memory; a tap opens running services. */
     public boolean recentsMemory = true;
     /** Running services (Settings) as a task manager. */
-    public boolean taskManager = true;
+    public boolean taskManager = false;
     /** Living Worlds' ambient sounds on the home screen and in the app drawer. */
     public boolean livingWorldsSounds = true;
     /** Living Worlds framed by the module: a turn is only a new framing. */
@@ -193,7 +194,7 @@ public final class Config {
     /** Type in HeliBoard with a game controller. */
     public boolean heliboardController = true;
     /** Write the diagnostic lines (orientation, lock screen layout, fingerprint) to the log. */
-    public boolean diagnosticLogging = true;
+    public boolean diagnosticLogging = false;
     /** Nothing's portrait-only system screens that work in landscape follow auto-rotate. */
     public boolean systemScreens = false;
     /** The Ndot performance overlay is on (CMF Phone 1). */
@@ -204,6 +205,8 @@ public final class Config {
     public String perfProfile = "";
     /** PerfMTK's thermal limits were last switched off. */
     public boolean thermalOff = false;
+    /** Battery saver keeps the screen's own refresh rate (no 60 Hz cap). */
+    public boolean saverFullRefresh = false;
 
     private final Map<String, Folder> byComponent = new HashMap<>();
     private final Map<String, Folder> byKey = new HashMap<>();
@@ -352,7 +355,7 @@ public final class Config {
         controllerNav = in.bool(KEY_CONTROLLER_NAV, true);
         controllerHome = in.bool(KEY_CONTROLLER_HOME, false);
         recentsMemory = in.bool(KEY_RECENTS_MEMORY, true);
-        taskManager = in.bool(KEY_TASK_MANAGER, true);
+        taskManager = in.bool(KEY_TASK_MANAGER, false);
         livingWorldsSounds = in.bool(KEY_LIVING_WORLDS_SOUNDS, true);
         livingWorldsTurn = in.bool(KEY_LIVING_WORLDS_TURN, true);
         livingWorldsLandscapeY = Math.max(0, Math.min(100,
@@ -364,12 +367,13 @@ public final class Config {
         lockRotation = in.bool(KEY_LOCK_ROTATION, false);
         aodRotation = in.bool(KEY_AOD_ROTATION, true);
         heliboardController = in.bool(KEY_HELIBOARD_CONTROLLER, true);
-        diagnosticLogging = in.bool(KEY_DIAGNOSTIC_LOGGING, true);
+        diagnosticLogging = in.bool(KEY_DIAGNOSTIC_LOGGING, false);
         // Before this switch, system screens followed Home screen rotation.
         systemScreens = in.bool(KEY_SYSTEM_SCREENS, allowRotation);
         perfOverlay = in.bool(KEY_PERF_OVERLAY, false);
         perfProfile = in.text(KEY_PERF_PROFILE, "");
         thermalOff = in.bool(KEY_THERMAL_OFF, false);
+        saverFullRefresh = in.bool(KEY_SAVER_FULL_REFRESH, false);
         unlockGames.clear();
         for (String pkg : in.text(KEY_UNLOCK_GAMES, "").split(",")) {
             if (!pkg.isEmpty()) {
@@ -416,6 +420,7 @@ public final class Config {
         out.bool(KEY_PERF_OVERLAY, perfOverlay);
         out.text(KEY_PERF_PROFILE, perfProfile);
         out.bool(KEY_THERMAL_OFF, thermalOff);
+        out.bool(KEY_SAVER_FULL_REFRESH, saverFullRefresh);
         out.text(KEY_UNLOCK_GAMES, String.join(",", unlockGames));
     }
 

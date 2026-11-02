@@ -147,6 +147,12 @@ public class MainActivity extends Activity {
                 v -> openPage(PAGE_LOCK));
         ui.row("System font", "Use one of Nothing's fonts on this phone · no reboot", null,
                 ui.chevron(), v -> chooseSystemFont());
+        ui.switchRow("Full refresh rate in battery saver", "Battery saver keeps the screen's"
+                + " refresh rate (120 Hz) instead of capping it at 60 Hz; the rest of battery"
+                + " saver stays · uses more battery", store.config.saverFullRefresh, checked -> {
+                    store.config.saverFullRefresh = checked;
+                    store.save(this);
+                });
 
         if (com.dressence.nothinglauncherplus.perf.Device.isCmfPhone1()) {
             ui.section("CMF Phone 1");
