@@ -805,7 +805,9 @@ on the lock screen, SystemUI's own everywhere else.
   like the drawer's folder screens on any wallpaper: the clock and date in Nothing's NDot in
   the green of the folder name panels with a soft glow, and every icon (network type,
   signal, Wi-Fi, airplane mode, headphones, alarm...), the battery and the network speed in
-  the same green, their own shapes untouched. Another option puts the date before the time.
+  the same green, their own shapes untouched. Another option puts the date before the time. In battery
+  saver the battery shows Nothing's own yellow saver fill (its outline and percentage stay green),
+  and turns all green again when saver goes off.
 - **Green quick settings** (option): the tiles' icons and labels glow green, and a tile that
   is on lights deep retro-display green where it was white, or, with **Amber dashboard
   tiles**, the warm amber of a retro car dashboard. The icons' own animations still play.

@@ -53,19 +53,8 @@ final class Battery {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
                 store.reloadIfChanged();
-                if (!store.get().ndotStatusBar) {
-                    return;
-                }
-                Object view;
-                try {
-                    view = XposedHelpers.getObjectField(param.thisObject, "mBatteryPercentView");
-                } catch (NoSuchFieldError e) {
-                    return; // Not this release's battery view.
-                }
-                if (view instanceof TextView) {
-                    // Drawn through the battery's green filter: lit white, it shows full green.
-                    TextView text = (TextView) view;
-                    Led.lightText(text, 0xFFFFFFFF, NdotFont.get(text.getContext()));
+                if (store.get().ndotStatusBar) {
+                    lightPercent(param.thisObject);
                 }
             }
         };
@@ -73,6 +62,83 @@ final class Battery {
         XposedBridge.hookAllMethods(battery, "updatePercentText", percent);
         XposedBridge.hookAllMethods(battery, "onDarkChanged", percent);
         XposedBridge.hookAllMethods(battery, "onAttachedToWindow", percent);
+        // Battery saver: Nothing draws the battery in its warning colours (getColorProfile:
+        // power save -> ColorProfile.Warning, the yellow fill), which the green filter turned
+        // green. While saver is on the battery is drawn without the filter, so Nothing's
+        // yellow shows (its frame and percentage stay green, given green directly); off
+        // again, it is all green.
+        XposedBridge.hookAllMethods(battery, "onPowerSaveChanged", new XC_MethodHook() {
+            @Override
+            protected void afterHookedMethod(MethodHookParam param) {
+                if (!store.get().ndotStatusBar) {
+                    return;
+                }
+                View view = (View) param.thisObject;
+                light(outermost(view));
+                lightPercent(param.thisObject);
+            }
+        });
+    }
+
+    /** The percentage in NDot, lit to show green whether the filter is on or off. */
+    private static void lightPercent(Object battery) {
+        Object view;
+        try {
+            view = XposedHelpers.getObjectField(battery, "mBatteryPercentView");
+        } catch (NoSuchFieldError e) {
+            return; // Not this release's battery view.
+        }
+        if (view instanceof TextView) {
+            // Drawn through the battery's green filter: lit white, it shows full green.
+            // In battery saver the filter is off (Nothing's yellow shows): lit green.
+            TextView text = (TextView) view;
+            Led.lightText(text, saver(battery) ? Led.GREEN : 0xFFFFFFFF,
+                    NdotFont.get(text.getContext()));
+        }
+    }
+
+    /** True while battery saver is on, as the battery view knows it. */
+    private static boolean saver(Object batteryView) {
+        try {
+            return XposedHelpers.getBooleanField(batteryView, "mPowerSaveEnabled");
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** The outermost battery view holding {@code view} (its layer draws the whole battery). */
+    private static View outermost(View view) {
+        View outer = view;
+        for (ViewParent p = view.getParent(); p instanceof View; p = p.getParent()) {
+            if (p.getClass().getName().contains("Battery")) {
+                outer = (View) p;
+            }
+        }
+        return outer;
+    }
+
+    /** The battery's layer: the green filter, or none in battery saver. */
+    private static void light(View outer) {
+        View meter = meter(outer);
+        outer.setLayerType(View.LAYER_TYPE_HARDWARE,
+                meter != null && saver(meter) ? null : GREEN_LAYER);
+    }
+
+    /** The battery meter itself (it knows battery saver): {@code view} or one inside it. */
+    private static View meter(View view) {
+        if (XposedHelpers.findFieldIfExists(view.getClass(), "mPowerSaveEnabled") != null) {
+            return view;
+        }
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View found = meter(group.getChildAt(i));
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -93,7 +159,7 @@ final class Battery {
                         return; // Its parts are drawn within the outer one's layer.
                     }
                 }
-                view.setLayerType(View.LAYER_TYPE_HARDWARE, GREEN_LAYER);
+                light(view);
             }
         });
     }
