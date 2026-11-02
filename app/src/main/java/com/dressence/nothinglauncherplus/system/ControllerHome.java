@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
 /**
@@ -82,6 +83,40 @@ public final class ControllerHome {
                             homeButton(param, event);
                         } catch (Throwable t) {
                             Hooks.log("controller home button failed: " + t);
+                        }
+                    }
+                });
+        // The PS / Xbox / Guide button in an app that does not use it: home. Android asks the
+        // window policy about a key the app in front left unhandled (interceptUnhandledKey);
+        // a game that uses the button keeps it, and Nothing's home screen uses it itself (the
+        // app drawer, launcher Gamepad). With the gaming launcher on, it is taken earlier.
+        XposedBridge.hookAllMethods(XposedHelpers.findClass(CLS_POLICY, cl),
+                "interceptUnhandledKey", new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        try {
+                            KeyEvent event = null;
+                            for (Object arg : param.args) {
+                                if (arg instanceof KeyEvent) {
+                                    event = (KeyEvent) arg;
+                                }
+                            }
+                            if (event == null || event.getKeyCode() != KeyEvent.KEYCODE_BUTTON_MODE
+                                    || !store.get().controllerNav) {
+                                return;
+                            }
+                            if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+                                Object policy = param.thisObject;
+                                int display = (Integer) XposedHelpers.callMethod(event,
+                                        "getDisplayId");
+                                ((Handler) XposedHelpers.getObjectField(policy, "mHandler")).post(
+                                        Hooks.guard("controller home button in an app", () ->
+                                                XposedHelpers.callMethod(policy,
+                                                        "launchHomeFromHotKey", display)));
+                            }
+                            param.setResult(true);
+                        } catch (Throwable t) {
+                            Hooks.log("controller home button in an app failed: " + t);
                         }
                     }
                 });

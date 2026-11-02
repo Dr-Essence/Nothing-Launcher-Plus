@@ -24,13 +24,44 @@ import de.robv.android.xposed.XposedHelpers;
 final class PopupLandscape {
 
     private static final String CLS_POPUP = "com.nothing.launcher.popup.NTPopupContainer";
+
+    /** Diagnostics: the menu's sizes as laid out (its rows' width, its own, its grid's). */
+    private static void log(View menu) {
+        View container = (View) XposedHelpers.callMethod(menu, "getPopupContainer");
+        StringBuilder line = new StringBuilder("menu: container ").append(container.getWidth())
+                .append('x').append(container.getHeight()).append(" rows ");
+        try {
+            line.append(XposedHelpers.getIntField(menu, "mContainerWidth"));
+        } catch (Throwable t) {
+            line.append('?');
+        }
+        android.view.ViewGroup.LayoutParams lp = menu.getLayoutParams();
+        line.append(" menu lp ").append(lp != null ? lp.width : 0).append(" measured ")
+                .append(menu.getMeasuredWidth()).append(" laid ").append(menu.getWidth())
+                .append(" at x ").append(Math.round(menu.getX()));
+        if (menu instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) menu;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View child = group.getChildAt(i);
+                String id = child.getId() != View.NO_ID
+                        ? child.getResources().getResourceEntryName(child.getId()) : "-";
+                line.append(" | ").append(id).append(' ').append(child.getWidth());
+                if (child instanceof android.widget.GridLayout) {
+                    line.append(" cols ").append(((android.widget.GridLayout) child)
+                            .getColumnCount()).append(" items ")
+                            .append(((android.view.ViewGroup) child).getChildCount());
+                }
+            }
+        }
+        Hooks.log(line.toString());
+    }
     private static final String CLS_ARROW = "com.nothing.launcher.popup.NTArrowPopup";
     private static final String CLS_BUBBLE = "com.android.launcher3.BubbleTextView";
 
     private PopupLandscape() {
     }
 
-    static void install(ClassLoader cl) {
+    static void install(ClassLoader cl, com.dressence.nothinglauncherplus.xposed.ConfigStore store) {
         Class<?> popup = XposedHelpers.findClass(CLS_POPUP, cl);
         XC_MethodHook portraitWidth = new XC_MethodHook() {
             @Override
@@ -100,6 +131,10 @@ final class PopupLandscape {
                     }
                     menu.setX(Math.max(left, Math.min(right, target.centerX() - menuWidth / 2)));
                 }).run();
+                if (store.get().diagnosticLogging) {
+                    View menu = (View) param.thisObject;
+                    menu.post(Hooks.guard("landscape menu log", () -> log(menu)));
+                }
             }
         });
         // The held icon's highlighted copy: Nothing places it at the icon less the drag

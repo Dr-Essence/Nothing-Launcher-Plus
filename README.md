@@ -892,14 +892,20 @@ Launcher3 moves its keyboard focus with them. The module adds:
 | Button | Home screen | App drawer |
 | --- | --- | --- |
 | Start | Open drawer | Close drawer |
+| PS / Xbox / Guide | Open drawer (in an app that does not use it: home) | Close drawer |
 | Y (triangle) / X (square) | Shortcuts / menu of the focused item | same |
 | L1 / R1 | Previous / next page | Scroll up / down |
 | L2 / R2 | First / last page | Top / bottom |
 | L3 / R3 (stick click) | Home options (wallpaper, widgets, settings) | Close drawer |
 | Select | Notifications | Notifications |
 
-The focused icon or folder lifts on a spring (scale + elevation) and settles back the moment
-the screen is touched.
+The focused item shows a rounded highlight in its own shape (a circle round an app icon, the
+row's own corners in a menu) in place of Android's square-cornered default; home screen icons and
+folders also lift on a spring (scale + elevation), while drawer folder tiles, which fill their
+cells, are not scaled. All settle back the moment the screen is touched. Select opens the
+notifications through the system (the launcher may not expand the panel itself). The PS / Xbox /
+Guide button in an app that does not use it goes home: Android asks the system about a key the
+app left unhandled (`interceptUnhandledKey`), and a game that uses the button keeps it.
 
 #### Gaming launcher with a controller
 

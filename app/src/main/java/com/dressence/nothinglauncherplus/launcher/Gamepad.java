@@ -60,6 +60,8 @@ final class Gamepad {
     private final Class<?> folderIcon;
     private final Class<?> popup;
     private WeakReference<View> lifted = new WeakReference<>(null);
+    /** The highlight drawn on the focused item, removed when it loses focus. */
+    private android.graphics.drawable.Drawable ring;
 
     private Gamepad(ClassLoader cl, ConfigStore store) {
         this.store = store;
@@ -124,6 +126,7 @@ final class Gamepad {
             case KeyEvent.KEYCODE_BUTTON_L2:
             case KeyEvent.KEYCODE_BUTTON_R2:
             case KeyEvent.KEYCODE_BUTTON_START:
+            case KeyEvent.KEYCODE_BUTTON_MODE:
             case KeyEvent.KEYCODE_BUTTON_SELECT:
             case KeyEvent.KEYCODE_BUTTON_THUMBL:
             case KeyEvent.KEYCODE_BUTTON_THUMBR:
@@ -145,6 +148,7 @@ final class Gamepad {
                 XposedHelpers.callMethod(launcher, "getStateManager"), "getState") == allAppsState;
         switch (keyCode) {
             case KeyEvent.KEYCODE_BUTTON_START:
+            case KeyEvent.KEYCODE_BUTTON_MODE: // PS / Xbox / Guide on the home screen
                 goTo(launcher, inDrawer ? normalState : allAppsState);
                 break;
             case KeyEvent.KEYCODE_BUTTON_L1:
@@ -195,10 +199,11 @@ final class Gamepad {
                         root.getWidth() / 2f, root.getHeight() / 2f);
                 break;
             case KeyEvent.KEYCODE_BUTTON_SELECT:
-                Object statusBar = launcher.getSystemService("statusbar");
-                if (statusBar != null) {
-                    XposedHelpers.callMethod(statusBar, "expandNotificationsPanel");
-                }
+                // Nothing Launcher may not expand the panel itself (EXPAND_STATUS_BAR): the
+                // system does it (SystemShortcuts).
+                launcher.sendBroadcast(new android.content.Intent(
+                        com.dressence.nothinglauncherplus.Config.ACTION_EXPAND_NOTIFICATIONS)
+                        .setPackage("android"));
                 break;
             default:
                 break;
@@ -249,24 +254,113 @@ final class Gamepad {
         });
     }
 
-    /** Lifts the newly focused icon or tile towards the eye; the one before settles back. */
+    /**
+     * The newly focused item shows it: a rounded highlight in its own shape, and home screen
+     * icons and folders lift towards the eye; the one before settles back. Android's default
+     * focus highlight (a square-cornered box, a flat band on menu rows) is off on the item
+     * while it has controller focus. Drawer folder tiles fill their cells, so they are not
+     * scaled up (the lift went past the list's edge and was cut off); the highlight shows them.
+     */
     private void lift(View oldFocus, View newFocus, float lift) {
         settle(oldFocus);
-        if (newFocus != null && store.get().controllerNav && !newFocus.isInTouchMode()
-                && liftable(newFocus)) {
+        if (newFocus == null || !store.get().controllerNav || newFocus.isInTouchMode()) {
+            return;
+        }
+        highlight(newFocus);
+        if (liftable(newFocus) && !drawerTile(newFocus)) {
             newFocus.animate().scaleX(LIFT_SCALE).scaleY(LIFT_SCALE).translationZ(lift)
                     .setInterpolator(LIFT).setDuration(420).start();
-            lifted = new WeakReference<>(newFocus);
-            LauncherSounds.effect(Sfx.MOVE);
         }
+        lifted = new WeakReference<>(newFocus);
+        LauncherSounds.effect(Sfx.MOVE);
     }
 
     private void settle(View view) {
         if (view != null && view == lifted.get()) {
             view.animate().scaleX(1).scaleY(1).translationZ(0)
                     .setInterpolator(SETTLE).setDuration(320).start();
+            if (ring != null) {
+                view.getOverlay().remove(ring);
+                ring = null;
+            }
+            view.setDefaultFocusHighlightEnabled(true);
             lifted = new WeakReference<>(null);
         }
+    }
+
+    /** The focused item's rounded highlight, drawn over it in its own overlay. */
+    private void highlight(View view) {
+        int w = view.getWidth();
+        int h = view.getHeight();
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        float dp = view.getResources().getDisplayMetrics().density;
+        android.graphics.Rect bounds = new android.graphics.Rect(0, 0, w, h);
+        float radius;
+        if (inPopup(view)) {
+            // A menu row: its whole width, as round as the row (or its card) is.
+            radius = outlineRadius(view);
+            if (radius < 0 && view.getParent() instanceof View) {
+                radius = outlineRadius((View) view.getParent());
+            }
+            if (radius < 0) {
+                radius = 12 * dp;
+            }
+        } else if (bubbleText.isInstance(view)) {
+            // An app icon: a circle round the icon itself, not its name.
+            XposedHelpers.callMethod(view, "getIconBounds", bounds);
+            int grow = Math.round(4 * dp);
+            bounds.inset(-grow, -grow);
+            bounds.intersect(0, 0, w, h);
+            radius = Math.min(bounds.width(), bounds.height()) / 2f;
+        } else {
+            radius = outlineRadius(view);
+            if (radius < 0) {
+                radius = Math.min(w, h) * 0.2f;
+            }
+        }
+        android.graphics.drawable.GradientDrawable shape =
+                new android.graphics.drawable.GradientDrawable();
+        shape.setCornerRadius(radius);
+        shape.setColor(0x24FFFFFF);
+        shape.setStroke(Math.max(1, Math.round(2 * dp)), 0xCCFFFFFF);
+        shape.setBounds(bounds);
+        view.setDefaultFocusHighlightEnabled(false);
+        view.getOverlay().add(shape);
+        ring = shape;
+    }
+
+    /** The corner radius of a view's own rounded outline, or -1 when it has none. */
+    private static float outlineRadius(View view) {
+        android.view.ViewOutlineProvider provider = view.getOutlineProvider();
+        if (provider == null) {
+            return -1;
+        }
+        android.graphics.Outline outline = new android.graphics.Outline();
+        try {
+            provider.getOutline(view, outline);
+        } catch (Throwable t) {
+            return -1;
+        }
+        android.graphics.Rect rect = new android.graphics.Rect();
+        return outline.getRect(rect) && !rect.isEmpty() ? outline.getRadius() : -1;
+    }
+
+    /** True inside a long-press menu (Nothing's popups). */
+    private static boolean inPopup(View view) {
+        for (android.view.ViewParent p = view.getParent(); p instanceof View; p = p.getParent()) {
+            if (p.getClass().getName().contains("Popup")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A Smart drawer folder or entrance tile. */
+    private static boolean drawerTile(View view) {
+        String name = view.getClass().getName();
+        return name.equals(SmartDrawer.CLS_FOLDER_ICON) || name.endsWith(".SmartEntranceIcon");
     }
 
     /** Icons and folder tiles; widgets keep their own scale-to-fit, so they are left alone. */

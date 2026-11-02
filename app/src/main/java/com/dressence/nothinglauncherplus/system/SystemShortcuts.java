@@ -64,6 +64,23 @@ public final class SystemShortcuts {
                 }
             }
         }, new IntentFilter(Config.ACTION_RUNNING_SERVICES), Context.RECEIVER_EXPORTED);
+        // The controller's Select button on the home screen: the notification panel. Nothing
+        // Launcher may not expand it (EXPAND_STATUS_BAR, a SecurityException each press); the
+        // system may.
+        context.registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context c, Intent intent) {
+                Hooks.guard("expand notifications", () -> {
+                    long identity = Binder.clearCallingIdentity();
+                    try {
+                        XposedHelpers.callMethod(context.getSystemService("statusbar"),
+                                "expandNotificationsPanel");
+                    } finally {
+                        Binder.restoreCallingIdentity(identity);
+                    }
+                }).run();
+            }
+        }, new IntentFilter(Config.ACTION_EXPAND_NOTIFICATIONS), Context.RECEIVER_EXPORTED);
     }
 
     /** Running services in SubSettings, as Developer options opens it; false if it cannot. */
