@@ -1103,6 +1103,15 @@ low-power modes where it lists them). With the setting on, those two votes are n
 screen keeps the refresh rate set in Display settings (120 Hz), and everything else battery
 saver does stays. Turning it on or off applies at once.
 
+#### Battery saver switched by other apps
+
+Android decides a tap of the battery saver tile or switch from a state it keeps beside the saver
+(off, on by you, on automatically). An app that switches battery saver by writing its setting
+(`settings put global low_power …`, as EnforceDoze does around screen off and on) changes the
+saver but not that state, so after it turned saver off, every tap was refused as "already on"
+until a reboot. The module makes the state agree whenever the setting changes the saver; Android's
+own switching is untouched.
+
 </details>
 
 <details>
