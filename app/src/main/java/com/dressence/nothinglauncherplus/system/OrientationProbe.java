@@ -41,6 +41,34 @@ public final class OrientationProbe {
                     }
                 }).size();
         Hooks.log("orientation probe: " + hooked + " hooks");
+        // Each report of the rotation sensor as Android's judge (for a sensor that reports the
+        // rotation itself, OrientationSensorJudge) receives it: the rotation, how long after
+        // the sensor measured it the report arrived (event.timestamp, elapsed-realtime nanos)
+        // and whether the screen was asleep, so a late turn can be placed in the sensor or in
+        // what follows it ("rotation changed" in the logcat). Reads only.
+        Class<?> judge = XposedHelpers.findClassIfExists(
+                "com.android.server.wm.WindowOrientationListener$OrientationSensorJudge", cl);
+        if (judge != null) {
+            XposedBridge.hookAllMethods(judge, "onSensorChanged", new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    try {
+                        if (!store.get().diagnosticLogging
+                                || !(param.args[0] instanceof android.hardware.SensorEvent)) {
+                            return;
+                        }
+                        android.hardware.SensorEvent e = (android.hardware.SensorEvent)
+                                param.args[0];
+                        long late = (android.os.SystemClock.elapsedRealtimeNanos() - e.timestamp)
+                                / 1_000_000L;
+                        Hooks.log("rotation sensor: reports " + (int) e.values[0] + ", measured "
+                                + late + " ms before it arrived");
+                    } catch (Throwable t) {
+                        // Diagnostics only.
+                    }
+                }
+            });
+        }
     }
 
     /**
