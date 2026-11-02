@@ -397,7 +397,8 @@ final class LockScreenTurn {
         android.view.WindowManager wm = (android.view.WindowManager)
                 XposedHelpers.getObjectField(section, "windowManager");
         android.view.Display display = wm.getDefaultDisplay();
-        int rotation = display.getRotation();
+        int rotation = layoutRotation((android.content.Context)
+                XposedHelpers.getObjectField(section, "context"));
         if (rotation != android.view.Surface.ROTATION_90
                 && rotation != android.view.Surface.ROTATION_270) {
             return;
@@ -437,8 +438,6 @@ final class LockScreenTurn {
      */
     private static void turnBouncerIcon(Object section, boolean on) {
         int[] spot = turnedSpot;
-        android.view.WindowManager wm = (android.view.WindowManager)
-                XposedHelpers.getObjectField(section, "windowManager");
         View icon = (View) XposedHelpers.getObjectField(section, "bouncerUdfpsIconContainer");
         if (icon == null || !(icon.getLayoutParams()
                 instanceof android.widget.FrameLayout.LayoutParams)) {
@@ -446,7 +445,8 @@ final class LockScreenTurn {
         }
         android.widget.FrameLayout.LayoutParams lp =
                 (android.widget.FrameLayout.LayoutParams) icon.getLayoutParams();
-        if (!on || spot == null || wm.getDefaultDisplay().getRotation() != spot[2]) {
+        if (!on || spot == null || layoutRotation((android.content.Context)
+                XposedHelpers.getObjectField(section, "context")) != spot[2]) {
             // Nothing's own placement (also when the lock screen no longer turns) (centered across, its top set): Nothing never sets the
             // left margin, so the one set here for landscape goes (it had pushed the icon
             // off the screen, logged at x 3017).
@@ -473,12 +473,11 @@ final class LockScreenTurn {
      */
     private static void landscapeBouncerLock(Object section, boolean on) {
         View lock = (View) XposedHelpers.getObjectField(section, "bouncerlockIconContainer");
-        android.view.WindowManager wm = (android.view.WindowManager)
-                XposedHelpers.getObjectField(section, "windowManager");
         if (lock == null) {
             return;
         }
-        int rotation = wm.getDefaultDisplay().getRotation();
+        int rotation = layoutRotation((android.content.Context)
+                XposedHelpers.getObjectField(section, "context"));
         boolean turned = on && (rotation == android.view.Surface.ROTATION_90
                 || rotation == android.view.Surface.ROTATION_270);
         String key = "nlplus.hiddenLock";
@@ -784,10 +783,42 @@ final class LockScreenTurn {
 
     /** Whether the screen is turned so the fingerprint sensor is on the left (270 degrees). */
     private static boolean sensorOnLeft(android.content.Context context) {
-        android.view.WindowManager wm = (android.view.WindowManager) context.getSystemService(
-                android.content.Context.WINDOW_SERVICE);
-        return wm != null && wm.getDefaultDisplay().getRotation()
-                == android.view.Surface.ROTATION_270;
+        return layoutRotation(context) == android.view.Surface.ROTATION_270;
+    }
+
+    /**
+     * The rotation the lock screen is being laid out for. A turn reaches SystemUI twice: as
+     * the new configuration, which starts the layout pass (its resources say landscape), and
+     * as a display change, which updates the Display object; they can arrive in either order.
+     * Read from the Display alone, a turn from portrait to the sensor-left side was laid out
+     * for the old rotation (sensor right: Nothing's pieces on the left, no ring) and mirrored
+     * a pass later, about 0.25 s on (DebuG18 video, 28.9 s). So: the Display's rotation when
+     * it is already a landscape one (a flip from one side to the other changes no
+     * orientation and is laid out on the display change: layOutOnFlip), otherwise the
+     * rotation of the configuration being laid out.
+     */
+    private static int layoutRotation(android.content.Context context) {
+        int display = 0;
+        android.view.WindowManager wm = context == null ? null
+                : (android.view.WindowManager) context.getSystemService(
+                        android.content.Context.WINDOW_SERVICE);
+        if (wm != null) {
+            display = wm.getDefaultDisplay().getRotation();
+        }
+        if (isLandscapeRotation(display) || context == null) {
+            return display;
+        }
+        try {
+            Object window = XposedHelpers.getObjectField(
+                    context.getResources().getConfiguration(), "windowConfiguration");
+            int configured = (Integer) XposedHelpers.callMethod(window, "getDisplayRotation");
+            if (isLandscapeRotation(configured)) {
+                return configured;
+            }
+        } catch (Throwable t) {
+            // Hidden API missing: the Display's rotation.
+        }
+        return display;
     }
 
     /** The StatusBarState of the lock screen itself (not the shade pulled over it). */
@@ -907,9 +938,7 @@ final class LockScreenTurn {
         if (spot == null || spot.length < 4 || container.getWidth() <= 0) {
             return 0;
         }
-        android.view.WindowManager wm = (android.view.WindowManager) container.getContext()
-                .getSystemService(android.content.Context.WINDOW_SERVICE);
-        if (wm == null || wm.getDefaultDisplay().getRotation() != spot[2]) {
+        if (layoutRotation(container.getContext()) != spot[2]) {
             return 0;
         }
         int[] at = new int[2];
