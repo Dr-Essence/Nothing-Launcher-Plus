@@ -554,6 +554,33 @@ Around the home screen:
   framing, see *Living Worlds smooth turning*).
 - **Smart drawer tiles** are sized for about one and a half rows, with icons scaled to the tile.
 
+### Home screen opens in its orientation
+
+Nothing's manifest declares the home screen portrait, and Nothing's own RotationHelper lifts
+that (`setRequestedOrientation(-1)`, auto-rotate respected) only once the home screen runs.
+So each time the launcher started (a reboot, a restart) with the phone on its side, Android
+opened it in portrait and the launcher filled its pages for portrait; the screen then turned,
+and the launcher threw that away, loaded everything again and laid it out for landscape
+(DebuG16, a forced restart: opened at rotation 0, loading restarted four times, pages filled
+for portrait at +3.0 s, shown at +3.5 s, landscape ready at +4.1 s). With Home screen rotation
+on, the home screen's activity record is given, in system_server as it is made, the value
+Nothing's helper asks for: Android opens it in the orientation it ends in, and it is loaded and
+laid out once.
+
+### Restore missing home items
+
+*Launcher → Restore missing home items*. Nothing Launcher keeps one database per grid size
+(`launcher_5_by_8.db`, `launcher_5_by_9.db`, …); when the grid changes it moves the items into
+the new grid's database and drops the ones it cannot place, while the old grid's database keeps
+them (DebuG16: two folders, two icons and four widgets, all from row 4 down, were only in the
+5×8 database). Inside the launcher, on its own model thread, the most recently changed other
+grid database of the same width (and no more rows) is read, read-only; its home screen icons,
+shortcuts and folders (with their contents) that the grid in use lacks are added through
+Nothing's own database insert at their own page and cells where those are free, and the launcher
+reloads. Nothing is removed or moved and no app is added twice. Widgets are not brought back
+(their ids belong to the widget service, which released them); the launcher names the ones to
+add again.
+
 ### Landscape grid
 
 The landscape page is the portrait page turned: a C×R portrait grid becomes R columns by as

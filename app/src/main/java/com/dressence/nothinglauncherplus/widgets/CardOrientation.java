@@ -24,6 +24,15 @@ import de.robv.android.xposed.XposedHelpers;
  * portrait-only screen opened then is written to the LSPosed log once (with diagnostic logging
  * on: "portrait-only screen: …"), so further
  * ones can be checked and added from what is really opened (system apps only).
+ *
+ * <p>Nothing Launcher's home screen too (with Home screen rotation on): its manifest declares
+ * it portrait, and Nothing's own RotationHelper takes that off (setRequestedOrientation -1,
+ * auto-rotate respected) only once the home screen runs, after its first frame. So each time
+ * the launcher started (a reboot, a restart) with the phone on its side, Android opened it in
+ * portrait, drew the portrait home screen, then turned the screen and laid it out again
+ * (DebuG16: opened at rotation 0, -1 asked 0.3 s later, turned at 05:54:36.0). Given the value
+ * Nothing's helper asks for from the start, the home screen opens in the orientation it ends
+ * in and is laid out once.
  */
 public final class CardOrientation {
 
@@ -56,6 +65,9 @@ public final class CardOrientation {
     private static final String[] KEEP_PORTRAIT = {"Password", "ConfirmLock", "ChooseLock",
             "ConfirmDeviceCredential", "Fingerprint", "Biometric", "Face", "Setup",
             "FallbackHome"};
+    /** Nothing Launcher's home screen activity (its manifest: screenOrientation portrait). */
+    private static final String HOME = com.dressence.nothinglauncherplus.Config.LAUNCHER_PKG
+            + "/com.android.searchlauncher.SearchLauncher";
     /** Portrait-only screens already logged. */
     private static final java.util.Set<String> LOGGED =
             java.util.Collections.synchronizedSet(new java.util.HashSet<>());
@@ -84,6 +96,13 @@ public final class CardOrientation {
             return;
         }
         String screen = info.packageName + "/" + info.name;
+        if (HOME.equals(screen)) {
+            store.reloadIfChanged();
+            if (store.get().allowRotation) {
+                info.screenOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+            }
+            return;
+        }
         if (!WidgetApps.handles(info.packageName)) {
             store.reloadIfChanged();
             if (!store.get().systemScreens) {

@@ -345,6 +345,21 @@ public class MainActivity extends Activity {
         ui.section("Launcher");
         ui.row("Restart Nothing Launcher", "Applies everything immediately · needs root", null,
                 null, v -> restartLauncher());
+        ui.row("Restore missing home items", "Icons, folders and shortcuts the launcher still"
+                + " has from another grid size, put back where they were · nothing is removed",
+                null, null, v -> new android.app.AlertDialog.Builder(this)
+                        .setTitle("Restore missing home items?")
+                        .setMessage("Nothing Launcher keeps a separate home screen for each grid"
+                                + " size. Icons, folders and shortcuts that the other grid of"
+                                + " the same width still has, and yours does not, are added back"
+                                + " at their places where those are free. Nothing is removed"
+                                + " or moved. Widgets cannot come back this way: the launcher"
+                                + " shows which ones to add again.")
+                        .setNegativeButton("Cancel", null)
+                        .setPositiveButton("Restore", (d, w) -> sendBroadcast(
+                                new android.content.Intent(Config.ACTION_RESTORE_ITEMS)
+                                        .setPackage(Config.LAUNCHER_PKG)))
+                        .show());
     }
 
     /** The installed home apps, other than Nothing Launcher: package to name. */

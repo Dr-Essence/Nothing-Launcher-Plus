@@ -153,7 +153,9 @@ public final class Launcher {
                 new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) {
-                        register(((Activity) param.thisObject).getApplicationContext(), store);
+                        Context app = ((Activity) param.thisObject).getApplicationContext();
+                        register(app, store);
+                        HomeRestore.register(app, cl);
                     }
                 });
     }

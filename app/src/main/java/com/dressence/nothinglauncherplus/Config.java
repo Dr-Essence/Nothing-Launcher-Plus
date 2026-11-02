@@ -74,6 +74,8 @@ public final class Config {
 
     /** Broadcast sent to the launcher and system_server after the configuration changes. */
     public static final String ACTION_RELOAD = MODULE_PKG + ".action.RELOAD";
+    /** To the launcher: bring back home items another grid's database still has. */
+    public static final String ACTION_RESTORE_ITEMS = MODULE_PKG + ".action.RESTORE_ITEMS";
     /** Sent by the launcher when it is shown or left, for the wallpapers' sounds. */
     public static final String ACTION_HOME_SHOWN = MODULE_PKG + ".HOME_SHOWN";
     public static final String EXTRA_SHOWN = "shown";
