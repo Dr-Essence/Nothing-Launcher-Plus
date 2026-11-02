@@ -182,6 +182,12 @@ final class DebugReport {
             // other apps' data folders (DebuG15: both "No such file or directory", though
             // dumpsys gives /data/user/0/com.nothing.launcher): it is read from init's mount
             // namespace, where they are, and passed through /data/local/tmp (the same in both).
+            // Sound: the ringer mode, every stream's volume and recent playback (interface
+            // sounds play on the system stream and stay quiet on silent or vibrate), and the
+            // module's own settings.
+            + "dumpsys audio > $D/audio.txt 2>&1\n"
+            + "nsenter -t 1 -m -- cat /data/user/0/com.dressence.nothinglauncherplus/shared_prefs/"
+            + "config.xml > $D/module_config.xml 2>/dev/null\n"
             + "mkdir -p $D/launcher; rm -rf /data/local/tmp/nlplus-launcher;"
             + " mkdir -p /data/local/tmp/nlplus-launcher\n"
             + "nsenter -t 1 -m -- sh -c 'for d in user user_de; do"
