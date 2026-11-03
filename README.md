@@ -1338,3 +1338,11 @@ The config is stored as world-readable shared prefs (`config.xml`) through LSPos
 `xposedsharedprefs`. The hook reads it with `XSharedPreferences`.
 
 </details>
+
+## Licence
+
+© 2026 Dr.Essence, under [CC BY-NC-SA 4.0](LICENSE): use, copy, change and
+share it, as long as you credit Dr.Essence, do not use it commercially
+(including selling it or anything built from it), and share changed versions
+under the same licence. Nothing's fonts, sounds and assets are read from the
+phone at runtime and are not part of this work.
