@@ -48,7 +48,7 @@ Each section below opens when tapped.
 <details open>
 <summary><b>Current state</b> · version 0.52.4, what is pending, what still needs testing</summary>
 
-**Current build: 0.52.4** (CMF Phone 1, Nothing OS 4.1, Android 16).
+**Current build: 0.52.5** (CMF Phone 1, Nothing OS 4.1, Android 16): 0.52.4 plus a private signing key.
 
 **Not tested on a phone yet**
 - **0.52.4, controller:** an item's menu (A held, or the menu button) opens Nothing's own
@@ -58,6 +58,9 @@ Each section below opens when tapped.
   report; needs a new report to confirm.
 
 **Pending**
+- **Signing key move (0.52.5):** the release key is private now; CI builds only once its three
+  secrets are added to the repository. Updating from 0.52.4 needs one switch: Backup → Export,
+  uninstall, install, re-enable in LSPosed if asked, Backup → Import.
 - **Landscape lock screen and the Customisation page layout:** in progress.
 - **PS2-style interface sounds:** waiting for recordings of the cursor, confirm, back, error and
   memory-card sounds.
@@ -166,14 +169,19 @@ scope, or find their place by name and stand aside when it is missing, start on.
 
 #### Updates and signing
 
-Every build is signed with the same key (`signing/update.jks`, committed on purpose), so a new
-APK installs straight over the old one and keeps your folders. After an update the module
-restarts Nothing Launcher by itself (root), and LSPosed loads the new code right away: no
-uninstall, no reboot. Set `SIGNING_KEYSTORE`, `SIGNING_PASSWORD` and `SIGNING_KEY_ALIAS` to build
-with a private key instead.
+Every release build is signed with one private key, kept in this repository's GitHub secrets
+(`SIGNING_KEYSTORE_B64`, `SIGNING_PASSWORD`, `SIGNING_KEY_ALIAS`), so a new APK installs
+straight over the old one and keeps your folders. After an update the module restarts Nothing
+Launcher by itself (root), and LSPosed loads the new code right away: no uninstall, no reboot.
+A local or fork build without the key is debug-signed and cannot update an installed release.
 
-Builds from before v0.5.0 were signed with throwaway keys: switch once with **Export**,
-uninstall, install, **Import**.
+Builds up to v0.52.4 were signed with a key committed to this repository. A public key lets
+anyone build an APK that installs as an update and inherits the module's LSPosed scope, so
+from v0.52.5 the key is private. **Switch once, without losing anything:** open the module,
+**Backup → Export** (folders, options and covers to a file), uninstall the old version,
+install the new one, enable it in LSPosed again if asked, then **Backup → Import**.
+
+Builds from before v0.5.0 were signed with throwaway keys: switch the same way.
 
 </details>
 

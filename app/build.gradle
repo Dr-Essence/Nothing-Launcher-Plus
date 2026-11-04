@@ -10,22 +10,26 @@ android {
         applicationId 'com.dressence.nothinglauncherplus'
         minSdk 31
         targetSdk 36
-        versionCode 226
-        versionName '0.52.4'
+        versionCode 227
+        versionName '0.52.5'
     }
 
-    // Every build is signed with the same key so updates install over each other and keep the
-    // saved folders. The key is committed on purpose (signing/update.jks): it only identifies this
-    // module's builds and protects nothing else. SIGNING_KEYSTORE / SIGNING_PASSWORD /
-    // SIGNING_KEY_ALIAS can point at a private key instead.
-    def keystore = System.getenv('SIGNING_KEYSTORE') ?: rootProject.file('signing/update.jks').path
-    def password = System.getenv('SIGNING_PASSWORD') ?: 'nlplus-update'
+    // Every release build is signed with one private key, so updates install over each other
+    // and keep the saved folders. CI writes it from the repository secrets (SIGNING_KEYSTORE_B64,
+    // SIGNING_PASSWORD, SIGNING_KEY_ALIAS) and passes its path as SIGNING_KEYSTORE. Without it
+    // (a local build, a fork) the build is debug-signed and cannot update an installed release.
+    // The key is not in the repository: an APK signed with a public key would install as an
+    // update and inherit the module's LSPosed scope.
+    def keystore = System.getenv('SIGNING_KEYSTORE')
+    def password = System.getenv('SIGNING_PASSWORD')
     signingConfigs {
-        update {
-            storeFile file(keystore)
-            storePassword password
-            keyAlias System.getenv('SIGNING_KEY_ALIAS') ?: 'nlplus'
-            keyPassword password
+        if (keystore && file(keystore).exists()) {
+            update {
+                storeFile file(keystore)
+                storePassword password
+                keyAlias System.getenv('SIGNING_KEY_ALIAS') ?: 'nlplus'
+                keyPassword password
+            }
         }
     }
 
@@ -33,10 +37,7 @@ android {
         release {
             // Hook code resolves launcher classes by name/reflection; keep it unobfuscated.
             minifyEnabled false
-            signingConfig signingConfigs.update
-        }
-        debug {
-            signingConfig signingConfigs.update
+            signingConfig signingConfigs.findByName('update') ?: signingConfigs.debug
         }
     }
 

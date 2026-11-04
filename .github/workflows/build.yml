@@ -15,9 +15,29 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # The runner image ships the Android SDK; ANDROID_HOME is already set. Signing uses the
-      # committed update key (signing/update.jks), so every build updates the previous one.
+      # The private release key, from the repository secrets, so every build updates the
+      # previous one. This repository refuses to build without it (an APK with another key
+      # cannot update the installed module); forks and pull requests build debug-signed.
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "SIGNING_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "signed with the release key"
+          elif [ "${{ github.repository }}" = "Dr-Essence/Nothing-Launcher-Plus" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "::error::SIGNING_KEYSTORE_B64 is not set - add the release key secrets (README, Updates and signing)"
+            exit 1
+          else
+            echo "::warning::no release key - debug-signed build, it cannot update an installed release"
+          fi
+
+      # The runner image ships the Android SDK; ANDROID_HOME is already set.
       - name: Build APK
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
         run: ./gradlew --no-daemon assembleRelease
 
       - uses: actions/upload-artifact@v5
