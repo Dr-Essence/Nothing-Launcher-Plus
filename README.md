@@ -10,7 +10,8 @@ screen, game controller support, live wallpaper sounds and more.
 **What it adds**
 
 - **App drawer**: your own folders beside Nothing's Smart categories, image and emoji covers.
-- **Dot-matrix look**: animated emoji covers, glowing dot-matrix app icons, an Ndot status bar.
+- **Dot-matrix look**: animated emoji covers, glowing dot-matrix app icons, an Ndot status bar,
+  and live icons (CMF Stereo's speaker pulses, like Nothing's clock).
 - **Landscape**: home screen, app drawer, recents, widget cards, lock screen and always-on display.
 - **Controllers**: navigate the launcher and type in HeliBoard with a gamepad; a gaming launcher.
 - **System extras**: memory in recents, a Running services task manager, system fonts, full
@@ -48,9 +49,17 @@ Each section below opens when tapped.
 <details open>
 <summary><b>Current state</b> · version 0.52.4, what is pending, what still needs testing</summary>
 
-**Current build: 0.52.5** (CMF Phone 1, Nothing OS 4.1, Android 16): 0.52.4 plus a private signing key.
+**Current build: 0.52.5** (CMF Phone 1, Nothing OS 4.1, Android 16): 0.52.4 plus a private signing key and live icons.
 
 **Not tested on a phone yet**
+- **0.52.5, live icons:** CMF Stereo's dot-matrix speaker icon animates its two sound waves while
+  it is on screen (home, drawer, search), the way Nothing Launcher animates its clock (which it
+  gives to one package only). Checked here: the class compiles against Android 36 with stand-ins
+  for the Xposed calls; its dot analysis, ported to Python, finds the icon's dots at 128-252 px
+  and falls back to the still icon below that; the animation was rendered frame by frame. Needs
+  on the phone: the icon pulsing on home and in the drawer, stopping when an app is open or the
+  screen is off (`dumpsys gfxinfo com.nothing.launcher` frame counts idle), and the launcher's
+  frame time unchanged.
 - **0.52.4, controller:** an item's menu (A held, or the menu button) opens Nothing's own
   long-press menu instead of the module's. Needs a debug report with a controller.
 - **0.52.3, controller:** focus rings on widgets in their true shape, drawer tiles staying in
