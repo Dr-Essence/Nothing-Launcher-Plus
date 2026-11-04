@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.view.Choreographer;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -70,18 +71,57 @@ final class DotIcons {
     private static final Map<Bitmap, List<WeakReference<Drawable>>> PENDING =
             new WeakHashMap<>();
     private static final ExecutorService CONVERTER = Executors.newSingleThreadExecutor(r -> {
-                Thread t = new Thread(r, "nlplus-dot-icons");
-                t.setPriority(Thread.MIN_PRIORITY);
+                // Background priority, not the lowest: at the lowest, conversions starved
+                // behind the drawer's own animation and icons lit up one by one.
+                Thread t = new Thread(() -> {
+                    android.os.Process.setThreadPriority(
+                            android.os.Process.THREAD_PRIORITY_BACKGROUND);
+                    r.run();
+                }, "nlplus-dot-icons");
                 return t;
             });
+    /** Conversions queued and not yet finished (main thread). */
+    private static int converting;
+    /** Icons converted and waiting to be shown together (main thread). */
+    private static final List<WeakReference<Drawable>> READY = new ArrayList<>();
+    private static boolean readyFlushPosted;
+    /** Finished conversions are shown at once when the queue empties, or after this long. */
+    private static final long READY_BATCH_MS = 150;
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     /** Scratch for onScreen; main thread. */
     private static final Rect VISIBLE = new Rect();
-    /** Icons last drawn out of view, redrawn together now and then; main thread. */
+    /** Icons last drawn out of view (main thread). */
     private static final Set<Drawable> OUT_OF_VIEW =
             Collections.newSetFromMap(new WeakHashMap<>());
+    /**
+     * For this long after an icon was drawn out of view, every frame checks whether it has come
+     * into view. Opening the drawer or a folder fades and slides it in as a whole, which Android
+     * does without redrawing the icons, so this check is what lets them power on together, in
+     * step with it (as the first dot icons did), instead of whenever they next happen to be
+     * redrawn. A visibility check, nothing drawn.
+     */
+    private static final long WATCH_MS = 1200;
+    /** After the watch, the rare case: one check a second, which leaves the launcher idle. */
     private static final long RECHECK_MS = 1000;
+    private static long watchUntil;
+    private static boolean watching;
     private static boolean recheckPosted;
+    private static final Choreographer.FrameCallback WATCH = new Choreographer.FrameCallback() {
+        @Override
+        public void doFrame(long frameTimeNanos) {
+            Hooks.guard("dot icons watch", () -> {
+                wakeInView();
+                if (!OUT_OF_VIEW.isEmpty() && SystemClock.uptimeMillis() < watchUntil) {
+                    Choreographer.getInstance().postFrameCallback(WATCH);
+                } else {
+                    watching = false;
+                    if (!OUT_OF_VIEW.isEmpty()) {
+                        recheckSoon();
+                    }
+                }
+            }).run();
+        }
+    };
     /** FastBitmapDrawable and BitmapInfo fields, looked up once. */
     private static Field fBitmapInfo;
     private static Field fIcon;
@@ -139,23 +179,47 @@ final class DotIcons {
     }
 
     /**
-     * Redraws {@code d} in a while, with every other icon drawn out of view meanwhile, so one
-     * that comes into view without being redrawn (the drawer sliding in) wakes up: one redraw a
-     * second for all of them, which leaves the launcher idle in between.
+     * {@code d} was drawn out of view: it is redrawn, and powers on, in the frame it comes into
+     * view. Icons that come into view in the same frame start together.
      */
     private static void recheckLater(Drawable d) {
         OUT_OF_VIEW.add(d);
-        if (!recheckPosted) {
-            recheckPosted = true;
-            MAIN.postDelayed(Hooks.guard("dot icons recheck", () -> {
-                recheckPosted = false;
-                List<Drawable> due = new ArrayList<>(OUT_OF_VIEW);
-                OUT_OF_VIEW.clear();
-                for (Drawable drawable : due) {
-                    drawable.invalidateSelf();
-                }
-            }), RECHECK_MS);
+        watchUntil = SystemClock.uptimeMillis() + WATCH_MS;
+        if (!watching) {
+            watching = true;
+            Choreographer.getInstance().postFrameCallback(WATCH);
         }
+    }
+
+    /** Redraws every icon waiting out of view that is in view now. */
+    private static void wakeInView() {
+        if (OUT_OF_VIEW.isEmpty()) {
+            return;
+        }
+        List<Drawable> now = new ArrayList<>();
+        for (Drawable d : OUT_OF_VIEW) {
+            if (d != null && onScreen(d)) {
+                now.add(d);
+            }
+        }
+        for (Drawable d : now) {
+            OUT_OF_VIEW.remove(d);
+            d.invalidateSelf();
+        }
+    }
+
+    private static void recheckSoon() {
+        if (recheckPosted) {
+            return;
+        }
+        recheckPosted = true;
+        MAIN.postDelayed(Hooks.guard("dot icons recheck", () -> {
+            recheckPosted = false;
+            wakeInView();
+            if (!OUT_OF_VIEW.isEmpty() && !watching) {
+                recheckSoon();
+            }
+        }), RECHECK_MS);
     }
 
     /** True if {@code d}'s view is on the display and not faded out; true if it has no view. */
@@ -400,6 +464,34 @@ final class DotIcons {
     }
 
     /**
+     * Shows the icons converted so far, all in the same frame so they power on together: at
+     * once when nothing is left to convert ({@code now}), else at most READY_BATCH_MS later.
+     */
+    private static void showReady(boolean now) {
+        if (READY.isEmpty()) {
+            return;
+        }
+        if (!now) {
+            if (!readyFlushPosted) {
+                readyFlushPosted = true;
+                MAIN.postDelayed(Hooks.guard("dot icons ready batch", () -> {
+                    readyFlushPosted = false;
+                    showReady(true);
+                }), READY_BATCH_MS);
+            }
+            return;
+        }
+        List<WeakReference<Drawable>> due = new ArrayList<>(READY);
+        READY.clear();
+        for (WeakReference<Drawable> ref : due) {
+            Drawable drawable = ref.get();
+            if (drawable != null) {
+                drawable.invalidateSelf();
+            }
+        }
+    }
+
+    /**
      * {@code icon} as dots, or null while it is being made: converted once per bitmap, off the
      * main thread, after which every drawable that asked for it is redrawn.
      */
@@ -417,6 +509,7 @@ final class DotIcons {
         waiting.add(new WeakReference<>(asking));
         PENDING.put(icon, waiting);
         WeakReference<Bitmap> source = new WeakReference<>(icon);
+        converting++;
         CONVERTER.execute(() -> {
             Bitmap bitmap = source.get();
             IconScreen made;
@@ -429,20 +522,16 @@ final class DotIcons {
             }
             IconScreen result = made;
             MAIN.post(Hooks.guard("dot icon ready", () -> {
+                converting--;
                 Bitmap key = source.get();
-                if (key == null) {
-                    return;
-                }
-                List<WeakReference<Drawable>> asked = PENDING.remove(key);
-                CACHE.put(key, result);
-                if (asked != null) {
-                    for (WeakReference<Drawable> ref : asked) {
-                        Drawable drawable = ref.get();
-                        if (drawable != null) {
-                            drawable.invalidateSelf();
-                        }
+                if (key != null) {
+                    List<WeakReference<Drawable>> asked = PENDING.remove(key);
+                    CACHE.put(key, result);
+                    if (asked != null) {
+                        READY.addAll(asked);
                     }
                 }
+                showReady(converting <= 0);
             }));
         });
         return null;

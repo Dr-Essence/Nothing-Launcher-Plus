@@ -49,9 +49,18 @@ Each section below opens when tapped.
 <details open>
 <summary><b>Current state</b> · version 0.52.4, what is pending, what still needs testing</summary>
 
-**Current build: 0.52.5** (CMF Phone 1, Nothing OS 4.1, Android 16): 0.52.4 plus a private signing key and live icons.
+**Current build: 0.52.5** (CMF Phone 1, Nothing OS 4.1, Android 16): 0.52.4 plus a private signing key, live icons, and dot icons powering on in step again.
 
 **Not tested on a phone yet**
+- **0.52.5, dot-matrix icons powering on in step again:** icons drawn while their view was still
+  hidden (the first frames of the drawer or a folder opening, when Android fades and slides the
+  page without redrawing icons) waited for a 1 s recheck, so they lit up late and one by one. They
+  are now checked every frame for 1.2 s after (a visibility check, nothing drawn) and power on in
+  the frame they come into view, together, in step with the opening, as the first dot icons did;
+  after that, one check a second, so a closed drawer leaves the launcher idle. Converted icons are
+  shown together (when the queue empties, or within 150 ms), and the converter no longer runs at
+  the lowest priority. Needs on the phone: opening the drawer and a folder with dot icons on, all
+  icons powering on together with the opening; the widget list and apps loading as before.
 - **0.52.5, live icons:** CMF Stereo's dot-matrix speaker icon animates its two sound waves while
   it is on screen (home, drawer, search), the way Nothing Launcher animates its clock (which it
   gives to one package only). Checked here: the class compiles against Android 36 with stand-ins
