@@ -24,6 +24,9 @@ screen, game controller support, live wallpaper sounds and more.
   <img src="docs/images/drawer-landscape.png" alt="App drawer folders with dot-matrix covers" width="100%">
 </p>
 <p align="center">
+  <img src="docs/images/drawer-folders-landscape.png" alt="App drawer with normal folders" width="100%">
+</p>
+<p align="center">
   <img src="docs/images/lockscreen-landscape.png" alt="Landscape lock screen" width="100%">
 </p>
 <p align="center">
@@ -31,9 +34,10 @@ screen, game controller support, live wallpaper sounds and more.
 </p>
 <p align="center">
   <img src="docs/images/home-portrait.png" alt="Portrait home screen" width="40%">
+  <img src="docs/images/drawer-folders-portrait.png" alt="Portrait app drawer with normal folders" width="40%">
 </p>
 
-<sub>Screenshots from the test phone's debug reports, alpha builds. Captions use Nothing's NDot
+<sub>Screenshots from the test phone, alpha builds. Captions use Nothing's NDot
 77 JP Extended as drawn on the phone; the font itself is not part of this repository.</sub>
 
 Each section below opens when tapped.
@@ -57,10 +61,8 @@ Each section below opens when tapped.
 - **PS2-style interface sounds:** waiting for recordings of the cursor, confirm, back, error and
   memory-card sounds.
 - **Nothing Dot Matrix Display:** the engine that replaces the emoji-cover beta (see Roadmap).
-- **README pictures still to come:** the app drawer in portrait (emoji covers), and the app
-  drawer with normal folders (app icons, no emoji) in both landscape and portrait. None of the
-  debug reports has them. The current pictures are from alpha debug reports and will be retaken
-  for the public release.
+- **README pictures still to come:** the app drawer in portrait with emoji covers. The current
+  pictures come from alpha builds and will be retaken for the public release.
 
 **Fixed recently**
 - 0.52.4: controller menus are Nothing's own, as on a long-press.
