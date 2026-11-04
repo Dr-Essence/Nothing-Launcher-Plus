@@ -17,6 +17,20 @@ screen, game controller support, live wallpaper sounds and more.
   refresh rate in battery saver, sounds and music.
 - **Live wallpapers**: sounds and smooth turning for Living Worlds and Palette Cycle.
 
+<p align="center">
+  <img src="docs/images/home-landscape.png" alt="Landscape home screen" width="100%">
+</p>
+<p align="center">
+  <img src="docs/images/drawer-landscape.png" alt="App drawer folders with dot-matrix covers" width="100%">
+</p>
+<p align="center">
+  <img src="docs/images/lockscreen.png" alt="Lock screen with Ndot clock" width="45%">
+  <img src="docs/images/aod.png" alt="Always-on display" width="45%">
+</p>
+
+<sub>Screenshots from the test phone's debug reports, alpha builds. Captions use Nothing's NDot
+77 JP Extended as drawn on the phone; the font itself is not part of this repository.</sub>
+
 Each section below opens when tapped.
 
 ## Status
@@ -38,8 +52,9 @@ Each section below opens when tapped.
 - **PS2-style interface sounds:** waiting for recordings of the cursor, confirm, back, error and
   memory-card sounds.
 - **Nothing Dot Matrix Display:** the engine that replaces the emoji-cover beta (see Roadmap).
-- **Demonstration pictures for this README:** the app drawer before and after, captioned in
-  Nothing's NDot; waiting for screenshots.
+- **Cleaner README pictures for the public release:** the current ones are from alpha debug
+  reports (landscape home, app drawer, lock screen, AOD); a before/after of the app drawer and
+  portrait shots are still to come.
 
 **Fixed recently**
 - 0.52.4: controller menus are Nothing's own, as on a long-press.
