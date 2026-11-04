@@ -19,6 +19,11 @@
   re-positioning what Nothing just laid out, no racing its own passes).
 - **Clean dead code.** Remove what a change makes unused (methods, fields, hooks, settings,
   diagnostics that served their purpose) in the same change.
+- **Keep the README's Status section current with every change.** Each commit that changes
+  behaviour also updates it: the current version and state, what is pending, which features
+  have not been tested on a phone yet, which tests are pending (and what evidence they need),
+  and the bugs fixed. A change is not finished while the Status section still describes the
+  build before it.
 - The module must never crash or stall what it hooks: guard everything handed to the host,
   never block the main thread, and never make the launcher delete or lose the user's items.
 

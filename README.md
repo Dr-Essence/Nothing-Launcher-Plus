@@ -19,6 +19,40 @@ screen, game controller support, live wallpaper sounds and more.
 
 Each section below opens when tapped.
 
+## Status
+
+<details open>
+<summary><b>Current state</b> · version 0.52.4, what is pending, what still needs testing</summary>
+
+**Current build: 0.52.4** (CMF Phone 1, Nothing OS 4.1, Android 16).
+
+**Not tested on a phone yet**
+- **0.52.4, controller:** an item's menu (A held, or the menu button) opens Nothing's own
+  long-press menu instead of the module's. Needs a debug report with a controller.
+- **0.52.3, controller:** focus rings on widgets in their true shape, drawer tiles staying in
+  place when focused, focus returning to the item after a menu closes. Built from the DebuG22
+  report; needs a new report to confirm.
+
+**Pending**
+- **Landscape lock screen and the Customisation page layout:** in progress.
+- **PS2-style interface sounds:** waiting for recordings of the cursor, confirm, back, error and
+  memory-card sounds.
+- **Nothing Dot Matrix Display:** the engine that replaces the emoji-cover beta (see Roadmap).
+- **Demonstration pictures for this README:** the app drawer before and after, captioned in
+  Nothing's NDot; waiting for screenshots.
+
+**Fixed recently**
+- 0.52.4: controller menus are Nothing's own, as on a long-press.
+- 0.52.3: rings on widgets no longer treat them as containers or squash them; the ring's
+  shape ignores the dot badge; focused tiles no longer push their neighbours; focus comes back
+  to the item after a menu.
+- 0.52.2: drawer folder tiles lift inside the drawer again, and their emoji reacts on focus.
+- 0.52.1: the landscape home menu keeps its portrait width; Nothing's settings pages rotate.
+- 0.52.0: one focus ring in each item's own shape; widgets act on A (clock opens the clock app,
+  L1/R1/X/Start drive the music widget).
+
+</details>
+
 ## Getting started
 
 <details>
