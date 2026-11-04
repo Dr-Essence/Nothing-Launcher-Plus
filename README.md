@@ -33,8 +33,9 @@ screen, game controller support, live wallpaper sounds and more.
   <img src="docs/images/aod-landscape.png" alt="Landscape always-on display" width="100%">
 </p>
 <p align="center">
-  <img src="docs/images/home-portrait.png" alt="Portrait home screen" width="40%">
-  <img src="docs/images/drawer-folders-portrait.png" alt="Portrait app drawer with normal folders" width="40%">
+  <img src="docs/images/home-portrait.png" alt="Portrait home screen" width="32%">
+  <img src="docs/images/drawer-portrait.png" alt="Portrait app drawer with emoji covers" width="32%">
+  <img src="docs/images/drawer-folders-portrait.png" alt="Portrait app drawer with normal folders" width="32%">
 </p>
 
 <sub>Screenshots from the test phone, alpha builds. Captions use Nothing's NDot
@@ -61,8 +62,9 @@ Each section below opens when tapped.
 - **PS2-style interface sounds:** waiting for recordings of the cursor, confirm, back, error and
   memory-card sounds.
 - **Nothing Dot Matrix Display:** the engine that replaces the emoji-cover beta (see Roadmap).
-- **README pictures still to come:** the app drawer in portrait with emoji covers. The current
-  pictures come from alpha builds and will be retaken for the public release.
+- **README pictures:** all views are in (home, app drawer with emoji covers and with normal
+  folders, both orientations; landscape lock screen and AOD). They come from alpha builds and
+  will be retaken for the public release.
 
 **Fixed recently**
 - 0.52.4: controller menus are Nothing's own, as on a long-press.
