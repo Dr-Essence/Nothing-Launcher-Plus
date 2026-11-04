@@ -18,24 +18,24 @@ screen, game controller support, live wallpaper sounds and more.
 - **Live wallpapers**: sounds and smooth turning for Living Worlds and Palette Cycle.
 
 <p align="center">
-  <img src="docs/images/home-landscape.png" alt="Landscape home screen" width="100%">
+  <img src="https://raw.githubusercontent.com/Dr-Essence/Nothing-Launcher-Plus/claude/nothing-os-xposed-module-65lsca/docs/images/home-landscape.png" alt="Landscape home screen" width="100%">
 </p>
 <p align="center">
-  <img src="docs/images/drawer-landscape.png" alt="App drawer folders with dot-matrix covers" width="100%">
+  <img src="https://raw.githubusercontent.com/Dr-Essence/Nothing-Launcher-Plus/claude/nothing-os-xposed-module-65lsca/docs/images/drawer-landscape.png" alt="App drawer folders with dot-matrix covers" width="100%">
 </p>
 <p align="center">
-  <img src="docs/images/drawer-folders-landscape.png" alt="App drawer with normal folders" width="100%">
+  <img src="https://raw.githubusercontent.com/Dr-Essence/Nothing-Launcher-Plus/claude/nothing-os-xposed-module-65lsca/docs/images/drawer-folders-landscape.png" alt="App drawer with normal folders" width="100%">
 </p>
 <p align="center">
-  <img src="docs/images/lockscreen-landscape.png" alt="Landscape lock screen" width="100%">
+  <img src="https://raw.githubusercontent.com/Dr-Essence/Nothing-Launcher-Plus/claude/nothing-os-xposed-module-65lsca/docs/images/lockscreen-landscape.png" alt="Landscape lock screen" width="100%">
 </p>
 <p align="center">
-  <img src="docs/images/aod-landscape.png" alt="Landscape always-on display" width="100%">
+  <img src="https://raw.githubusercontent.com/Dr-Essence/Nothing-Launcher-Plus/claude/nothing-os-xposed-module-65lsca/docs/images/aod-landscape.png" alt="Landscape always-on display" width="100%">
 </p>
 <p align="center">
-  <img src="docs/images/home-portrait.png" alt="Portrait home screen" width="32%">
-  <img src="docs/images/drawer-portrait.png" alt="Portrait app drawer with emoji covers" width="32%">
-  <img src="docs/images/drawer-folders-portrait.png" alt="Portrait app drawer with normal folders" width="32%">
+  <img src="https://raw.githubusercontent.com/Dr-Essence/Nothing-Launcher-Plus/claude/nothing-os-xposed-module-65lsca/docs/images/home-portrait.png" alt="Portrait home screen" width="32%">
+  <img src="https://raw.githubusercontent.com/Dr-Essence/Nothing-Launcher-Plus/claude/nothing-os-xposed-module-65lsca/docs/images/drawer-portrait.png" alt="Portrait app drawer with emoji covers" width="32%">
+  <img src="https://raw.githubusercontent.com/Dr-Essence/Nothing-Launcher-Plus/claude/nothing-os-xposed-module-65lsca/docs/images/drawer-folders-portrait.png" alt="Portrait app drawer with normal folders" width="32%">
 </p>
 
 <sub>Screenshots from the test phone, alpha builds. Captions use Nothing's NDot
