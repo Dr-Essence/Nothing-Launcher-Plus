@@ -1431,3 +1431,9 @@ share it, as long as you credit Dr.Essence, do not use it commercially
 (including selling it or anything built from it), and share changed versions
 under the same licence. Nothing's fonts and other Nothing assets are read from the
 phone at runtime and are not part of this work.
+
+
+## Credits
+
+- **[Dr.Essence](https://github.com/Dr-Essence)**: author and maintainer. Ideas, design decisions, and every test on a real phone (logs, recordings, measurements) that the work here rests on.
+- Code written with [Claude Code](https://claude.com/claude-code).
